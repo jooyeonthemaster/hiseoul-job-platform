@@ -10,9 +10,12 @@ import {
   CalendarIcon,
   CheckBadgeIcon,
   EnvelopeIcon,
-  PhoneIcon
+  PhoneIcon,
+  PlayIcon,
+  AcademicCapIcon,
+  TrophyIcon
 } from '@heroicons/react/24/outline';
-import { getPortfolio } from '@/lib/auth';
+import { getPortfolio, getJobSeekerProfile } from '@/lib/auth';
 
 interface Portfolio {
   id: string;
@@ -42,6 +45,38 @@ interface Portfolio {
     technologies: string[];
     duration: string;
     results: string[];
+  }>;
+  introVideo?: string;
+  selfIntroduction?: {
+    motivation?: string;
+    personality?: string;
+    experience?: string;
+    aspiration?: string;
+  };
+  mediaContent?: Array<{
+    type: string;
+    url: string;
+    title: string;
+    description?: string;
+  }>;
+  certificates?: Array<{
+    name: string;
+    issuer: string;
+    issueDate: string;
+  }>;
+  awards?: Array<{
+    title: string;
+    organization: string;
+    date: string;
+    description?: string;
+  }>;
+  detailedEducation?: Array<{
+    institution: string;
+    degree: string;
+    field: string;
+    startDate: string;
+    endDate?: string;
+    grade?: string;
   }>;
 }
 
@@ -480,21 +515,24 @@ export default function PortfolioDetailPage() {
       try {
         setLoading(true);
         
-        // 먼저 정적 데이터에서 찾기
-        const staticPortfolio = portfoliosDetail.find(p => p.id === portfolioId);
-        if (staticPortfolio) {
-          setPortfolio(staticPortfolio);
+        // Find sample portfolio first
+        const samplePortfolio = portfoliosDetail.find(p => p.id === portfolioId);
+        if (samplePortfolio) {
+          setPortfolio(samplePortfolio);
           setLoading(false);
           return;
         }
 
-        // Firebase에서 포트폴리오 찾기
+        // Try to load from Firebase
         try {
-          const firebasePortfolio = await getPortfolio(portfolioId);
-          if (firebasePortfolio && typeof firebasePortfolio === 'object' && 'name' in firebasePortfolio) {
-            // Firebase 데이터를 상세 페이지 형식으로 변환
+          const firebasePortfolio = await getPortfolio(portfolioId as string);
+          if (firebasePortfolio) {
+            // Firebase에서 상세 프로필 정보도 가져오기
+            const profileData = await getJobSeekerProfile(portfolioId as string);
+            const profile = profileData?.profile;
+            
             const convertedPortfolio: Portfolio = {
-              id: portfolioId,
+              id: portfolioId as string,
               name: (firebasePortfolio as any).name || '이름 없음',
               speciality: (firebasePortfolio as any).speciality || '일반',
               experience: '경력',
@@ -521,8 +559,48 @@ export default function PortfolioDetailPage() {
                 technologies: (firebasePortfolio as any).skills || [],
                 duration: '프로젝트 기간',
                 results: ['성과 정보 업데이트 예정']
-              }]
+              }],
+              
+              // 새로 추가된 필드들
+              introVideo: profile?.introVideo || '',
+              selfIntroduction: profile?.selfIntroduction || {
+                motivation: '',
+                personality: '',
+                experience: '',
+                aspiration: ''
+              },
+              mediaContent: profile?.mediaContent || [],
+              certificates: profile?.certificates ? profile.certificates.map((cert: any) => ({
+                name: cert.name || '',
+                issuer: cert.issuer || '',
+                issueDate: formatFirebaseDate(cert.issueDate)
+              })) : [],
+              awards: profile?.awards ? profile.awards.map((award: any) => ({
+                title: award.title || '',
+                organization: award.organization || '',
+                date: formatFirebaseDate(award.date),
+                description: award.description || ''
+              })) : [],
+              detailedEducation: profile?.education ? profile.education.map((edu: any) => ({
+                institution: edu.institution || '',
+                degree: edu.degree || '',
+                field: edu.field || '',
+                startDate: formatFirebaseDate(edu.startDate),
+                endDate: formatFirebaseDate(edu.endDate),
+                grade: edu.grade || ''
+              })) : [],
             };
+            
+            // workHistory를 실제 경력 데이터로 업데이트
+            if (profile?.experience && profile.experience.length > 0) {
+              convertedPortfolio.workHistory = profile.experience.map((exp: any) => ({
+                company: exp.company || '회사명',
+                position: exp.position || '직책',
+                period: `${formatFirebaseDate(exp.startDate)} - ${exp.endDate ? formatFirebaseDate(exp.endDate) : exp.isCurrent ? '현재' : ''}`,
+                description: exp.description || ''
+              }));
+            }
+            
             setPortfolio(convertedPortfolio);
           }
         } catch (error) {
@@ -557,6 +635,48 @@ export default function PortfolioDetailPage() {
       '기타': '👤'
     };
     return avatarMap[speciality] || '👤';
+  };
+
+  // 유튜브 ID 추출 함수
+  const getYouTubeId = (url: string) => {
+    const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+    const match = url.match(regExp);
+    return match && match[2].length === 11 ? match[2] : null;
+  };
+
+  // Firebase Timestamp를 안전하게 변환하는 함수
+  const formatFirebaseDate = (dateValue: any) => {
+    if (!dateValue) return '';
+    
+    try {
+      let date: Date;
+      
+      // Firebase Timestamp 객체인 경우
+      if (dateValue && typeof dateValue === 'object' && 'seconds' in dateValue) {
+        date = new Date(dateValue.seconds * 1000);
+      }
+      // JavaScript Date 객체인 경우
+      else if (dateValue instanceof Date) {
+        date = dateValue;
+      }
+      // 문자열인 경우
+      else if (typeof dateValue === 'string') {
+        date = new Date(dateValue);
+      }
+      // 숫자(timestamp)인 경우
+      else if (typeof dateValue === 'number') {
+        date = new Date(dateValue);
+      }
+      else {
+        return '';
+      }
+      
+      if (isNaN(date.getTime())) return '';
+      return date.toLocaleDateString('ko-KR');
+    } catch (error) {
+      console.warn('Invalid date value:', dateValue);
+      return '';
+    }
   };
 
   if (loading) {
@@ -657,11 +777,89 @@ export default function PortfolioDetailPage() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Main Content */}
           <div className="lg:col-span-2 space-y-8">
+            {/* 자기소개 영상 */}
+            {portfolio.introVideo && getYouTubeId(portfolio.introVideo) && (
+              <div className="bg-white/80 backdrop-blur-lg rounded-2xl p-8 shadow-xl border border-white/20">
+                <div className="flex items-center space-x-3 mb-6">
+                  <PlayIcon className="w-6 h-6 text-blue-600" />
+                  <h2 className="text-2xl font-bold text-gray-900">자기소개 영상</h2>
+                </div>
+                <div className="aspect-w-16 aspect-h-9">
+                  <iframe
+                    src={`https://www.youtube.com/embed/${getYouTubeId(portfolio.introVideo)}`}
+                    className="w-full h-64 md:h-96 rounded-lg"
+                    allowFullScreen
+                    title="자기소개 영상"
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* 상세 자기소개서 */}
+            {portfolio.selfIntroduction && (
+              <div className="bg-white/80 backdrop-blur-lg rounded-2xl p-8 shadow-xl border border-white/20">
+                <h2 className="text-2xl font-bold text-gray-900 mb-6">상세 자기소개</h2>
+                <div className="space-y-6">
+                  {portfolio.selfIntroduction.motivation && (
+                    <div className="border-l-4 border-blue-500 pl-6">
+                      <h3 className="text-lg font-semibold text-gray-900 mb-2">지원 동기</h3>
+                      <p className="text-gray-700 leading-relaxed">{portfolio.selfIntroduction.motivation}</p>
+                    </div>
+                  )}
+                  {portfolio.selfIntroduction.personality && (
+                    <div className="border-l-4 border-green-500 pl-6">
+                      <h3 className="text-lg font-semibold text-gray-900 mb-2">성격의 장단점</h3>
+                      <p className="text-gray-700 leading-relaxed">{portfolio.selfIntroduction.personality}</p>
+                    </div>
+                  )}
+                  {portfolio.selfIntroduction.experience && (
+                    <div className="border-l-4 border-purple-500 pl-6">
+                      <h3 className="text-lg font-semibold text-gray-900 mb-2">경험 및 역량</h3>
+                      <p className="text-gray-700 leading-relaxed">{portfolio.selfIntroduction.experience}</p>
+                    </div>
+                  )}
+                  {portfolio.selfIntroduction.aspiration && (
+                    <div className="border-l-4 border-orange-500 pl-6">
+                      <h3 className="text-lg font-semibold text-gray-900 mb-2">입사 후 포부</h3>
+                      <p className="text-gray-700 leading-relaxed">{portfolio.selfIntroduction.aspiration}</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
             {/* Introduction */}
             <div className="bg-white/80 backdrop-blur-lg rounded-2xl p-8 shadow-xl border border-white/20">
-              <h2 className="text-2xl font-bold text-gray-900 mb-6">자기소개</h2>
+              <h2 className="text-2xl font-bold text-gray-900 mb-6">간단 소개</h2>
               <p className="text-gray-700 leading-relaxed">{portfolio.introduction}</p>
             </div>
+
+            {/* 추가 미디어 콘텐츠 */}
+            {portfolio.mediaContent && portfolio.mediaContent.length > 0 && (
+              <div className="bg-white/80 backdrop-blur-lg rounded-2xl p-8 shadow-xl border border-white/20">
+                <h2 className="text-2xl font-bold text-gray-900 mb-6">추가 미디어 콘텐츠</h2>
+                <div className="space-y-6">
+                  {portfolio.mediaContent.map((media, index) => (
+                    <div key={index} className="border rounded-lg p-6 bg-gray-50/50">
+                      <h3 className="text-lg font-semibold text-gray-900 mb-2">{media.title}</h3>
+                      {media.description && (
+                        <p className="text-gray-600 mb-4">{media.description}</p>
+                      )}
+                      {media.type === 'youtube' && getYouTubeId(media.url) && (
+                        <div className="aspect-w-16 aspect-h-9">
+                          <iframe
+                            src={`https://www.youtube.com/embed/${getYouTubeId(media.url)}`}
+                            className="w-full h-48 rounded-lg"
+                            allowFullScreen
+                            title={media.title}
+                          />
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Project Details */}
             <div className="bg-white/80 backdrop-blur-lg rounded-2xl p-8 shadow-xl border border-white/20">
@@ -748,11 +946,78 @@ export default function PortfolioDetailPage() {
               </div>
             </div>
 
-            {/* Education */}
-            <div className="bg-white/80 backdrop-blur-lg rounded-2xl p-6 shadow-xl border border-white/20">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">학력</h3>
-              <p className="text-gray-700">{portfolio.education}</p>
-            </div>
+            {/* 자격증 */}
+            {portfolio.certificates && portfolio.certificates.length > 0 && (
+              <div className="bg-white/80 backdrop-blur-lg rounded-2xl p-6 shadow-xl border border-white/20">
+                <div className="flex items-center space-x-2 mb-4">
+                  <CheckBadgeIcon className="w-5 h-5 text-green-600" />
+                  <h3 className="text-lg font-semibold text-gray-900">자격증</h3>
+                </div>
+                <ul className="space-y-3">
+                  {portfolio.certificates.map((cert, index) => (
+                    <li key={index} className="border-l-4 border-green-400 pl-3">
+                      <div className="font-medium text-gray-900">{cert.name}</div>
+                      <div className="text-sm text-gray-600">{cert.issuer}</div>
+                      <div className="text-xs text-gray-500">{cert.issueDate}</div>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {/* 수상 경력 */}
+            {portfolio.awards && portfolio.awards.length > 0 && (
+              <div className="bg-white/80 backdrop-blur-lg rounded-2xl p-6 shadow-xl border border-white/20">
+                <div className="flex items-center space-x-2 mb-4">
+                  <TrophyIcon className="w-5 h-5 text-yellow-600" />
+                  <h3 className="text-lg font-semibold text-gray-900">수상 경력</h3>
+                </div>
+                <ul className="space-y-3">
+                  {portfolio.awards.map((award, index) => (
+                    <li key={index} className="border-l-4 border-yellow-400 pl-3">
+                      <div className="font-medium text-gray-900">{award.title}</div>
+                      <div className="text-sm text-gray-600">{award.organization}</div>
+                      <div className="text-xs text-gray-500">{award.date}</div>
+                      {award.description && (
+                        <div className="text-sm text-gray-700 mt-1">{award.description}</div>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {/* 상세 학력 */}
+            {portfolio.detailedEducation && portfolio.detailedEducation.length > 0 && (
+              <div className="bg-white/80 backdrop-blur-lg rounded-2xl p-6 shadow-xl border border-white/20">
+                <div className="flex items-center space-x-2 mb-4">
+                  <AcademicCapIcon className="w-5 h-5 text-indigo-600" />
+                  <h3 className="text-lg font-semibold text-gray-900">상세 학력</h3>
+                </div>
+                <ul className="space-y-3">
+                  {portfolio.detailedEducation.map((edu, index) => (
+                    <li key={index} className="border-l-4 border-indigo-400 pl-3">
+                      <div className="font-medium text-gray-900">{edu.institution}</div>
+                      <div className="text-sm text-gray-600">{edu.degree} - {edu.field}</div>
+                      <div className="text-xs text-gray-500">
+                        {edu.startDate} - {edu.endDate || '졸업'}
+                      </div>
+                      {edu.grade && (
+                        <div className="text-sm text-gray-700 mt-1">성적: {edu.grade}</div>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {/* Education (기본) */}
+            {(!portfolio.detailedEducation || portfolio.detailedEducation.length === 0) && (
+              <div className="bg-white/80 backdrop-blur-lg rounded-2xl p-6 shadow-xl border border-white/20">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">학력</h3>
+                <p className="text-gray-700">{portfolio.education}</p>
+              </div>
+            )}
 
             {/* Achievements */}
             <div className="bg-white/80 backdrop-blur-lg rounded-2xl p-6 shadow-xl border border-white/20">

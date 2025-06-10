@@ -25,6 +25,7 @@ import {
   StarIcon,
   CheckBadgeIcon 
 } from '@heroicons/react/24/solid';
+import JobPostingModal from '@/components/JobPostingModal';
 
 interface Portfolio {
   id: string;
@@ -47,6 +48,7 @@ export default function EmployerDashboard() {
   const [selectedSpeciality, setSelectedSpeciality] = useState('all');
   const [selectedSkills, setSelectedSkills] = useState<string[]>([]);
   const [showFilters, setShowFilters] = useState(false);
+  const [showJobPostingModal, setShowJobPostingModal] = useState(false);
 
   useEffect(() => {
     const loadData = async () => {
@@ -115,6 +117,32 @@ export default function EmployerDashboard() {
       '디지털 마케팅': '💻'
     };
     return avatars[speciality] || '👤';
+  };
+
+  const handleJobPostingSubmit = async (data: any) => {
+    try {
+      const response = await fetch('/api/job-postings', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data),
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        console.log('채용공고 생성 성공:', result);
+        // 성공 알림을 표시하거나 페이지를 새로고침할 수 있습니다
+        alert('채용공고가 성공적으로 등록되었습니다!');
+      } else {
+        const error = await response.json();
+        console.error('채용공고 생성 실패:', error);
+        alert('채용공고 등록에 실패했습니다. 다시 시도해주세요.');
+      }
+    } catch (error) {
+      console.error('API 호출 오류:', error);
+      alert('네트워크 오류가 발생했습니다. 다시 시도해주세요.');
+    }
   };
 
   if (loading) {
@@ -271,7 +299,10 @@ export default function EmployerDashboard() {
                     </p>
                   </div>
                   <div className="hidden sm:flex space-x-3">
-                    <button className="inline-flex items-center px-4 py-2 border border-slate-300 rounded-xl text-sm font-medium text-slate-700 bg-white hover:bg-slate-50 transition-colors">
+                    <button 
+                      onClick={() => setShowJobPostingModal(true)}
+                      className="inline-flex items-center px-4 py-2 border border-slate-300 rounded-xl text-sm font-medium text-slate-700 bg-white hover:bg-slate-50 transition-colors"
+                    >
                       <DocumentTextIcon className="w-4 h-4 mr-2" />
                       채용공고 작성
                     </button>
@@ -567,6 +598,13 @@ export default function EmployerDashboard() {
           </main>
         </div>
       </div>
+
+      {/* Job Posting Modal */}
+      <JobPostingModal
+        isOpen={showJobPostingModal}
+        onClose={() => setShowJobPostingModal(false)}
+        onSubmit={handleJobPostingSubmit}
+      />
     </div>
   );
 }

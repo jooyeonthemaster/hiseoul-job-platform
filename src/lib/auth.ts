@@ -19,7 +19,9 @@ import {
   addDoc,
   getDocs,
   query,
-  where 
+  where,
+  arrayUnion,
+  arrayRemove
 } from 'firebase/firestore';
 import { auth, db } from './firebase';
 import { User, JobSeeker, Employer } from '@/types';
@@ -304,6 +306,16 @@ export const registerPortfolio = async (uid: string, portfolioData: {
   experience?: any[];
   education?: any[];
   description?: string;
+  certificates?: any[];
+  awards?: any[];
+  introVideo?: string;
+  selfIntroduction?: {
+    motivation?: string;
+    personality?: string;
+    experience?: string;
+    aspiration?: string;
+  };
+  mediaContent?: any[];
 }) => {
   try {
     const userData = await getUserData(uid);
@@ -323,6 +335,16 @@ export const registerPortfolio = async (uid: string, portfolioData: {
       experience: portfolioData.experience || [],
       education: portfolioData.education || [],
       description: portfolioData.description || '',
+      certificates: portfolioData.certificates || [],
+      awards: portfolioData.awards || [],
+      introVideo: portfolioData.introVideo || '',
+      selfIntroduction: portfolioData.selfIntroduction || {
+        motivation: '',
+        personality: '',
+        experience: '',
+        aspiration: ''
+      },
+      mediaContent: portfolioData.mediaContent || [],
       isPublic: true,
       rating: 0,
       projects: 0,
@@ -400,5 +422,143 @@ export const deletePortfolio = async (uid: string) => {
   } catch (error) {
     console.error('Error deleting portfolio:', error);
     throw error;
+  }
+};
+
+// 모든 기업 정보 조회
+export const getAllEmployers = async () => {
+  try {
+    const employersQuery = collection(db, 'employers');
+    const querySnapshot = await getDocs(employersQuery);
+    
+    const employers = querySnapshot.docs.map(doc => {
+      const data = doc.data();
+      return {
+        id: doc.id,
+        userId: data.userId,
+        company: {
+          name: data.company?.name || '',
+          ceoName: data.company?.ceoName || '',
+          industry: data.company?.industry || '',
+          businessType: data.company?.businessType || '',
+          size: data.company?.size || '',
+          location: data.company?.location || '',
+          website: data.company?.website || '',
+          description: data.company?.description || '',
+          companyAttraction: {
+            workingHours: data.company?.companyAttraction?.workingHours || '',
+            remoteWork: data.company?.companyAttraction?.remoteWork || false,
+            averageSalary: data.company?.companyAttraction?.averageSalary || '',
+            benefits: data.company?.companyAttraction?.benefits || [],
+            growthOpportunity: data.company?.companyAttraction?.growthOpportunity || false,
+            stockOptions: data.company?.companyAttraction?.stockOptions || false,
+            trainingSupport: data.company?.companyAttraction?.trainingSupport || false,
+            familyFriendly: data.company?.companyAttraction?.familyFriendly || false,
+            etc: data.company?.companyAttraction?.etc || ''
+          }
+        },
+        createdAt: data.createdAt?.toDate(),
+        updatedAt: data.updatedAt?.toDate()
+      };
+    }).filter(employer => employer.company.name); // 회사명이 있는 기업만 필터링
+    
+    return employers;
+  } catch (error) {
+    console.error('Error fetching employers:', error);
+    return [];
+  }
+};
+
+// 개별 기업 정보 조회 (ID로)
+export const getEmployerById = async (employerId: string) => {
+  try {
+    const employerDoc = await getDoc(doc(db, 'employers', employerId));
+    if (employerDoc.exists()) {
+      const data = employerDoc.data();
+      return {
+        id: employerDoc.id,
+        userId: data.userId,
+        company: {
+          name: data.company?.name || '',
+          ceoName: data.company?.ceoName || '',
+          industry: data.company?.industry || '',
+          businessType: data.company?.businessType || '',
+          size: data.company?.size || '',
+          location: data.company?.location || '',
+          website: data.company?.website || '',
+          description: data.company?.description || '',
+          companyAttraction: {
+            workingHours: data.company?.companyAttraction?.workingHours || '',
+            remoteWork: data.company?.companyAttraction?.remoteWork || false,
+            averageSalary: data.company?.companyAttraction?.averageSalary || '',
+            benefits: data.company?.companyAttraction?.benefits || [],
+            growthOpportunity: data.company?.companyAttraction?.growthOpportunity || false,
+            stockOptions: data.company?.companyAttraction?.stockOptions || false,
+            trainingSupport: data.company?.companyAttraction?.trainingSupport || false,
+            familyFriendly: data.company?.companyAttraction?.familyFriendly || false,
+            etc: data.company?.companyAttraction?.etc || ''
+          }
+        },
+        createdAt: data.createdAt?.toDate(),
+        updatedAt: data.updatedAt?.toDate()
+      };
+    }
+    return null;
+  } catch (error) {
+    console.error('Error fetching employer by ID:', error);
+    return null;
+  }
+};
+
+// 관심 기업 관련 함수들
+export const addToFavorites = async (userId: string, companyId: string) => {
+  try {
+    const userDoc = doc(db, 'users', userId);
+    await updateDoc(userDoc, {
+      favoriteCompanies: arrayUnion(companyId),
+      updatedAt: new Date()
+    });
+    return true;
+  } catch (error) {
+    console.error('Error adding to favorites:', error);
+    return false;
+  }
+};
+
+export const removeFromFavorites = async (userId: string, companyId: string) => {
+  try {
+    const userDoc = doc(db, 'users', userId);
+    await updateDoc(userDoc, {
+      favoriteCompanies: arrayRemove(companyId),
+      updatedAt: new Date()
+    });
+    return true;
+  } catch (error) {
+    console.error('Error removing from favorites:', error);
+    return false;
+  }
+};
+
+export const getFavoriteCompanies = async (userId: string) => {
+  try {
+    const userDoc = await getDoc(doc(db, 'users', userId));
+    if (userDoc.exists()) {
+      const data = userDoc.data();
+      return data.favoriteCompanies || [];
+    }
+    return [];
+  } catch (error) {
+    console.error('Error fetching favorite companies:', error);
+    return [];
+  }
+};
+
+export const isFavoriteCompany = async (userId: string, companyId: string) => {
+  try {
+    const favorites = await getFavoriteCompanies(userId);
+    return favorites.includes(companyId);
+  } catch (error) {
+    console.error('Error checking favorite company:', error);
+    return false;
   }
 };

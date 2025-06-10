@@ -24,6 +24,57 @@ export interface JobSeekerProfile {
   education: EducationItem[];
   languages: string[];
   profileImage?: string;
+  speciality?: string;
+  
+  // 추가 필드들
+  certificates?: CertificateItem[];
+  awards?: AwardItem[];
+  projects?: ProjectItem[];
+  introVideo?: string; // YouTube URL
+  selfIntroduction?: SelfIntroduction;
+  mediaContent?: MediaContent[];
+}
+
+export interface CertificateItem {
+  name: string;
+  issuer: string;
+  issueDate: Date;
+  expiryDate?: Date;
+  certificateNumber?: string;
+}
+
+export interface AwardItem {
+  title: string;
+  organization: string;
+  date: Date;
+  description?: string;
+}
+
+export interface ProjectItem {
+  title: string;
+  role: string;
+  startDate: Date;
+  endDate?: Date;
+  description: string;
+  skills: string[];
+  links?: string[];
+  images?: string[];
+}
+
+export interface SelfIntroduction {
+  motivation?: string; // 지원동기
+  personality?: string; // 성격의 장단점
+  experience?: string; // 경험
+  aspiration?: string; // 입사 후 포부
+}
+
+export interface MediaContent {
+  type: 'youtube' | 'image' | 'document';
+  url: string;
+  title: string;
+  description?: string;
+  viewCount?: number;
+  publishedDate?: Date;
 }
 
 export interface Portfolio {
@@ -117,13 +168,14 @@ export interface JobApplication {
 export interface JobPosting {
   id: string;
   employerId: string;
+  companyName: string; // 회사명
   title: string;
   jobCategory: string; // 직무내용
   description: string;
   requirements: string[];
   responsibilities: string[];
   
-  // 급여 정보
+  // 급여 정보 (확장된 타입)
   salary: {
     type: '연봉' | '월급' | '시급' | '기타';
     amount?: string; // 예: "3,000만원 ~ 5,000만원"
@@ -155,6 +207,23 @@ export interface JobPosting {
   createdAt: Date;
   updatedAt: Date;
   deadline?: Date;
+  
+  // 크롤링된 데이터를 위한 추가 필드들
+  source?: 'jobkorea' | 'jobplanet' | 'manual';
+  externalUrl?: string;
+  
+  // Gemini AI 분석 결과 필드들
+  categoryConfidence?: number; // 카테고리 신뢰도 (0-1)
+  salaryInfo?: {
+    type: '연봉' | '월급' | '시급' | '기타';
+    min?: number;
+    max?: number;
+    currency: string;
+    negotiable: boolean;
+  };
+  geminiAnalyzed?: boolean; // Gemini로 분석되었는지 여부
+  geminiModel?: string; // 사용된 Gemini 모델
+  analysisTimestamp?: Date; // 분석 시점
 }
 
 // 채용 문의 타입
