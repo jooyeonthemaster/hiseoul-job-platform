@@ -251,8 +251,6 @@ export default function ProfilePage() {
       await refreshUserData();
       await loadProfile();
       await loadDashboardData();
-      
-      setEditing(false);
     } catch (error) {
       console.error('Error saving profile:', error);
       alert('프로필 저장 중 오류가 발생했습니다.');

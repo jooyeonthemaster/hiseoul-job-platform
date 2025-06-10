@@ -90,6 +90,7 @@ export async function POST(request: NextRequest) {
     const newJobPosting: JobPosting = {
       id: `job-${Date.now()}`,
       employerId: body.employerId,
+      companyName: body.companyName || '회사명',
       title: body.title,
       jobCategory: body.jobCategory,
       description: body.description,

@@ -19,6 +19,7 @@ import {
   updateUserProfile,
   registerPortfolio
 } from '@/lib/auth';
+import type { ExperienceItem, EducationItem, CertificateItem, AwardItem, SelfIntroduction } from '@/types';
 
 const steps = [
   { id: 1, name: '기본 정보', description: '이름, 연락처 등' },
@@ -29,6 +30,30 @@ const steps = [
   { id: 6, name: '미디어', description: '영상 및 포트폴리오' }
 ];
 
+interface FormData {
+  basicInfo: {
+    name: string;
+    email: string;
+    phone: string;
+    address: string;
+    dateOfBirth: string;
+    speciality: string;
+  };
+  experience: ExperienceItem[];
+  education: EducationItem[];
+  skills: {
+    skills: string[];
+    languages: string[];
+    certificates: CertificateItem[];
+    awards: AwardItem[];
+  };
+  selfIntroduction: SelfIntroduction;
+  media: {
+    introVideo: string;
+    mediaContent: any[];
+  };
+}
+
 export default function ProfileEditPage() {
   const { user, userData } = useAuth();
   const router = useRouter();
@@ -36,7 +61,7 @@ export default function ProfileEditPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);  
   // Form data state
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<FormData>({
     // Basic Info
     basicInfo: {
       name: '',
