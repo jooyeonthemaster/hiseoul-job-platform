@@ -17,7 +17,8 @@ import {
   TrophyIcon,
   LockClosedIcon
 } from '@heroicons/react/24/outline';
-import { getPortfolio, getJobSeekerProfile, canAccessPortfolio, addToFavoriteTalents, removeFromFavoriteTalents, isFavoriteTalent } from '@/lib/auth';
+import { getPortfolio, getJobSeekerProfile, canAccessPortfolio, addToFavoriteTalents, removeFromFavoriteTalents, isFavoriteTalent, getEmployerWithApprovalStatus } from '@/lib/auth';
+import PortfolioAccessModal from '@/components/PortfolioAccessModal';
 
 interface Portfolio {
   id: string;
@@ -517,6 +518,8 @@ export default function PortfolioDetailPage() {
   const [loading, setLoading] = useState(true);
   const [hasAccess, setHasAccess] = useState(false);
   const [accessChecked, setAccessChecked] = useState(false);
+  const [showAccessModal, setShowAccessModal] = useState(false);
+  const [employerStatus, setEmployerStatus] = useState<any>(null);
   const [isFavorite, setIsFavorite] = useState(false);
   const [favoriteLoading, setFavoriteLoading] = useState(false);
 
@@ -526,8 +529,8 @@ export default function PortfolioDetailPage() {
       if (!user) {
         setHasAccess(false);
         setAccessChecked(true);
-        // 로그인하지 않은 사용자는 로그인 페이지로 리다이렉트
-        router.push('/auth');
+        // 로그인하지 않은 사용자는 모달 표시
+        setShowAccessModal(true);
         return;
       }
 
@@ -535,15 +538,21 @@ export default function PortfolioDetailPage() {
         const access = await canAccessPortfolio(user.uid);
         setHasAccess(access);
         
-        // 접근 권한이 없는 경우 로그인 페이지로 리다이렉트
+        // 기업 회원인 경우 승인 상태 확인
+        if (userData?.role === 'employer') {
+          const status = await getEmployerWithApprovalStatus(user.uid);
+          setEmployerStatus(status);
+        }
+        
+        // 접근 권한이 없는 경우 모달 표시
         if (!access) {
-          router.push('/auth');
+          setShowAccessModal(true);
           return;
         }
       } catch (error) {
         console.error('Error checking portfolio access:', error);
         setHasAccess(false);
-        router.push('/auth');
+        setShowAccessModal(true);
         return;
       } finally {
         setAccessChecked(true);
@@ -779,8 +788,8 @@ export default function PortfolioDetailPage() {
 
 
 
-  // 접근 권한 확인 중이거나 권한이 없는 경우 로딩 화면 표시
-  if (!accessChecked || !hasAccess) {
+  // 접근 권한 확인 중일 때 로딩 화면 표시
+  if (!accessChecked) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 flex items-center justify-center">
         <div className="text-center">
@@ -788,6 +797,27 @@ export default function PortfolioDetailPage() {
           <p className="text-gray-600">접근 권한을 확인하고 있습니다...</p>
         </div>
       </div>
+    );
+  }
+
+  // 접근 권한이 없는 경우 모달과 함께 기본 레이아웃 표시
+  if (!hasAccess) {
+    return (
+      <>
+        <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 flex items-center justify-center">
+          <div className="text-center">
+            <div className="text-6xl mb-4">🔒</div>
+            <h1 className="text-2xl font-bold text-gray-900 mb-2">접근 권한이 필요합니다</h1>
+            <p className="text-gray-600">승인된 기업 회원만 포트폴리오를 열람할 수 있습니다.</p>
+          </div>
+        </div>
+        <PortfolioAccessModal
+          isOpen={showAccessModal}
+          onClose={() => setShowAccessModal(false)}
+          userRole={userData?.role}
+          approvalStatus={employerStatus?.approvalStatus}
+        />
+      </>
     );
   }
 
