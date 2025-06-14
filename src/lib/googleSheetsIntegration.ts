@@ -96,18 +96,17 @@ export async function handleJobInquiryCreate(inquiryData: any) {
       proposedSalary: inquiryData.proposedSalary || inquiryData.salaryOffer,
       workingHours: inquiryData.workingHours,
       workType: inquiryData.workType || inquiryData.employmentType,
-      benefits: Array.isArray(inquiryData.benefits) ? inquiryData.benefits.join(', ') : '',
-      recruiterName: inquiryData.recruiterInfo?.name || '',
-      recruiterPosition: inquiryData.recruiterInfo?.position || '',
-      recruiterPhone: inquiryData.recruiterInfo?.phone || '',
-      recruiterEmail: inquiryData.recruiterInfo?.email || '',
-      companyInfo: {
-        ceoName: inquiryData.companyInfo?.ceoName || '',
-        industry: inquiryData.companyInfo?.industry || '',
-        businessType: inquiryData.companyInfo?.businessType || '',
-        location: inquiryData.companyInfo?.location || '',
-        description: inquiryData.companyInfo?.description || ''
-      },
+      benefits: inquiryData.benefits || [], // 배열 그대로 전송
+      recruiterName: inquiryData.recruiterInfo?.name || inquiryData.recruiterName || '',
+      recruiterPosition: inquiryData.recruiterInfo?.position || inquiryData.recruiterPosition || '',
+      recruiterPhone: inquiryData.recruiterInfo?.phone || inquiryData.recruiterPhone || '',
+      recruiterEmail: inquiryData.recruiterInfo?.email || inquiryData.recruiterEmail || '',
+      // companyInfo 필드를 개별 필드로 변환
+      companyCeoName: inquiryData.companyInfo?.ceoName || '',
+      companyIndustry: inquiryData.companyInfo?.industry || '',
+      companyBusinessType: inquiryData.companyInfo?.businessType || '',
+      companyLocation: inquiryData.companyInfo?.location || '',
+      companyDescription: inquiryData.companyInfo?.description || '',
       status: inquiryData.status || 'pending',
     });
   } catch (error) {

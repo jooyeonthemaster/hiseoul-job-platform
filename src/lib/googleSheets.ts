@@ -8,6 +8,17 @@ interface SheetData {
 
 async function sendData(data: SheetData): Promise<boolean> {
   try {
+    console.log('📤 Sending to Google Sheets:', {
+      url: GOOGLE_SCRIPT_URL,
+      action: data.action,
+      payload: data.payload
+    });
+    
+    if (!GOOGLE_SCRIPT_URL) {
+      console.error('❌ GOOGLE_SCRIPT_URL is not set!');
+      return false;
+    }
+    
     const response = await fetch(GOOGLE_SCRIPT_URL, {
       method: 'POST',
       mode: 'no-cors', // Google Apps Script는 CORS를 지원하지 않음
@@ -18,9 +29,10 @@ async function sendData(data: SheetData): Promise<boolean> {
     });
 
     // no-cors 모드에서는 response를 읽을 수 없으므로 항상 true 반환
+    console.log('✅ Request sent to Google Sheets');
     return true;
   } catch (error) {
-    console.error('Error sending data to Google Sheets:', error);
+    console.error('❌ Error sending data to Google Sheets:', error);
     return false;
   }
 }

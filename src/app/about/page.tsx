@@ -34,7 +34,7 @@ export default function AboutPage() {
       name: '김기홍',
       position: '대표 / 전 HBA 사무국장',
       description: '20년간의 채용 및 인사 전문 경험을 바탕으로 HiSeoul을 설립했습니다.',
-      email: 'hiseoulnewjob@naver.com'
+      email: 'tvs@techventure.co.kr'
     }
   ];
 

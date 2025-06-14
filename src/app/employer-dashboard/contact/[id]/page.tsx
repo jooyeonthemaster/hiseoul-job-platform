@@ -181,12 +181,10 @@ export default function ContactJobSeeker() {
           workingHours: form.workingHours,
           workType: form.workType,
           benefits: form.benefits,
-          recruiterInfo: {
-            name: form.recruiterName,
-            position: form.recruiterPosition,
-            phone: form.recruiterPhone,
-            email: form.recruiterEmail
-          },
+          recruiterName: form.recruiterName,
+          recruiterPosition: form.recruiterPosition,
+          recruiterPhone: form.recruiterPhone,
+          recruiterEmail: form.recruiterEmail,
           companyInfo: {
             ceoName: companyInfo.ceoName,
             industry: companyInfo.industry,
@@ -216,15 +214,17 @@ export default function ContactJobSeeker() {
           type: 'inquiry',
           jobSeekerName: portfolio.name,
           companyName: companyInfo.name,
-          position: form.proposedPosition,
-          salary: form.proposedSalary,
+          proposedPosition: form.proposedPosition,
+          jobCategory: form.jobCategory,
+          proposedSalary: form.proposedSalary,
+          workType: form.workType,
+          workingHours: form.workingHours,
+          benefits: form.benefits,
           message: form.message,
-          recruiterInfo: {
-            name: form.recruiterName,
-            position: form.recruiterPosition,
-            phone: form.recruiterPhone,
-            email: form.recruiterEmail
-          },
+          recruiterName: form.recruiterName,
+          recruiterPosition: form.recruiterPosition,
+          recruiterPhone: form.recruiterPhone,
+          recruiterEmail: form.recruiterEmail,
           companyInfo: companyInfo
         })
       });

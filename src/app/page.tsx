@@ -850,7 +850,7 @@ export default function HomePage() {
                     className="w-full h-full object-contain"
                   />
                 </div>
-                <span className="text-2xl font-bold">HiSeoul</span>
+                <span className="text-1xl font-bold">(사)기술벤처스타트업협회</span>
               </div>
               <p className="text-gray-400 text-lg leading-relaxed">
                 서울시 중소기업과 모든 직군의 전문 인재를 연결하는 프리미엄 구인구직 플랫폼
@@ -888,7 +888,7 @@ export default function HomePage() {
           </div>
           
           <div className="border-t border-gray-800 mt-16 pt-10 text-center text-gray-400 text-lg">
-            <p>&copy; 2025 HiSeoul Job Platform. All rights reserved.</p>
+            <p>&copy; 2025 (사)기술벤처스타트업협회 All rights reserved.</p>
           </div>
         </div>
       </footer>
