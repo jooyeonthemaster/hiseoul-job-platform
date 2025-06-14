@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
 import { getAllEmployers, addToFavorites, removeFromFavorites, getFavoriteCompanies, getUserData } from '@/lib/auth';
 import { motion } from 'framer-motion';
+import Navigation from '@/components/Navigation';
 import { 
   BuildingOfficeIcon, 
   MapPinIcon,
@@ -190,57 +191,10 @@ export default function CompaniesPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50">
-      {/* Header */}
-      <header className="fixed top-0 w-full bg-white/95 backdrop-blur-md border-b border-gray-100 z-50 shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-20">
-            <div className="flex items-center space-x-3">
-              <Link href="/" className="flex items-center">
-                <img 
-                  src="/images/logo.png" 
-                  alt="HiSeoul Logo" 
-                  className="h-10 w-auto hover:scale-105 transition-all duration-300"
-                />
-              </Link>
-            </div>
-            
-            <nav className="hidden md:flex items-center space-x-8">
-              <Link href="/portfolios" className="text-gray-700 hover:text-blue-600 transition-colors font-medium">
-                포트폴리오
-              </Link>
-              <Link href="/companies" className="text-blue-600 font-semibold">
-                기업정보
-              </Link>
-              {/* <Link href="/jobs" className="text-gray-700 hover:text-blue-600 transition-colors font-medium">
-                채용공고
-              </Link>
-              <Link href="/about" className="text-gray-700 hover:text-blue-600 transition-colors font-medium">
-                소개
-              </Link> */}
-            </nav>
-            
-            <div className="flex items-center space-x-4">
-              {isAuthenticated ? (
-                <Link href="/" className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-6 py-3 rounded-xl transition-all duration-200 shadow-lg hover:shadow-xl">
-                  홈으로
-                </Link>
-              ) : (
-                <>
-                  <Link href="/auth" className="text-gray-700 hover:text-blue-600 transition-colors font-medium px-4 py-2">
-                    로그인
-                  </Link>
-                  <Link href="/auth" className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-6 py-3 rounded-xl transition-all duration-200 shadow-lg hover:shadow-xl">
-                    회원가입
-                  </Link>
-                </>
-              )}
-            </div>
-          </div>
-        </div>
-      </header>
+      <Navigation />
 
       {/* Hero Section */}
-      <section className="pt-32 pb-16">
+      <section className="pt-24 pb-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -548,6 +502,61 @@ export default function CompaniesPage() {
           </motion.div>
         </div>
       )}
+
+      {/* Footer */}
+      <footer className="bg-gray-900 text-white py-20 border-t border-gray-800">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid md:grid-cols-4 gap-12">
+            <div>
+              <div className="flex items-center space-x-3 mb-8">
+                <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-lg p-1">
+                  <img 
+                    src="/images/logo.png" 
+                    alt="HiSeoul Logo" 
+                    className="w-full h-full object-contain"
+                  />
+                </div>
+                <span className="text-2xl font-bold">HiSeoul</span>
+              </div>
+              <p className="text-gray-400 text-lg leading-relaxed">
+                서울시 중소기업과 모든 직군의 전문 인재를 연결하는 프리미엄 구인구직 플랫폼
+              </p>
+            </div>
+            
+            <div>
+              <h3 className="font-bold mb-6 text-lg">서비스</h3>
+              <ul className="space-y-3 text-gray-400">
+                <li><Link href="/portfolios" className="hover:text-white transition-colors text-lg">포트폴리오</Link></li>
+                <li><Link href="/companies" className="hover:text-white transition-colors text-lg">기업정보</Link></li>
+                <li><span className="text-gray-500 text-lg cursor-not-allowed">AI 매칭 (준비중)</span></li>
+              </ul>
+            </div>
+            
+            <div>
+              <h3 className="font-bold mb-6 text-lg">지원</h3>
+              <ul className="space-y-3 text-gray-400">
+                <li><Link href="/help" className="hover:text-white transition-colors text-lg">도움말</Link></li>
+                <li><Link href="/contact" className="hover:text-white transition-colors text-lg">문의하기</Link></li>
+                <li><Link href="/faq" className="hover:text-white transition-colors text-lg">FAQ</Link></li>
+                <li><Link href="/privacy" className="hover:text-white transition-colors text-lg">개인정보처리방침</Link></li>
+              </ul>
+            </div>
+            
+            <div>
+              <h3 className="font-bold mb-6 text-lg">연락처</h3>
+              <div className="text-gray-400 space-y-3 text-lg">
+                <p>이메일: tvs@techventure.co.kr</p>
+                <p>전화: 010-2734-8624</p>
+                <p>담당: 조지형 사무국장</p>
+              </div>
+            </div>
+          </div>
+          
+          <div className="border-t border-gray-800 mt-16 pt-10 text-center text-gray-400 text-lg">
+            <p>&copy; 2025 HiSeoul Job Platform. All rights reserved.</p>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 }
