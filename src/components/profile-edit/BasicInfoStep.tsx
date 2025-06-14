@@ -1,7 +1,8 @@
 'use client';
 
-import { useState } from 'react';
-import { UserIcon, EnvelopeIcon, PhoneIcon, MapPinIcon, CalendarIcon, BriefcaseIcon } from '@heroicons/react/24/outline';
+import { useState, useRef } from 'react';
+import { UserIcon, EnvelopeIcon, PhoneIcon, MapPinIcon, CalendarIcon, BriefcaseIcon, CameraIcon } from '@heroicons/react/24/outline';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface BasicInfoStepProps {
   data: {
@@ -11,13 +12,68 @@ interface BasicInfoStepProps {
     address: string;
     dateOfBirth?: string;
     speciality: string;
+    profileImage?: string;
+    currentCourse?: string;
   };
   onChange: (data: any) => void;
 }
 
 export default function BasicInfoStep({ data, onChange }: BasicInfoStepProps) {
+  const { user } = useAuth();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
+
   const handleChange = (field: string, value: string) => {
     onChange({ ...data, [field]: value });
+  };
+
+  const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file || !user) return;
+
+    // 파일 크기 제한 (5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      alert('파일 크기가 5MB를 초과할 수 없습니다.');
+      return;
+    }
+
+    // 이미지 파일 형식 검증
+    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+    if (!allowedTypes.includes(file.type)) {
+      alert('JPG, PNG, WebP 형식의 이미지만 업로드 가능합니다.');
+      return;
+    }
+
+    try {
+      setUploading(true);
+      
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('userId', user.uid);
+
+      const response = await fetch('/api/upload-profile-image', {
+        method: 'POST',
+        body: formData,
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        handleChange('profileImage', result.imageUrl);
+        alert('프로필 이미지가 성공적으로 업로드되었습니다!');
+      } else {
+        alert(result.error || '이미지 업로드에 실패했습니다.');
+      }
+    } catch (error) {
+      console.error('이미지 업로드 오류:', error);
+      alert('이미지 업로드 중 오류가 발생했습니다.');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const triggerFileInput = () => {
+    fileInputRef.current?.click();
   };
 
   const inputClasses = "w-full pl-10 pr-3 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all bg-white";
@@ -27,9 +83,59 @@ export default function BasicInfoStep({ data, onChange }: BasicInfoStepProps) {
   return (
     <div className="space-y-8">
       <div className="text-center">
-        <div className="mx-auto w-16 h-16 bg-gradient-to-br from-indigo-500 to-blue-600 rounded-full flex items-center justify-center mb-4">
-          <UserIcon className="w-8 h-8 text-white" />
+        {/* 프로필 이미지 업로드 섹션 */}
+        <div className="mb-6">
+          <div className="relative mx-auto w-24 h-24 group">
+            {data.profileImage ? (
+              <img
+                src={data.profileImage}
+                alt="프로필 이미지"
+                className="w-24 h-24 rounded-full object-cover border-4 border-white shadow-lg"
+              />
+            ) : (
+              <div className="w-24 h-24 bg-gradient-to-br from-indigo-500 to-blue-600 rounded-full flex items-center justify-center shadow-lg">
+                <UserIcon className="w-10 h-10 text-white" />
+              </div>
+            )}
+            
+            {/* 업로드 버튼 오버레이 */}
+            <button
+              type="button"
+              onClick={triggerFileInput}
+              disabled={uploading}
+              className="absolute inset-0 bg-black bg-opacity-50 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200 disabled:cursor-not-allowed"
+            >
+              {uploading ? (
+                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-white"></div>
+              ) : (
+                <CameraIcon className="w-6 h-6 text-white" />
+              )}
+            </button>
+            
+            {/* 파일 입력 (숨김) */}
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/jpeg,image/jpg,image/png,image/webp"
+              onChange={handleImageUpload}
+              className="hidden"
+            />
+          </div>
+          
+          <button
+            type="button"
+            onClick={triggerFileInput}
+            disabled={uploading}
+            className="mt-3 text-sm text-indigo-600 hover:text-indigo-700 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {uploading ? '업로드 중...' : data.profileImage ? '이미지 변경' : '프로필 이미지 추가'}
+          </button>
+          
+          <p className="text-xs text-gray-500 mt-1">
+            JPG, PNG, WebP 형식 (최대 5MB)
+          </p>
         </div>
+
         <h3 className="text-2xl font-bold text-gray-900 mb-2">기본 정보</h3>
         <p className="text-gray-600 max-w-md mx-auto">
           프로필의 기본이 되는 정보를 입력해주세요. 정확한 정보를 입력할수록 더 좋은 기회를 얻을 수 있습니다.
@@ -153,6 +259,27 @@ export default function BasicInfoStep({ data, onChange }: BasicInfoStepProps) {
               </svg>
             </div>
           </div>
+        </div>
+
+        <div className="md:col-span-2">
+          <label className={labelClasses}>
+            수행 중인 과정
+          </label>
+          <div className="relative">
+            <svg className={iconClasses} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+            </svg>
+            <input
+              type="text"
+              value={data.currentCourse || ''}
+              onChange={(e) => handleChange('currentCourse', e.target.value)}
+              placeholder="예: 영상콘텐츠 마케터 양성과정 3기, 외국인 유학생 AI 마케터 인턴과정"
+              className={inputClasses}
+            />
+          </div>
+          <p className="text-xs text-gray-500 mt-1">
+            현재 참여 중인 교육과정이나 프로그램이 있다면 입력해주세요
+          </p>
         </div>
       </div>
 

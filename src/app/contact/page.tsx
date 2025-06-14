@@ -39,9 +39,9 @@ export default function ContactPage() {
     {
       icon: EnvelopeIcon,
       title: '이메일',
-      value: 'hiseoulnewjob@naver.com',
+      value: 'tvs@techventure.co.kr',
       description: '일반 문의 및 기술 지원',
-      link: 'mailto:hiseoulnewjob@naver.com'
+      link: 'mailto:tvs@techventure.co.kr'
     },
     {
       icon: PhoneIcon,

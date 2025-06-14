@@ -17,6 +17,7 @@ import {
   DocumentTextIcon,
   CheckCircleIcon
 } from '@heroicons/react/24/outline';
+import { handleJobInquiryCreate } from '@/lib/googleSheetsIntegration';
 
 interface InquiryForm {
   proposedPosition: string;
@@ -161,10 +162,48 @@ export default function ContactJobSeeker() {
         sentAt: serverTimestamp()
       };
 
+      console.log('📋 채용 제안 데이터 생성 완료');
+
       // Firestore에 저장
-      await addDoc(collection(db, 'jobInquiries'), inquiryData);
+      const docRef = await addDoc(collection(db, 'jobInquiries'), inquiryData);
+      console.log('✅ Firestore에 저장 완료:', docRef.id);
+
+      // Google Sheets에 저장
+      try {
+        console.log('📊 Google Sheets에 저장 시작...');
+        await handleJobInquiryCreate({
+          companyName: companyInfo.name,
+          jobSeekerName: portfolio.name,
+          proposedPosition: form.proposedPosition,
+          jobCategory: form.jobCategory,
+          message: form.message,
+          proposedSalary: form.proposedSalary,
+          workingHours: form.workingHours,
+          workType: form.workType,
+          benefits: form.benefits,
+          recruiterInfo: {
+            name: form.recruiterName,
+            position: form.recruiterPosition,
+            phone: form.recruiterPhone,
+            email: form.recruiterEmail
+          },
+          companyInfo: {
+            ceoName: companyInfo.ceoName,
+            industry: companyInfo.industry,
+            businessType: companyInfo.businessType,
+            location: companyInfo.location,
+            description: companyInfo.description
+          },
+          status: 'pending'
+        });
+        console.log('✅ Google Sheets에 저장 완료');
+      } catch (sheetsError) {
+        console.error('❌ Google Sheets 저장 실패:', sheetsError);
+        // Google Sheets 실패는 전체 프로세스를 중단하지 않음
+      }
 
       // 이메일 발송
+      console.log('📧 이메일 발송 시작...');
       const emailResponse = await fetch('/api/send-email', {
         method: 'POST',
         headers: {
@@ -172,7 +211,7 @@ export default function ContactJobSeeker() {
         },
         body: JSON.stringify({
           to: portfolio.email,
-          cc: 'jooyeon74397430@gmail.com',
+          cc: 'nadr.jooyeon@gmail.com', // 요청하신 이메일 주소로 변경
           subject: `[HiSeoul] ${companyInfo.name}에서 채용 제안이 도착했습니다`,
           type: 'inquiry',
           jobSeekerName: portfolio.name,
@@ -192,9 +231,15 @@ export default function ContactJobSeeker() {
 
       const emailResult = await emailResponse.json();
       if (!emailResult.success) {
-        console.error('Email sending failed:', emailResult.error);
+        console.error('❌ 이메일 발송 실패:', emailResult.error);
+      } else {
+        console.log('✅ 이메일 발송 완료:', emailResult);
       }
 
+      // 보낸 제안 수 증가
+      const currentCount = parseInt(localStorage.getItem(`sentProposals_${user.uid}`) || '0');
+      localStorage.setItem(`sentProposals_${user.uid}`, (currentCount + 1).toString());
+      
       setSuccess(true);
       
       // 3초 후 대시보드로 이동
@@ -202,6 +247,7 @@ export default function ContactJobSeeker() {
         router.push('/employer-dashboard');
       }, 3000);
     } catch (error: any) {
+      console.error('❌ 채용 제안 전송 실패:', error);
       setError(error.message);
     } finally {
       setSending(false);
@@ -489,15 +535,6 @@ ${portfolio.name}님의 경험과 역량이 저희 회사에서 큰 역할을 �
               />
             </div>
           </div>
-
-          {/* 안내 사항 */}
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-            <p className="text-sm text-blue-800">
-              <span className="font-semibold">안내:</span> 채용 제안이 발송되면 구직자의 이메일로 전송되며, 
-              동시에 관리자(jooyeon74397430@gmail.com)에게도 사본이 발송됩니다.
-            </p>
-          </div>
-
           {/* 제출 버튼 */}
           <div className="flex justify-end gap-4">
             <button

@@ -22,26 +22,55 @@ import {
   StarIcon,
   BuildingOfficeIcon as BuildingOfficeIconSolid
 } from '@heroicons/react/24/solid';
+import TutorialOverlay from '@/components/TutorialOverlay';
 
 export default function HomePage() {
   const [activeTab, setActiveTab] = useState<'jobseeker' | 'employer'>('jobseeker');
-  const { isAuthenticated, user } = useAuth();
+  const { isAuthenticated, user, userData, loading } = useAuth();
   const router = useRouter();
   const [userRole, setUserRole] = useState<'jobseeker' | 'employer' | 'admin' | null>(null);
+  const [showTutorial, setShowTutorial] = useState(false);
+
+  // 새 기업 회원가입 시 강제 새로고침 처리
+  useEffect(() => {
+    const newEmployerSignup = localStorage.getItem('newEmployerSignup');
+    if (newEmployerSignup === 'true') {
+      // 플래그 제거
+      localStorage.removeItem('newEmployerSignup');
+      
+      // 강제 새로고침 실행
+      window.location.reload();
+    }
+  }, []);
 
   useEffect(() => {
     const checkUserRole = async () => {
-      if (user) {
-        const userData = await getUserData(user.uid);
+      // loading이 완료되고 user가 있을 때만 체크
+      if (!loading && user) {
         if (userData) {
           setUserRole(userData.role);
-          // 기업 사용자 자동 리다이렉트 제거 - 메인 페이지에서도 접근 가능하도록
+          
+          // 기업 사용자이고 첫 로그인이거나 설정을 완료하지 않은 경우 튜토리얼 표시
+          if (userData.role === 'employer' && 
+              (userData.isFirstLogin || !userData.hasCompletedSetup)) {
+            setShowTutorial(true);
+          } else {
+            setShowTutorial(false);
+          }
         }
+      } else if (!loading && !user) {
+        // 로그인하지 않은 경우
+        setUserRole(null);
+        setShowTutorial(false);
       }
     };
 
     checkUserRole();
-  }, [user, router]);
+  }, [user, userData, loading]);
+
+  const handleTutorialComplete = () => {
+    setShowTutorial(false);
+  };
 
   const stats = [
     { label: '등록된 포트폴리오', value: '1,200+', icon: BriefcaseIcon },
@@ -86,7 +115,7 @@ export default function HomePage() {
   ];
 
   return (
-    <div className="min-h-screen pt-20">
+    <div className="min-h-screen pt-20 -mt-16">
 
       {/* Hero Section */}
       <section className="relative pt-24 pb-32 lg:pt-40 lg:pb-40 overflow-hidden">
@@ -180,6 +209,7 @@ export default function HomePage() {
             </div>
 
             {/* Video Preview */}
+            {/* 
             <div className="relative max-w-5xl mx-auto">
               <div className="relative rounded-3xl overflow-hidden shadow-2xl border border-gray-100 bg-white">
                 <div className="aspect-video">
@@ -195,6 +225,7 @@ export default function HomePage() {
                 <div className="absolute inset-0 pointer-events-none bg-gradient-to-t from-black/5 via-transparent to-transparent rounded-3xl"></div>
               </div>
             </div>
+            */}
           </div>
         </div>
               </section>
@@ -777,9 +808,9 @@ export default function HomePage() {
                     <Link href="/profile" className="bg-white text-blue-600 hover:bg-gray-50 font-bold py-5 px-10 rounded-xl transition-all duration-200 shadow-xl hover:shadow-2xl hover:-translate-y-1">
                       포트폴리오 작성하기
                     </Link>
-                    <Link href="/jobs" className="border-2 border-white text-white hover:bg-white hover:text-blue-600 font-bold py-5 px-10 rounded-xl transition-all duration-200 hover:shadow-xl">
+                    {/* <Link href="/jobs" className="border-2 border-white text-white hover:bg-white hover:text-blue-600 font-bold py-5 px-10 rounded-xl transition-all duration-200 hover:shadow-xl">
                       채용공고 보기
-                    </Link>
+                    </Link> */}
                   </>
                 ) : userRole === 'employer' ? (
                   <>
@@ -812,8 +843,12 @@ export default function HomePage() {
           <div className="grid md:grid-cols-4 gap-12">
             <div>
               <div className="flex items-center space-x-3 mb-8">
-                <div className="w-10 h-10 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg">
-                  <span className="text-white font-bold text-lg">H</span>
+                <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-lg p-1">
+                  <img 
+                    src="/images/logo.png" 
+                    alt="HiSeoul Logo" 
+                    className="w-full h-full object-contain"
+                  />
                 </div>
                 <span className="text-2xl font-bold">HiSeoul</span>
               </div>
@@ -826,7 +861,7 @@ export default function HomePage() {
               <h3 className="font-bold mb-6 text-lg">서비스</h3>
               <ul className="space-y-3 text-gray-400">
                 <li><Link href="/portfolios" className="hover:text-white transition-colors text-lg">포트폴리오</Link></li>
-                <li><Link href="/jobs" className="hover:text-white transition-colors text-lg">채용공고</Link></li>
+                {/* <li><Link href="/jobs" className="hover:text-white transition-colors text-lg">채용공고</Link></li> */}
                 <li><Link href="/companies" className="hover:text-white transition-colors text-lg">기업정보</Link></li>
                 <li><span className="text-gray-500 text-lg cursor-not-allowed">AI 매칭 (준비중)</span></li>
               </ul>
@@ -845,18 +880,24 @@ export default function HomePage() {
             <div>
               <h3 className="font-bold mb-6 text-lg">연락처</h3>
               <div className="text-gray-400 space-y-3 text-lg">
-                <p>이메일: hiseoulnewjob@naver.com</p>
-                <p>전화: 010-3721-0204</p>
-                <p>담당: 김기홍 전 HBA 사무국장</p>
+                <p>이메일: tvs@techventure.co.kr</p>
+                <p>전화: 010-2734-8624</p>
+                <p>담당: 조지형 사무국장</p>
               </div>
             </div>
           </div>
           
           <div className="border-t border-gray-800 mt-16 pt-10 text-center text-gray-400 text-lg">
-            <p>&copy; 2024 HiSeoul Job Platform. All rights reserved.</p>
+            <p>&copy; 2025 HiSeoul Job Platform. All rights reserved.</p>
           </div>
         </div>
       </footer>
+
+      {/* 튜토리얼 오버레이 */}
+      <TutorialOverlay
+        isVisible={showTutorial}
+        onComplete={handleTutorialComplete}
+      />
     </div>
   );
 }

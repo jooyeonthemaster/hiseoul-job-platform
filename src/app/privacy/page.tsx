@@ -195,8 +195,8 @@ export default function PrivacyPage() {
                 </div>
                 <div>
                   <span className="font-semibold text-gray-700">이메일:</span>
-                  <a href="mailto:hiseoulnewjob@naver.com" className="ml-2 text-blue-600 hover:text-blue-700">
-                    hiseoulnewjob@naver.com
+                  <a href="mailto:tvs@techventure.co.kr" className="ml-2 text-blue-600 hover:text-blue-700">
+                  tvs@techventure.co.kr
                   </a>
                 </div>
               </div>

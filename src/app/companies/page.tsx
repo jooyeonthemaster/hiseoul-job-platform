@@ -29,6 +29,7 @@ import {
 interface Company {
   id: string;
   userId: string;
+  approvalStatus: 'pending' | 'approved' | 'rejected';
   company: {
     name: string;
     ceoName: string;
@@ -194,11 +195,12 @@ export default function CompaniesPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-20">
             <div className="flex items-center space-x-3">
-              <Link href="/" className="flex items-center space-x-3">
-                <div className="w-10 h-10 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg">
-                  <span className="text-white font-bold text-lg">H</span>
-                </div>
-                <span className="text-2xl font-bold gradient-text">HiSeoul</span>
+              <Link href="/" className="flex items-center">
+                <img 
+                  src="/images/logo.png" 
+                  alt="HiSeoul Logo" 
+                  className="h-10 w-auto hover:scale-105 transition-all duration-300"
+                />
               </Link>
             </div>
             
@@ -209,12 +211,12 @@ export default function CompaniesPage() {
               <Link href="/companies" className="text-blue-600 font-semibold">
                 기업정보
               </Link>
-              <Link href="/jobs" className="text-gray-700 hover:text-blue-600 transition-colors font-medium">
+              {/* <Link href="/jobs" className="text-gray-700 hover:text-blue-600 transition-colors font-medium">
                 채용공고
               </Link>
               <Link href="/about" className="text-gray-700 hover:text-blue-600 transition-colors font-medium">
                 소개
-              </Link>
+              </Link> */}
             </nav>
             
             <div className="flex items-center space-x-4">
@@ -398,10 +400,12 @@ export default function CompaniesPage() {
                         </div>
                       </div>
                       <div className="flex items-center space-x-3">
-                        <div className="flex items-center">
-                          <CheckBadgeIcon className="w-5 h-5 text-emerald-500 mr-1" />
-                          <span className="text-xs font-medium text-emerald-600">인증</span>
-                        </div>
+                        {company.approvalStatus === 'approved' && (
+                          <div className="flex items-center">
+                            <CheckBadgeIcon className="w-5 h-5 text-emerald-500 mr-1" />
+                            <span className="text-xs font-medium text-emerald-600">인증</span>
+                          </div>
+                        )}
                         <button
                           onClick={(e) => {
                             e.preventDefault();

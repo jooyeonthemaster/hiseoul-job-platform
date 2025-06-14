@@ -1,7 +1,8 @@
 'use client';
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
+import { useAuth } from '@/contexts/AuthContext';
 import { 
   ArrowLeftIcon, 
   StarIcon, 
@@ -13,9 +14,10 @@ import {
   PhoneIcon,
   PlayIcon,
   AcademicCapIcon,
-  TrophyIcon
+  TrophyIcon,
+  LockClosedIcon
 } from '@heroicons/react/24/outline';
-import { getPortfolio, getJobSeekerProfile } from '@/lib/auth';
+import { getPortfolio, getJobSeekerProfile, canAccessPortfolio, addToFavoriteTalents, removeFromFavoriteTalents, isFavoriteTalent } from '@/lib/auth';
 
 interface Portfolio {
   id: string;
@@ -46,6 +48,8 @@ interface Portfolio {
     duration: string;
     results: string[];
   }>;
+  profileImage?: string;
+  currentCourse?: string;
   introVideo?: string;
   selfIntroduction?: {
     motivation?: string;
@@ -506,12 +510,99 @@ const portfoliosDetail: Portfolio[] = [
 
 export default function PortfolioDetailPage() {
   const params = useParams();
+  const router = useRouter();
+  const { user, userData } = useAuth();
   const portfolioId = params?.id as string;
   const [portfolio, setPortfolio] = useState<Portfolio | null>(null);
   const [loading, setLoading] = useState(true);
+  const [hasAccess, setHasAccess] = useState(false);
+  const [accessChecked, setAccessChecked] = useState(false);
+  const [isFavorite, setIsFavorite] = useState(false);
+  const [favoriteLoading, setFavoriteLoading] = useState(false);
+
+  // 접근 권한 확인
+  useEffect(() => {
+    const checkAccess = async () => {
+      if (!user) {
+        setHasAccess(false);
+        setAccessChecked(true);
+        // 로그인하지 않은 사용자는 로그인 페이지로 리다이렉트
+        router.push('/auth');
+        return;
+      }
+
+      try {
+        const access = await canAccessPortfolio(user.uid);
+        setHasAccess(access);
+        
+        // 접근 권한이 없는 경우 로그인 페이지로 리다이렉트
+        if (!access) {
+          router.push('/auth');
+          return;
+        }
+      } catch (error) {
+        console.error('Error checking portfolio access:', error);
+        setHasAccess(false);
+        router.push('/auth');
+        return;
+      } finally {
+        setAccessChecked(true);
+      }
+    };
+
+    if (user !== undefined) {
+      checkAccess();
+    }
+  }, [user, router]);
+
+  // 관심 인재 상태 확인
+  useEffect(() => {
+    const checkFavoriteStatus = async () => {
+      if (!user || !portfolioId || userData?.role !== 'employer') return;
+      
+      try {
+        const favorite = await isFavoriteTalent(user.uid, portfolioId);
+        setIsFavorite(favorite);
+      } catch (error) {
+        console.error('Error checking favorite status:', error);
+      }
+    };
+
+    checkFavoriteStatus();
+  }, [user, portfolioId, userData]);
+
+  // 관심 인재 토글 함수
+  const handleFavoriteToggle = async () => {
+    if (!user || !portfolioId || userData?.role !== 'employer') return;
+    
+    try {
+      setFavoriteLoading(true);
+      
+      if (isFavorite) {
+        await removeFromFavoriteTalents(user.uid, portfolioId);
+        setIsFavorite(false);
+      } else {
+        await addToFavoriteTalents(user.uid, portfolioId);
+        setIsFavorite(true);
+      }
+    } catch (error) {
+      console.error('Error toggling favorite:', error);
+    } finally {
+      setFavoriteLoading(false);
+    }
+  };
 
   useEffect(() => {
     const loadPortfolio = async () => {
+      // 권한 체크가 완료될 때까지 대기
+      if (!accessChecked) return;
+      
+      // 권한이 없으면 포트폴리오를 로드하지 않음
+      if (!hasAccess) {
+        setLoading(false);
+        return;
+      }
+
       try {
         setLoading(true);
         
@@ -530,6 +621,7 @@ export default function PortfolioDetailPage() {
             // Firebase에서 상세 프로필 정보도 가져오기
             const profileData = await getJobSeekerProfile(portfolioId as string);
             const profile = profileData?.profile;
+            console.log('🖼️ 포트폴리오 상세 - 프로필 데이터:', profile);
             
             const convertedPortfolio: Portfolio = {
               id: portfolioId as string,
@@ -560,6 +652,12 @@ export default function PortfolioDetailPage() {
                 duration: '프로젝트 기간',
                 results: ['성과 정보 업데이트 예정']
               }],
+              
+              // 프로필 이미지 추가
+              profileImage: profile?.profileImage || (firebasePortfolio as any).profileImage || '',
+              
+              // 수행 중인 과정 추가
+              currentCourse: profile?.currentCourse || '',
               
               // 새로 추가된 필드들
               introVideo: profile?.introVideo || '',
@@ -616,7 +714,7 @@ export default function PortfolioDetailPage() {
     if (portfolioId) {
       loadPortfolio();
     }
-  }, [portfolioId]);
+  }, [portfolioId, accessChecked, hasAccess]);
 
   // 아바타 함수 정의
   const getAvatarBySpeciality = (speciality: string) => {
@@ -679,6 +777,20 @@ export default function PortfolioDetailPage() {
     }
   };
 
+
+
+  // 접근 권한 확인 중이거나 권한이 없는 경우 로딩 화면 표시
+  if (!accessChecked || !hasAccess) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">접근 권한을 확인하고 있습니다...</p>
+        </div>
+      </div>
+    );
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 flex items-center justify-center">
@@ -722,8 +834,18 @@ export default function PortfolioDetailPage() {
           <div className="flex flex-col lg:flex-row items-start lg:items-center gap-8">
             {/* Avatar and Basic Info */}
             <div className="flex items-center space-x-6">
-              <div className="text-6xl bg-gradient-to-br from-blue-100 to-indigo-100 rounded-full w-24 h-24 flex items-center justify-center">
-                {portfolio.avatar}
+              <div className="w-24 h-24 rounded-full overflow-hidden bg-gradient-to-br from-blue-100 to-indigo-100 flex items-center justify-center">
+                {portfolio.profileImage ? (
+                  <img 
+                    src={portfolio.profileImage} 
+                    alt={`${portfolio.name}의 프로필`}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <div className="text-6xl">
+                    {portfolio.avatar}
+                  </div>
+                )}
               </div>
               <div>
                 <div className="flex items-center space-x-3 mb-2">
@@ -749,28 +871,42 @@ export default function PortfolioDetailPage() {
               </div>
             </div>
             
-            {/* Contact Info */}
-            <div className="lg:ml-auto bg-gray-50/80 rounded-2xl p-6">
-              <h3 className="font-semibold text-gray-900 mb-4">연락처</h3>
-              <div className="space-y-3">
-                <div className="flex items-center space-x-3 text-sm">
-                  <EnvelopeIcon className="h-4 w-4 text-gray-400" />
-                  <span className="text-gray-600">{portfolio.email}</span>
+            {/* Recruitment Action - 기업 회원만 표시 */}
+            {userData?.role === 'employer' && (
+              <div className="lg:ml-auto bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl p-6 border border-blue-200">
+                <h3 className="font-semibold text-gray-900 mb-4 text-center">채용 제안</h3>
+                <div className="text-center mb-4">
+                  <div className="text-2xl mb-2">💼</div>
+                  <p className="text-sm text-gray-600 mb-4">
+                    이 전문가에게 채용 제안을 보내보세요
+                  </p>
                 </div>
-                <div className="flex items-center space-x-3 text-sm">
-                  <PhoneIcon className="h-4 w-4 text-gray-400" />
-                  <span className="text-gray-600">{portfolio.phone}</span>
+                <div className="space-y-3">
+                  <Link 
+                    href={`/employer-dashboard/contact/${portfolio.id}`}
+                    className="block w-full bg-blue-600 text-white py-3 px-4 rounded-xl font-medium hover:bg-blue-700 transition-colors text-center"
+                  >
+                    채용 제안 신청서 보내기
+                  </Link>
+                  <button 
+                    onClick={handleFavoriteToggle}
+                    disabled={favoriteLoading}
+                    className={`w-full px-4 py-2 border rounded-xl font-medium transition-colors ${
+                      isFavorite 
+                        ? 'border-red-300 text-red-600 hover:bg-red-50' 
+                        : 'border-gray-300 text-gray-600 hover:bg-gray-50'
+                    } ${favoriteLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  >
+                    {favoriteLoading ? '처리 중...' : isFavorite ? '관심 인재 해제' : '관심 인재 저장'}
+                  </button>
+                </div>
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mt-4">
+                  <p className="text-xs text-blue-700 text-center">
+                    채용 제안서를 통해 안전하게 연락할 수 있습니다
+                  </p>
                 </div>
               </div>
-              <div className="flex space-x-3 mt-6">
-                <button className="flex-1 bg-blue-600 text-white py-2 px-4 rounded-xl font-medium hover:bg-blue-700 transition-colors">
-                  연락하기
-                </button>
-                <button className="px-4 py-2 border border-gray-300 rounded-xl text-gray-600 hover:bg-gray-50 transition-colors">
-                  저장
-                </button>
-              </div>
-            </div>
+            )}
           </div>
         </div>
 

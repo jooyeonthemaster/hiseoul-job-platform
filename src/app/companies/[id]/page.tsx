@@ -34,6 +34,7 @@ import {
 interface Company {
   id: string;
   userId: string;
+  approvalStatus: 'pending' | 'approved' | 'rejected';
   company: {
     name: string;
     ceoName: string;
@@ -244,10 +245,12 @@ export default function CompanyDetailPage() {
                 <div>
                   <div className="flex items-center mb-2">
                     <h1 className="text-4xl font-bold text-gray-900 mr-4">{company.company.name}</h1>
-                    <div className="flex items-center bg-emerald-50 px-3 py-1 rounded-full border border-emerald-200">
-                      <CheckBadgeIcon className="w-5 h-5 text-emerald-500 mr-1" />
-                      <span className="text-sm font-medium text-emerald-700">하이서울 인증</span>
-                    </div>
+                    {company.approvalStatus === 'approved' && (
+                      <div className="flex items-center bg-emerald-50 px-3 py-1 rounded-full border border-emerald-200">
+                        <CheckBadgeIcon className="w-5 h-5 text-emerald-500 mr-1" />
+                        <span className="text-sm font-medium text-emerald-700">하이서울 인증</span>
+                      </div>
+                    )}
                   </div>
                   <p className="text-xl text-gray-600 mb-2">{company.company.industry}</p>
                   <p className="text-gray-500">{company.company.businessType}</p>

@@ -138,7 +138,7 @@ export default function FAQPage() {
       },
       {
         question: '기술적 문제가 발생했을 때 어떻게 해야 하나요?',
-        answer: '고객센터(hiseoulnewjob@naver.com)로 문의하시거나 플랫폼 내 문의하기 기능을 이용해주세요. 빠른 기술 지원을 제공합니다.'
+        answer: '고객센터(tvs@techventure.co.kr)로 문의하시거나 플랫폼 내 문의하기 기능을 이용해주세요. 빠른 기술 지원을 제공합니다.'
       },
       {
         question: '회원 탈퇴는 어떻게 하나요?',

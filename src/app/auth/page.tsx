@@ -17,7 +17,9 @@ export default function AuthPage() {
     email: '',
     password: '',
     confirmPassword: '',
-    name: ''
+    name: '',
+    companyName: '',
+    position: ''
   });
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -28,12 +30,15 @@ export default function AuthPage() {
   const router = useRouter();
   const { user } = useAuth();
 
+
+
   // 이미 로그인된 사용자는 메인 페이지로 리다이렉트 (useEffect 사용)
+  // 로그인/회원가입 처리 중일 때는 리다이렉션하지 않음
   useEffect(() => {
-    if (user) {
+    if (user && !googleLoading && !loading) {
       router.push('/');
     }
-  }, [user, router]);
+  }, [user, router, googleLoading, loading]);
 
   // 로그인된 사용자는 로딩 상태 표시
   if (user) {
@@ -55,8 +60,17 @@ export default function AuthPage() {
 
     try {
       if (mode === 'login') {
-        await signIn(formData.email, formData.password);
-        router.push('/');
+        const user = await signIn(formData.email, formData.password, role);
+        
+        if (user) {
+          if (role === 'employer') {
+            router.push('/employer-dashboard');
+          } else {
+            router.push('/');
+          }
+        } else {
+          setError('로그인에 실패했습니다.');
+        }
       } else if (mode === 'signup') {
         if (formData.password !== formData.confirmPassword) {
           throw new Error('비밀번호가 일치하지 않습니다.');
@@ -64,12 +78,21 @@ export default function AuthPage() {
         if (formData.password.length < 6) {
           throw new Error('비밀번호는 최소 6자 이상이어야 합니다.');
         }
-        await signUp(formData.email, formData.password, formData.name, role);
-        // 기업 회원가입인 경우 설정 페이지로, 구직자는 메인으로
-        if (role === 'employer') {
-          router.push('/employer-setup');
-        } else {
-          router.push('/');
+        const result = await signUp(
+          formData.email, 
+          formData.password, 
+          formData.name, 
+          role,
+          role === 'employer' ? { companyName: formData.companyName, position: formData.position } : undefined
+        );
+        if (result) {
+          if (role === 'employer') {
+            // 기업 회원가입 후 새로고침 플래그 설정
+            localStorage.setItem('newEmployerSignup', 'true');
+            router.push('/');
+          } else {
+            router.push('/');
+          }
         }
       } else if (mode === 'reset') {
         await resetPassword(formData.email);
@@ -88,15 +111,26 @@ export default function AuthPage() {
     setSuccess('');
 
     try {
-      // 회원가입 모드에서는 선택된 역할 사용, 로그인 모드에서는 기본값 사용
-      const selectedRole = mode === 'signup' ? role : 'jobseeker';
-      const result = await signInWithGoogle(selectedRole);
+      const result = await signInWithGoogle(role);
       
-      if (result.isNewUser && mode === 'login') {
-        // 로그인 페이지에서 새 사용자가 구글로 가입한 경우, 역할 선택이 필요함을 알림
-        setError('새로운 계정입니다. 회원가입 페이지에서 역할을 선택하고 구글 로그인을 이용해주세요.');
+      if (result) {
+        if (result.isNewUser) {
+          if (role === 'employer') {
+            // 기업 신규 구글 로그인시에도 새로고침 플래그 설정
+            localStorage.setItem('newEmployerSignup', 'true');
+            router.push('/');
+          } else {
+            router.push('/');
+          }
+        } else {
+          if (role === 'employer') {
+            router.push('/employer-dashboard');
+          } else {
+            router.push('/');
+          }
+        }
       } else {
-        router.push('/');
+        setError('구글 로그인에 실패했습니다.');
       }
     } catch (error: any) {
       setError(error.message);
@@ -126,7 +160,36 @@ export default function AuthPage() {
             {mode === 'signup' && 'HiSeoul 회원가입'}
             {mode === 'reset' && '비밀번호 재설정'}
           </h2>
-          <p className="mt-2 text-center text-sm text-gray-600">
+          <div className="mt-4">
+            <label className="block text-sm font-medium text-gray-700 mb-2 text-center">
+              회원 유형을 선택해주세요
+            </label>
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                type="button"
+                onClick={() => setRole('jobseeker')}
+                className={`p-3 text-sm font-medium rounded-lg border-2 transition-colors ${
+                  role === 'jobseeker'
+                    ? 'border-indigo-600 bg-indigo-50 text-indigo-700'
+                    : 'border-gray-300 text-gray-700 hover:border-gray-400'
+                }`}
+              >
+                구직자
+              </button>
+              <button
+                type="button"
+                onClick={() => setRole('employer')}
+                className={`p-3 text-sm font-medium rounded-lg border-2 transition-colors ${
+                  role === 'employer'
+                    ? 'border-indigo-600 bg-indigo-50 text-indigo-700'
+                    : 'border-gray-300 text-gray-700 hover:border-gray-400'
+                }`}
+              >
+                기업
+              </button>
+            </div>
+          </div>
+          <p className="mt-4 text-center text-sm text-gray-600">
             {mode === 'login' && '계정이 없으신가요? '}
             {mode === 'signup' && '이미 계정이 있으신가요? '}
             {mode === 'reset' && '로그인 페이지로 '}
@@ -154,6 +217,46 @@ export default function AuthPage() {
           </p>
         </div>
 
+        {error && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="rounded-md bg-red-50 p-4 mb-4"
+          >
+            <div className="flex">
+              <div className="flex-shrink-0">
+                <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                </svg>
+              </div>
+              <div className="ml-3">
+                <h3 className="text-sm font-medium text-red-800">오류</h3>
+                <div className="mt-2 text-sm text-red-700">{error}</div>
+              </div>
+            </div>
+          </motion.div>
+        )}
+
+        {success && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="rounded-md bg-green-50 p-4 mb-4"
+          >
+            <div className="flex">
+              <div className="flex-shrink-0">
+                <svg className="h-5 w-5 text-green-400" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                </svg>
+              </div>
+              <div className="ml-3">
+                <h3 className="text-sm font-medium text-green-800">성공</h3>
+                <div className="mt-2 text-sm text-green-700">{success}</div>
+              </div>
+            </div>
+          </motion.div>
+        )}
+
         <motion.form
           className="mt-8 space-y-6"
           onSubmit={handleSubmit}
@@ -162,39 +265,7 @@ export default function AuthPage() {
           transition={{ delay: 0.2 }}
         >
           <div className="space-y-4">
-            {mode === 'signup' && (
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  회원 유형
-                </label>
-                <div className="grid grid-cols-2 gap-3">
-                  <button
-                    type="button"
-                    onClick={() => setRole('jobseeker')}
-                    className={`p-3 text-sm font-medium rounded-lg border-2 transition-colors ${
-                      role === 'jobseeker'
-                        ? 'border-indigo-600 bg-indigo-50 text-indigo-700'
-                        : 'border-gray-300 text-gray-700 hover:border-gray-400'
-                    }`}
-                  >
-                    구직자
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setRole('employer')}
-                    className={`p-3 text-sm font-medium rounded-lg border-2 transition-colors ${
-                      role === 'employer'
-                        ? 'border-indigo-600 bg-indigo-50 text-indigo-700'
-                        : 'border-gray-300 text-gray-700 hover:border-gray-400'
-                    }`}
-                  >
-                    기업
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {mode === 'signup' && (
+            {mode === 'signup' && role === 'jobseeker' && (
               <div>
                 <label htmlFor="name" className="block text-sm font-medium text-gray-700">
                   이름
@@ -212,9 +283,61 @@ export default function AuthPage() {
               </div>
             )}
 
+            {mode === 'signup' && role === 'employer' && (
+              <>
+                <div>
+                  <label htmlFor="companyName" className="block text-sm font-medium text-gray-700">
+                    회사 이름
+                  </label>
+                  <input
+                    id="companyName"
+                    name="companyName"
+                    type="text"
+                    required
+                    value={formData.companyName}
+                    onChange={handleInputChange}
+                    className="mt-1 appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-lg focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
+                    placeholder="회사 이름을 입력하세요"
+                  />
+                </div>
+                
+                <div>
+                  <label htmlFor="name" className="block text-sm font-medium text-gray-700">
+                    담당자 이름
+                  </label>
+                  <input
+                    id="name"
+                    name="name"
+                    type="text"
+                    required
+                    value={formData.name}
+                    onChange={handleInputChange}
+                    className="mt-1 appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-lg focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
+                    placeholder="담당자 이름을 입력하세요"
+                  />
+                </div>
+
+                <div>
+                  <label htmlFor="position" className="block text-sm font-medium text-gray-700">
+                    담당자 직급
+                  </label>
+                  <input
+                    id="position"
+                    name="position"
+                    type="text"
+                    required
+                    value={formData.position}
+                    onChange={handleInputChange}
+                    className="mt-1 appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-lg focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
+                    placeholder="예: 인사팀 대리, 대표, HR 담당자"
+                  />
+                </div>
+              </>
+            )}
+
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-gray-700">
-                이메일
+                {mode === 'signup' && role === 'employer' ? '담당자 이메일' : '이메일'}
               </label>
               <input
                 id="email"
@@ -224,7 +347,7 @@ export default function AuthPage() {
                 value={formData.email}
                 onChange={handleInputChange}
                 className="mt-1 appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-lg focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
-                placeholder="이메일 주소"
+                placeholder={mode === 'signup' && role === 'employer' ? '담당자 이메일 주소' : '이메일 주소'}
               />
             </div>
 
@@ -277,26 +400,6 @@ export default function AuthPage() {
               </div>
             )}
           </div>
-
-          {error && (
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg"
-            >
-              {error}
-            </motion.div>
-          )}
-
-          {success && (
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg"
-            >
-              {success}
-            </motion.div>
-          )}
 
           <div>
             <motion.button

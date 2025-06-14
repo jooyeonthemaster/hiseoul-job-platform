@@ -7,7 +7,11 @@ import {
   updateProfile,
   sendPasswordResetEmail,
   signInWithPopup,
-  GoogleAuthProvider
+  GoogleAuthProvider,
+  deleteUser,
+  reauthenticateWithPopup,
+  reauthenticateWithCredential,
+  EmailAuthProvider
 } from 'firebase/auth';
 import { 
   doc, 
@@ -21,19 +25,52 @@ import {
   query,
   where,
   arrayUnion,
-  arrayRemove
+  arrayRemove,
+  deleteDoc
 } from 'firebase/firestore';
 import { auth, db } from './firebase';
 import { User, JobSeeker, Employer } from '@/types';
+
+// 이메일로 사용자 찾기
+const findUserByEmail = async (email: string): Promise<User | null> => {
+  try {
+    const usersRef = collection(db, 'users');
+    const q = query(usersRef, where('email', '==', email));
+    const querySnapshot = await getDocs(q);
+    
+    if (!querySnapshot.empty) {
+      const userDoc = querySnapshot.docs[0];
+      const userData = {
+        id: userDoc.id,
+        ...userDoc.data(),
+        createdAt: userDoc.data().createdAt?.toDate(),
+        updatedAt: userDoc.data().updatedAt?.toDate()
+      } as User;
+      return userData;
+    }
+    return null;
+  } catch (error) {
+    console.error('Error finding user by email:', error);
+    // 에러가 발생해도 null을 반환하지 않고 에러를 던짐
+    throw new Error('사용자 조회 중 오류가 발생했습니다.');
+  }
+};
 
 // 회원가입
 export const signUp = async (
   email: string, 
   password: string, 
   name: string, 
-  role: 'jobseeker' | 'employer'
+  role: 'jobseeker' | 'employer',
+  employerInfo?: { companyName: string; position: string }
 ) => {
   try {
+    // 이메일로 기존 사용자 확인
+    const existingUser = await findUserByEmail(email);
+    if (existingUser) {
+      throw new Error(`이미 ${existingUser.role === 'jobseeker' ? '구직자' : '기업'} 계정으로 가입된 이메일입니다.`);
+    }
+
     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
     const user = userCredential.user;
 
@@ -45,7 +82,19 @@ export const signUp = async (
       id: user.uid,
       email: user.email!,
       name,
-      role
+      role,
+      // 기업 회원가입 시 추가 정보 저장
+      ...(role === 'employer' && employerInfo ? {
+        companyName: employerInfo.companyName,
+        position: employerInfo.position,
+        isFirstLogin: true,
+        hasCompletedSetup: false
+      } : {}),
+      // 구직자는 기본적으로 설정 완료로 처리
+      ...(role === 'jobseeker' ? {
+        isFirstLogin: false,
+        hasCompletedSetup: true
+      } : {})
     };
 
     await setDoc(doc(db, 'users', user.uid), {
@@ -69,13 +118,32 @@ export const signUp = async (
       await setDoc(doc(db, 'employers', user.uid), {
         userId: user.uid,
         company: {
-          name: '',
+          name: employerInfo?.companyName || '',
           industry: '',
           size: '',
           location: '',
           description: ''
-        }
+        },
+        approvalStatus: 'pending', // 승인 대기 상태로 설정
+        createdAt: serverTimestamp()
       });
+
+      // Google Sheets에 기업 회원가입 정보 기록
+      if (employerInfo) {
+        try {
+          const { handleEmployerSignupComplete } = await import('@/lib/googleSheetsIntegration');
+          await handleEmployerSignupComplete({
+            uid: user.uid,
+            companyName: employerInfo.companyName,
+            contactName: name,
+            email: user.email,
+            position: employerInfo.position
+          });
+        } catch (error) {
+          console.error('Google Sheets 기록 실패:', error);
+          // Google Sheets 오류는 회원가입을 방해하지 않음
+        }
+      }
     }
 
     return { user, userData };
@@ -85,12 +153,64 @@ export const signUp = async (
 };
 
 // 로그인
-export const signIn = async (email: string, password: string) => {
+export const signIn = async (email: string, password: string, role: 'jobseeker' | 'employer') => {
   try {
+    // 이메일로 기존 사용자 확인
+    const existingUser = await findUserByEmail(email);
+    
+    if (existingUser) {
+      if (existingUser.role !== role) {
+        const errorMessage = `이 이메일은 ${existingUser.role === 'jobseeker' ? '구직자' : '기업'} 계정으로 등록되어 있습니다. 올바른 회원 유형을 선택해주세요.`;
+        throw new Error(errorMessage);
+      }
+    }
+
     const userCredential = await signInWithEmailAndPassword(auth, email, password);
-    return userCredential.user;
+    const user = userCredential.user;
+
+    // 사용자 역할 재확인
+    const userDoc = await getDoc(doc(db, 'users', user.uid));
+    if (!userDoc.exists()) {
+      throw new Error('사용자 정보를 찾을 수 없습니다.');
+    }
+
+    const userData = userDoc.data();
+    
+    if (userData.role !== role) {
+      throw new Error('선택하신 회원 유형이 일치하지 않습니다.');
+    }
+
+    return user;
   } catch (error: any) {
-    throw new Error(error.message);
+    console.error('Sign in error details:', {
+      message: error.message,
+      code: error.code,
+      fullError: error
+    });
+    
+    // Firebase 인증 에러 처리
+    if (error.code === 'auth/user-not-found') {
+      throw new Error('등록되지 않은 이메일입니다.');
+    }
+    if (error.code === 'auth/wrong-password') {
+      throw new Error('비밀번호가 올바르지 않습니다.');
+    }
+    if (error.code === 'auth/invalid-email') {
+      throw new Error('올바르지 않은 이메일 형식입니다.');
+    }
+    if (error.code === 'auth/too-many-requests') {
+      throw new Error('너무 많은 로그인 시도입니다. 잠시 후 다시 시도해주세요.');
+    }
+    
+    // 커스텀 에러 메시지
+    if (error.message.includes('계정으로 등록되어 있습니다') || 
+        error.message === '선택하신 회원 유형이 일치하지 않습니다.' ||
+        error.message === '사용자 조회 중 오류가 발생했습니다.') {
+      throw new Error(error.message);
+    }
+    
+    // 기본 에러 메시지
+    throw new Error('로그인 중 오류가 발생했습니다.');
   }
 };
 
@@ -175,8 +295,33 @@ export const updateUserProfile = async (uid: string, profileData: any) => {
 // 구직자 프로필 업데이트
 export const updateJobSeekerProfile = async (uid: string, profileData: any) => {
   try {
+    // undefined 값들을 필터링하는 함수
+    const filterUndefined = (obj: any): any => {
+      if (obj === null || obj === undefined) {
+        return null;
+      }
+      
+      if (Array.isArray(obj)) {
+        return obj.map(filterUndefined);
+      }
+      
+      if (typeof obj === 'object') {
+        const filtered: any = {};
+        for (const [key, value] of Object.entries(obj)) {
+          if (value !== undefined) {
+            filtered[key] = filterUndefined(value);
+          }
+        }
+        return filtered;
+      }
+      
+      return obj;
+    };
+
+    const cleanedProfileData = filterUndefined(profileData);
+    
     await updateDoc(doc(db, 'jobseekers', uid), {
-      profile: profileData,
+      profile: cleanedProfileData,
       updatedAt: serverTimestamp()
     });
   } catch (error) {
@@ -188,10 +333,69 @@ export const updateJobSeekerProfile = async (uid: string, profileData: any) => {
 // 기업 정보 업데이트
 export const updateEmployerInfo = async (uid: string, companyData: any) => {
   try {
-    await updateDoc(doc(db, 'employers', uid), {
-      company: companyData,
+    // Firestore의 employers 컬렉션 업데이트
+    await setDoc(doc(db, 'employers', uid), {
+      userId: uid,
+      company: {
+        name: companyData.name,
+        ceoName: companyData.ceoName,
+        industry: companyData.industry,
+        businessType: companyData.businessType,
+        size: companyData.size,
+        location: companyData.location,
+        website: companyData.website,
+        description: companyData.description,
+        // 담당자 정보 추가
+        contactName: companyData.contactName,
+        contactPosition: companyData.contactPosition,
+        contactPhone: companyData.contactPhone,
+        companyAttraction: companyData.companyAttraction
+      }
+    }, { merge: true });
+    
+    // users 컬렉션에서 설정 완료 플래그 업데이트
+    await updateDoc(doc(db, 'users', uid), {
+      hasCompletedSetup: true,
+      isFirstLogin: false,
       updatedAt: serverTimestamp()
     });
+
+    // Google Sheets에 기업 정보 업데이트
+    try {
+      const userData = await getUserData(uid);
+      if (userData) {
+        const { updateEmployer } = await import('@/lib/googleSheets');
+        
+        // 기업 규모를 직원수 숫자로 변환
+        const getEmployeeCount = (size: string): string => {
+          switch (size) {
+            case '1-10': return '10';
+            case '11-50': return '50';
+            case '51-100': return '100';
+            case '101-300': return '300';
+            case '301-1000': return '1000';
+            case '1000+': return '1000+';
+            default: return size;
+          }
+        };
+
+        await updateEmployer({
+          uid: uid,
+          companyName: companyData.name || '',
+          contactName: companyData.contactName || '',
+          email: userData.email || '',  // email로 통일
+          phone: companyData.contactPhone || '',
+          industry: companyData.industry || '',
+          employeeCount: getEmployeeCount(companyData.size || ''),
+          address: companyData.location || '',
+          website: companyData.website || '',
+          description: companyData.description || '',
+        });
+      }
+    } catch (error) {
+      console.error('Google Sheets 업데이트 실패:', error);
+      // Google Sheets 오류는 기업 정보 업데이트를 방해하지 않음
+    }
   } catch (error) {
     console.error('Error updating employer info:', error);
     throw error;
@@ -227,73 +431,92 @@ export const createNotification = async (notification: {
 export const signInWithGoogle = async (role: 'jobseeker' | 'employer') => {
   try {
     const provider = new GoogleAuthProvider();
-    provider.addScope('email');
-    provider.addScope('profile');
-    
     const result = await signInWithPopup(auth, provider);
     const user = result.user;
 
-    // 기존 사용자인지 확인
-    const existingUser = await getUserData(user.uid);
+    // 이메일로 기존 사용자 확인
+    const existingUser = await findUserByEmail(user.email!);
     
-    if (!existingUser) {
-      // 새 사용자인 경우 Firestore에 사용자 정보 저장
-      const userData: Omit<User, 'createdAt' | 'updatedAt'> = {
-        id: user.uid,
-        email: user.email!,
-        name: user.displayName || user.email!.split('@')[0],
-        role
-      };
-
-      await setDoc(doc(db, 'users', user.uid), {
-        ...userData,
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp()
-      });
-
-      // 역할별 추가 문서 생성
-      if (role === 'jobseeker') {
-        await setDoc(doc(db, 'jobseekers', user.uid), {
-          userId: user.uid,
-          profile: {
-            skills: [],
-            experience: [],
-            education: [],
-            languages: []
-          }
-        });
-      } else if (role === 'employer') {
-        await setDoc(doc(db, 'employers', user.uid), {
-          userId: user.uid,
-          company: {
-            name: '',
-            industry: '',
-            size: '',
-            location: '',
-            description: ''
-          }
-        });
+    if (existingUser) {
+      // 기존 사용자가 다른 역할로 가입되어 있는 경우
+      if (existingUser.role !== role) {
+        await signOut(auth); // 로그아웃 처리
+        const errorMessage = `이 Google 계정은 이미 ${existingUser.role === 'jobseeker' ? '구직자' : '기업'} 계정으로 등록되어 있습니다. 올바른 회원 유형을 선택해주세요.`;
+        throw new Error(errorMessage);
       }
-
-      return { user, userData, isNewUser: true };
+      return { user, isNewUser: false };
     }
 
-    return { user, userData: existingUser, isNewUser: false };
+    // 새 사용자 등록
+    const userData: Omit<User, 'createdAt' | 'updatedAt'> = {
+      id: user.uid,
+      email: user.email!,
+      name: user.displayName || '',
+      role,
+      // 기업 회원가입 시 첫 로그인 플래그 추가
+      ...(role === 'employer' ? {
+        isFirstLogin: true,
+        hasCompletedSetup: false
+      } : {
+        isFirstLogin: false,
+        hasCompletedSetup: true
+      })
+    };
+
+    await setDoc(doc(db, 'users', user.uid), {
+      ...userData,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp()
+    });
+
+    // 역할별 추가 문서 생성
+    if (role === 'jobseeker') {
+      await setDoc(doc(db, 'jobseekers', user.uid), {
+        userId: user.uid,
+        profile: {
+          skills: [],
+          experience: [],
+          education: [],
+          languages: []
+        }
+      });
+    } else {
+      await setDoc(doc(db, 'employers', user.uid), {
+        userId: user.uid,
+        company: {
+          name: '',
+          industry: '',
+          size: '',
+          location: '',
+          description: ''
+        }
+      });
+    }
+
+    return { user, isNewUser: true };
   } catch (error: any) {
-    // 팝업이 닫힌 경우 (사용자 취소)
+    console.error('Google sign in error details:', {
+      message: error.message,
+      code: error.code,
+      fullError: error
+    });
+    
+    // 팝업 관련 에러는 따로 처리
     if (error.code === 'auth/popup-closed-by-user') {
       throw new Error('구글 로그인이 취소되었습니다.');
     }
-    // 팝업이 차단된 경우
-    else if (error.code === 'auth/popup-blocked') {
+    if (error.code === 'auth/popup-blocked') {
       throw new Error('팝업이 차단되었습니다. 팝업을 허용하고 다시 시도해주세요.');
     }
-    // 기타 에러
-    else {
-      throw new Error('구글 로그인 중 오류가 발생했습니다: ' + error.message);
+    
+    // 커스텀 에러 메시지는 그대로 전달
+    if (error.message.includes('계정으로 등록되어 있습니다')) {
+      throw new Error(error.message);
     }
+    
+    throw new Error('구글 로그인 중 오류가 발생했습니다: ' + error.message);
   }
-}; 
+};
 
 // 포트폴리오 등록/업데이트
 export const registerPortfolio = async (uid: string, portfolioData: {
@@ -309,6 +532,7 @@ export const registerPortfolio = async (uid: string, portfolioData: {
   certificates?: any[];
   awards?: any[];
   introVideo?: string;
+  profileImage?: string;
   selfIntroduction?: {
     motivation?: string;
     personality?: string;
@@ -338,6 +562,7 @@ export const registerPortfolio = async (uid: string, portfolioData: {
       certificates: portfolioData.certificates || [],
       awards: portfolioData.awards || [],
       introVideo: portfolioData.introVideo || '',
+      profileImage: portfolioData.profileImage || '',
       selfIntroduction: portfolioData.selfIntroduction || {
         motivation: '',
         personality: '',
@@ -389,21 +614,54 @@ export const getAllPortfolios = async () => {
     );
     const querySnapshot = await getDocs(portfoliosQuery);
     
-    const portfolios = querySnapshot.docs.map(doc => {
-      const data = doc.data();
-      return {
-        id: doc.id,
-        name: data.name || '',
-        email: data.email || '',
-        speciality: data.speciality || '',
-        skills: data.skills || [],
-        rating: data.rating || 0,
-        experience: data.experience || [],
-        verified: data.verified || false,
-        createdAt: data.createdAt?.toDate(),
-        updatedAt: data.updatedAt?.toDate()
-      };
-    });
+    // 각 포트폴리오에 대해 사용자 프로필 이미지를 가져오기
+    const portfolios = await Promise.all(
+      querySnapshot.docs.map(async (portfolioDoc) => {
+        const data = portfolioDoc.data();
+        const userId = data.userId || portfolioDoc.id;
+        
+        // 사용자 프로필 이미지와 과정 정보 가져오기 (jobseekers 컬렉션에서)
+        let profileImage = data.profileImage || '';
+        let currentCourse = '';
+        try {
+          const jobseekerDocRef = doc(db, 'jobseekers', userId);
+          const jobseekerDoc = await getDoc(jobseekerDocRef);
+          if (jobseekerDoc.exists()) {
+            const jobseekerData = jobseekerDoc.data() as any;
+            profileImage = jobseekerData.profile?.profileImage || data.profileImage || '';
+            currentCourse = jobseekerData.profile?.currentCourse || '';
+            console.log(`🖼️ getAllPortfolios - ${data.name}의 프로필 이미지:`, profileImage);
+            console.log(`📚 getAllPortfolios - ${data.name}의 수행 과정:`, currentCourse);
+          }
+        } catch (error) {
+          console.error('Error fetching user profile data:', error);
+          // 에러가 발생해도 기존 데이터 사용
+        }
+        
+        return {
+          id: portfolioDoc.id,
+          userId: userId,
+          name: data.name || '',
+          email: data.email || '',
+          speciality: data.speciality || '',
+          phone: data.phone || '',
+          address: data.address || '',
+          skills: data.skills || [],
+          languages: data.languages || [],
+          experience: data.experience || [],
+          education: data.education || [],
+          description: data.description || '',
+          rating: data.rating || 0,
+          projects: data.projects || 0,
+          verified: data.verified || false,
+          isPublic: data.isPublic || true,
+          profileImage: profileImage, // 실시간 프로필 이미지
+          currentCourse: currentCourse, // 수행 중인 과정
+          createdAt: data.createdAt?.toDate(),
+          updatedAt: data.updatedAt?.toDate()
+        };
+      })
+    );
     
     return portfolios;
   } catch (error) {
@@ -436,6 +694,7 @@ export const getAllEmployers = async () => {
       return {
         id: doc.id,
         userId: data.userId,
+        approvalStatus: data.approvalStatus || 'pending',
         company: {
           name: data.company?.name || '',
           ceoName: data.company?.ceoName || '',
@@ -478,6 +737,7 @@ export const getEmployerById = async (employerId: string) => {
       return {
         id: employerDoc.id,
         userId: data.userId,
+        approvalStatus: data.approvalStatus || 'pending',
         company: {
           name: data.company?.name || '',
           ceoName: data.company?.ceoName || '',
@@ -560,5 +820,237 @@ export const isFavoriteCompany = async (userId: string, companyId: string) => {
   } catch (error) {
     console.error('Error checking favorite company:', error);
     return false;
+  }
+};
+
+// 관심 인재 관련 함수들
+export const addToFavoriteTalents = async (userId: string, talentId: string) => {
+  try {
+    const userDoc = doc(db, 'users', userId);
+    await updateDoc(userDoc, {
+      favoriteTalents: arrayUnion(talentId),
+      updatedAt: new Date()
+    });
+    return true;
+  } catch (error) {
+    console.error('Error adding to favorite talents:', error);
+    return false;
+  }
+};
+
+export const removeFromFavoriteTalents = async (userId: string, talentId: string) => {
+  try {
+    const userDoc = doc(db, 'users', userId);
+    await updateDoc(userDoc, {
+      favoriteTalents: arrayRemove(talentId),
+      updatedAt: new Date()
+    });
+    return true;
+  } catch (error) {
+    console.error('Error removing from favorite talents:', error);
+    return false;
+  }
+};
+
+export const getFavoriteTalents = async (userId: string) => {
+  try {
+    const userDoc = await getDoc(doc(db, 'users', userId));
+    if (userDoc.exists()) {
+      const data = userDoc.data();
+      return data.favoriteTalents || [];
+    }
+    return [];
+  } catch (error) {
+    console.error('Error fetching favorite talents:', error);
+    return [];
+  }
+};
+
+export const isFavoriteTalent = async (userId: string, talentId: string) => {
+  try {
+    const favorites = await getFavoriteTalents(userId);
+    return favorites.includes(talentId);
+  } catch (error) {
+    console.error('Error checking favorite talent:', error);
+    return false;
+  }
+};
+
+// 기업 승인 상태 확인
+export const checkEmployerApprovalStatus = async (employerId: string): Promise<'pending' | 'approved' | 'rejected' | null> => {
+  try {
+    const employerDoc = await getDoc(doc(db, 'employers', employerId));
+    if (employerDoc.exists()) {
+      const data = employerDoc.data();
+      return data.approvalStatus || 'pending';
+    }
+    return null;
+  } catch (error) {
+    console.error('Error checking employer approval status:', error);
+    return null;
+  }
+};
+
+// 포트폴리오 접근 권한 확인 (승인된 기업 회원만 접근 가능)
+export const canAccessPortfolio = async (userId: string): Promise<boolean> => {
+  try {
+    // 사용자 정보 확인
+    const userDoc = await getDoc(doc(db, 'users', userId));
+    if (!userDoc.exists()) {
+      return false;
+    }
+    
+    const userData = userDoc.data();
+    
+    // 어드민은 항상 접근 가능
+    if (userData.role === 'admin') {
+      return true;
+    }
+    
+    // 승인된 기업 회원만 접근 가능
+    if (userData.role === 'employer') {
+      const approvalStatus = await checkEmployerApprovalStatus(userId);
+      return approvalStatus === 'approved';
+    }
+    
+    // 구직자 및 기타 역할은 접근 불가
+    return false;
+  } catch (error) {
+    console.error('Error checking portfolio access:', error);
+    return false;
+  }
+};
+
+// 기업 정보 가져오기 (승인 상태 포함)
+export const getEmployerWithApprovalStatus = async (employerId: string) => {
+  try {
+    const employerDoc = await getDoc(doc(db, 'employers', employerId));
+    if (employerDoc.exists()) {
+      const data = employerDoc.data();
+      return {
+        ...data,
+        id: employerDoc.id,
+        approvalStatus: data.approvalStatus || 'pending'
+      };
+    }
+    return null;
+  } catch (error) {
+    console.error('Error fetching employer with approval status:', error);
+    return null;
+  }
+};
+
+// 회원 탈퇴 (테스트용 - 데이터 삭제 + 로그아웃)
+export const deleteUserAccount = async (uid: string) => {
+  try {
+    if (!auth.currentUser) {
+      throw new Error('로그인된 사용자가 없습니다.');
+    }
+
+    // 사용자 데이터 가져오기
+    const userData = await getUserData(uid);
+    if (!userData) {
+      throw new Error('사용자 정보를 찾을 수 없습니다.');
+    }
+
+    // Google Sheets에서 삭제 처리
+    try {
+      const { deleteEmployer } = await import('@/lib/googleSheets');
+      await deleteEmployer({
+        uid: uid,
+        email: userData.email,
+        companyName: userData.companyName || ''
+      });
+    } catch (error) {
+      console.error('Google Sheets 삭제 실패:', error);
+      // Google Sheets 오류는 계정 삭제를 방해하지 않음
+    }
+
+    // Firestore에서 관련 데이터 삭제
+    if (userData.role === 'employer') {
+      await deleteDoc(doc(db, 'employers', uid));
+    } else if (userData.role === 'jobseeker') {
+      await deleteDoc(doc(db, 'jobseekers', uid));
+      // 포트폴리오도 삭제
+      try {
+        await deleteDoc(doc(db, 'portfolios', uid));
+      } catch (error) {
+        console.error('포트폴리오 삭제 실패:', error);
+      }
+    }
+
+    // users 컬렉션에서 삭제
+    await deleteDoc(doc(db, 'users', uid));
+
+    // Firebase Auth 계정 삭제 대신 로그아웃 (재인증 에러 방지)
+    await signOut(auth);
+
+  } catch (error) {
+    console.error('Error deleting user account:', error);
+    throw error;
+  }
+};
+
+// 재인증을 포함한 완전한 회원 탈퇴
+export const deleteUserAccountWithReauth = async (uid: string, password?: string) => {
+  try {
+    if (!auth.currentUser) {
+      throw new Error('로그인된 사용자가 없습니다.');
+    }
+
+    const user = auth.currentUser;
+
+    // 재인증 수행
+    if (user.providerData[0]?.providerId === 'google.com') {
+      // 구글 로그인 사용자 재인증
+      const provider = new GoogleAuthProvider();
+      await reauthenticateWithPopup(user, provider);
+    } else if (password) {
+      // 이메일/비밀번호 사용자 재인증
+      const credential = EmailAuthProvider.credential(user.email!, password);
+      await reauthenticateWithCredential(user, credential);
+    } else {
+      throw new Error('비밀번호가 필요합니다.');
+    }
+
+    // 사용자 데이터 가져오기
+    const userData = await getUserData(uid);
+    if (!userData) {
+      throw new Error('사용자 정보를 찾을 수 없습니다.');
+    }
+
+    // Google Sheets에서 삭제 처리
+    try {
+      const { deleteEmployer } = await import('@/lib/googleSheets');
+      await deleteEmployer({
+        uid: uid,
+        email: userData.email,
+        companyName: userData.companyName || ''
+      });
+    } catch (error) {
+      console.error('Google Sheets 삭제 실패:', error);
+    }
+
+    // Firestore에서 관련 데이터 삭제
+    if (userData.role === 'employer') {
+      await deleteDoc(doc(db, 'employers', uid));
+    } else if (userData.role === 'jobseeker') {
+      await deleteDoc(doc(db, 'jobseekers', uid));
+      try {
+        await deleteDoc(doc(db, 'portfolios', uid));
+      } catch (error) {
+        console.error('포트폴리오 삭제 실패:', error);
+      }
+    }
+
+    // users 컬렉션에서 삭제
+    await deleteDoc(doc(db, 'users', uid));
+
+    // Firebase Auth에서 계정 완전 삭제
+    await deleteUser(user);
+
+  } catch (error) {
+    console.error('Error deleting user account with reauth:', error);
+    throw error;
   }
 };

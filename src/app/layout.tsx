@@ -3,6 +3,7 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/contexts/AuthContext";
 import Navigation from "@/components/Navigation";
+import GoogleSheetsProvider from "@/components/providers/GoogleSheetsProvider";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -36,10 +37,14 @@ export default function RootLayout({
         className={`${inter.variable} antialiased h-full bg-gradient-to-br from-slate-50 via-white to-slate-100 font-sans`}
       >
         <AuthProvider>
-          <div className="min-h-full">
-            <Navigation />
-            {children}
-          </div>
+          <GoogleSheetsProvider>
+            <div className="min-h-full">
+              <Navigation />
+              <main className="pt-16">
+                {children}
+              </main>
+            </div>
+          </GoogleSheetsProvider>
         </AuthProvider>
       </body>
     </html>

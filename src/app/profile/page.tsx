@@ -88,7 +88,9 @@ export default function ProfilePage() {
         address: profileData?.profile?.address || '',
         skills: profileData?.profile?.skills?.join(', ') || '',
         languages: profileData?.profile?.languages?.join(', ') || '',
-        speciality: profileData?.profile?.speciality || ''
+        speciality: profileData?.profile?.speciality || '',
+        profileImage: profileData?.profile?.profileImage || '',
+        currentCourse: profileData?.profile?.currentCourse || ''
       };
       
       console.log('loadProfile - setting formData:', newFormData);
@@ -239,9 +241,11 @@ export default function ProfilePage() {
 
       // Update jobseeker profile
       await updateJobSeekerProfile(user.uid, {
-        phone: data.phone,
-        address: data.address,
-        speciality: data.speciality,
+        phone: data.phone || '',
+        address: data.address || '',
+        speciality: data.speciality || '',
+        profileImage: data.profileImage || '',
+        currentCourse: data.currentCourse || '',
         skills: data.skills.split(',').map((s: string) => s.trim()).filter(Boolean),
         languages: data.languages.split(',').map((s: string) => s.trim()).filter(Boolean),
         experience: profile?.profile?.experience || [],
@@ -273,7 +277,8 @@ export default function ProfilePage() {
         languages: formData.languages.split(',').map((s: string) => s.trim()).filter(Boolean),
         experience: profile?.profile?.experience || [],
         education: profile?.profile?.education || [],
-        description: `${formData.speciality ? formData.speciality + ' 전문가' : ''}${formData.skills ? '. 보유 스킬: ' + formData.skills : ''}`
+        description: `${formData.speciality ? formData.speciality + ' 전문가' : ''}${formData.skills ? '. 보유 스킬: ' + formData.skills : ''}`,
+        profileImage: formData.profileImage
       });
 
       setPortfolioRegistered(true);
@@ -354,7 +359,36 @@ export default function ProfilePage() {
       {/* Main Dashboard Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Welcome Header */}
-        <WelcomeHeader userName={userData.name} stats={dashboardStats} />
+        <WelcomeHeader 
+          userName={userData.name} 
+          stats={dashboardStats} 
+          profileImage={formData.profileImage}
+          onProfileImageUpdate={async (imageUrl: string) => {
+            console.log('🖼️ onProfileImageUpdate 호출됨, imageUrl:', imageUrl);
+            console.log('🖼️ 현재 profile 상태:', profile);
+            
+            // 프로필 이미지 업데이트
+            setFormData((prev: any) => ({ ...prev, profileImage: imageUrl }));
+            
+            // 데이터베이스에 저장
+            try {
+              const currentProfile = profile?.profile || {};
+              console.log('🖼️ 저장할 프로필 데이터:', { ...currentProfile, profileImage: imageUrl });
+              
+              await updateJobSeekerProfile(user!.uid, {
+                ...currentProfile,
+                profileImage: imageUrl
+              });
+              
+              console.log('🖼️ 프로필 이미지 저장 완료');
+              await refreshUserData();
+              await loadProfile(); // 프로필 다시 로드
+            } catch (error) {
+              console.error('프로필 이미지 저장 오류:', error);
+              alert('프로필 이미지 저장 중 오류가 발생했습니다.');
+            }
+          }}
+        />
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Main Content - Left Column */}
@@ -365,6 +399,42 @@ export default function ProfilePage() {
               onEditClick={() => router.push('/profile/edit')}
               missingFields={getMissingFields()}
             />
+
+            {/* Current Course Card */}
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-gray-900">수행 중인 과정</h3>
+                <div className="text-2xl">📚</div>
+              </div>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    현재 참여 중인 교육과정이나 프로그램
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.currentCourse || ''}
+                    onChange={(e) => setFormData((prev: any) => ({ ...prev, currentCourse: e.target.value }))}
+                    placeholder="예: 영상콘텐츠 마케터 양성과정 3기, 외국인 유학생 AI 마케터 인턴과정"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                  />
+                </div>
+                <button
+                  onClick={() => handleSaveProfile(formData)}
+                  disabled={loading}
+                  className="w-full bg-indigo-600 text-white py-2 px-4 rounded-lg hover:bg-indigo-700 transition-colors disabled:opacity-50"
+                >
+                  {loading ? '저장 중...' : '과정 정보 저장'}
+                </button>
+                {formData.currentCourse && (
+                  <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+                    <p className="text-sm text-green-700">
+                      <span className="font-medium">현재 과정:</span> {formData.currentCourse}
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
 
             {/* Favorite Companies Card */}
             <FavoriteCompaniesCard 

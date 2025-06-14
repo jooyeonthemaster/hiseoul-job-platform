@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
-import { getUserData, getEmployerInfo, getAllPortfolios } from '@/lib/auth';
+import { getUserData, getEmployerInfo, getAllPortfolios, getEmployerWithApprovalStatus, deleteUserAccount, getFavoriteTalents } from '@/lib/auth';
 import { motion } from 'framer-motion';
 import { 
   BriefcaseIcon,
@@ -19,11 +19,14 @@ import {
   EyeIcon,
   PlusIcon,
   ArrowUpIcon,
-  ArrowDownIcon
+  ArrowDownIcon,
+  ExclamationTriangleIcon,
+  TrashIcon
 } from '@heroicons/react/24/outline';
 import { 
   StarIcon,
-  CheckBadgeIcon 
+  CheckBadgeIcon,
+  HeartIcon
 } from '@heroicons/react/24/solid';
 import JobPostingModal from '@/components/JobPostingModal';
 
@@ -44,11 +47,18 @@ export default function EmployerDashboard() {
   const [loading, setLoading] = useState(true);
   const [companyInfo, setCompanyInfo] = useState<any>(null);
   const [portfolios, setPortfolios] = useState<Portfolio[]>([]);
+  const [favoriteTalents, setFavoriteTalents] = useState<Portfolio[]>([]);
+  const [sentProposalsCount, setSentProposalsCount] = useState(0);
+  const [activeTab, setActiveTab] = useState<'all' | 'favorites'>('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedSpeciality, setSelectedSpeciality] = useState('all');
   const [selectedSkills, setSelectedSkills] = useState<string[]>([]);
   const [showFilters, setShowFilters] = useState(false);
+  const [approvalStatus, setApprovalStatus] = useState<'pending' | 'approved' | 'rejected' | null>(null);
+  const [rejectedReason, setRejectedReason] = useState<string | null>(null);
   const [showJobPostingModal, setShowJobPostingModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deleteLoading, setDeleteLoading] = useState(false);
 
   useEffect(() => {
     const loadData = async () => {
@@ -64,17 +74,30 @@ export default function EmployerDashboard() {
           return;
         }
 
-        const employerData = await getEmployerInfo(user.uid);
-        if (!employerData || !employerData.company?.name) {
+        const employerData = await getEmployerWithApprovalStatus(user.uid);
+        if (!employerData || !(employerData as any).company?.name) {
           router.push('/employer-setup');
           return;
         }
 
-        setCompanyInfo(employerData.company);
+        setCompanyInfo((employerData as any).company || {});
+        setApprovalStatus(employerData.approvalStatus || 'pending');
+        setRejectedReason((employerData as any).rejectedReason || null);
         
         // 포트폴리오 목록 가져오기
         const allPortfolios = await getAllPortfolios();
         setPortfolios(allPortfolios);
+
+        // 관심 인재 목록 가져오기
+        const favoriteIds = await getFavoriteTalents(user.uid);
+        const favoritePortfolios = allPortfolios.filter(portfolio => 
+          favoriteIds.includes(portfolio.id)
+        );
+        setFavoriteTalents(favoritePortfolios);
+
+        // 보낸 제안 수 가져오기
+        const sentCount = parseInt(localStorage.getItem(`sentProposals_${user.uid}`) || '0');
+        setSentProposalsCount(sentCount);
       } catch (error) {
         console.error('Error loading data:', error);
       } finally {
@@ -85,8 +108,11 @@ export default function EmployerDashboard() {
     loadData();
   }, [user, router]);
 
+  // 현재 탭에 따른 포트폴리오 목록
+  const currentPortfolios = activeTab === 'all' ? portfolios : favoriteTalents;
+
   // 필터링된 포트폴리오
-  const filteredPortfolios = portfolios.filter(portfolio => {
+  const filteredPortfolios = currentPortfolios.filter(portfolio => {
     const matchesSearch = portfolio.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          portfolio.speciality.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          portfolio.skills.some(skill => skill.toLowerCase().includes(searchTerm.toLowerCase()));
@@ -142,6 +168,23 @@ export default function EmployerDashboard() {
     } catch (error) {
       console.error('API 호출 오류:', error);
       alert('네트워크 오류가 발생했습니다. 다시 시도해주세요.');
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    if (!user) return;
+    
+    setDeleteLoading(true);
+    try {
+      await deleteUserAccount(user.uid);
+      alert('회원 탈퇴가 완료되었습니다.');
+      router.push('/');
+    } catch (error: any) {
+      console.error('회원 탈퇴 실패:', error);
+      alert('회원 탈퇴에 실패했습니다: ' + error.message);
+    } finally {
+      setDeleteLoading(false);
+      setShowDeleteModal(false);
     }
   };
 
@@ -218,13 +261,14 @@ export default function EmployerDashboard() {
                   인재 검색
                 </Link>
                 
-                <Link 
+                {/* 채용 관리 - 아직 구현되지 않음 */}
+                {/* <Link 
                   href="/employer-dashboard/inquiries"
                   className="text-slate-700 hover:text-blue-700 hover:bg-blue-50 group flex items-center px-4 py-3 text-sm font-medium rounded-xl transition-all duration-200"
                 >
                   <EnvelopeIcon className="text-slate-400 group-hover:text-blue-500 mr-4 h-5 w-5" />
                   채용 관리
-                </Link>
+                </Link> */}
                 
                 <Link 
                   href="/employer-setup"
@@ -244,6 +288,14 @@ export default function EmployerDashboard() {
                     </svg>
                     메인 페이지
                   </Link>
+                  
+                  <button 
+                    onClick={() => setShowDeleteModal(true)}
+                    className="w-full mt-2 text-red-600 hover:text-red-700 hover:bg-red-50 group flex items-center px-4 py-3 text-sm font-medium rounded-xl transition-all duration-200"
+                  >
+                    <TrashIcon className="text-red-400 group-hover:text-red-600 mr-4 h-5 w-5" />
+                    회원 탈퇴
+                  </button>
                 </div>
               </nav>
             </div>
@@ -287,6 +339,48 @@ export default function EmployerDashboard() {
           {/* Dashboard Content */}
           <main className="flex-1 overflow-y-auto">
             <div className="p-6">
+              {/* 승인 상태 알림 */}
+              {approvalStatus && approvalStatus !== 'approved' && (
+                <div className="mb-6">
+                  {approvalStatus === 'pending' ? (
+                    <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                      <div className="flex">
+                        <div className="flex-shrink-0">
+                          <svg className="h-5 w-5 text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
+                            <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                          </svg>
+                        </div>
+                        <div className="ml-3">
+                          <h3 className="text-sm font-medium text-yellow-800">승인 대기 중</h3>
+                          <div className="mt-2 text-sm text-yellow-700">
+                            <p>귀하의 기업 회원가입이 승인 대기 중입니다. 승인이 완료되면 구직자 포트폴리오를 열람하실 수 있습니다.</p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ) : approvalStatus === 'rejected' && (
+                    <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                      <div className="flex">
+                        <div className="flex-shrink-0">
+                          <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 0016 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a.75.75 0 000 1.5h1.5a.75.75 0 000-1.5H9z" clipRule="evenodd" />
+                          </svg>
+                        </div>
+                        <div className="ml-3">
+                          <h3 className="text-sm font-medium text-red-800">가입 거절됨</h3>
+                          <div className="mt-2 text-sm text-red-700">
+                            <p>귀하의 기업 회원가입이 거절되었습니다.</p>
+                            {rejectedReason && (
+                              <p className="mt-1">거절 사유: {rejectedReason}</p>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
               {/* Welcome Section */}
               <div className="mb-8">
                 <div className="flex items-center justify-between">
@@ -315,7 +409,7 @@ export default function EmployerDashboard() {
               </div>
 
               {/* Stats Grid */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
                 <motion.div 
                   className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm hover:shadow-md transition-shadow"
                   initial={{ opacity: 0, y: 20 }}
@@ -343,7 +437,31 @@ export default function EmployerDashboard() {
                   className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm hover:shadow-md transition-shadow"
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.2 }}
+                  transition={{ delay: 0.15 }}
+                >
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-slate-600">관심 인재</p>
+                      <div className="flex items-center mt-2">
+                        <p className="text-3xl font-bold text-slate-900">{favoriteTalents.length}</p>
+                        <span className="ml-2 text-sm text-red-600 flex items-center">
+                          <HeartIcon className="w-4 h-4 mr-1" />
+                          저장됨
+                        </span>
+                      </div>
+                    </div>
+                    <div className="w-12 h-12 bg-red-100 rounded-xl flex items-center justify-center">
+                      <HeartIcon className="w-6 h-6 text-red-600" />
+                    </div>
+                  </div>
+                </motion.div>
+
+                {/* 채용 공고 통계 - 아직 구현되지 않음 */}
+                {/* <motion.div 
+                  className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm hover:shadow-md transition-shadow"
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.25 }}
                 >
                   <div className="flex items-center justify-between">
                     <div>
@@ -357,22 +475,22 @@ export default function EmployerDashboard() {
                       <DocumentTextIcon className="w-6 h-6 text-green-600" />
                     </div>
                   </div>
-                </motion.div>
+                </motion.div> */}
 
                 <motion.div 
                   className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm hover:shadow-md transition-shadow"
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.3 }}
+                  transition={{ delay: 0.25 }}
                 >
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-sm font-medium text-slate-600">보낸 제안</p>
                       <div className="flex items-center mt-2">
-                        <p className="text-3xl font-bold text-slate-900">0</p>
-                        <span className="ml-2 text-sm text-orange-600 flex items-center">
-                          <ArrowUpIcon className="w-4 h-4 mr-1" />
-                          3%
+                        <p className="text-3xl font-bold text-slate-900">{sentProposalsCount}</p>
+                        <span className="ml-2 text-sm text-indigo-600 flex items-center">
+                          <EnvelopeIcon className="w-4 h-4 mr-1" />
+                          전송됨
                         </span>
                       </div>
                     </div>
@@ -382,11 +500,12 @@ export default function EmployerDashboard() {
                   </div>
                 </motion.div>
 
-                <motion.div 
+                {/* 응답률 통계 - 아직 구현되지 않음 */}
+                {/* <motion.div 
                   className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm hover:shadow-md transition-shadow"
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.4 }}
+                  transition={{ delay: 0.35 }}
                 >
                   <div className="flex items-center justify-between">
                     <div>
@@ -400,7 +519,7 @@ export default function EmployerDashboard() {
                       <ChartBarIcon className="w-6 h-6 text-purple-600" />
                     </div>
                   </div>
-                </motion.div>
+                </motion.div> */}
               </div>
 
               {/* Search and Filters */}
@@ -489,10 +608,33 @@ export default function EmployerDashboard() {
               {/* Talent Grid */}
               <div className="bg-white rounded-2xl border border-slate-200 shadow-sm">
                 <div className="p-6">
+                  {/* Tab Navigation */}
                   <div className="flex items-center justify-between mb-6">
-                    <h2 className="text-xl font-bold text-slate-900">
-                      인재 목록 ({filteredPortfolios.length}명)
-                    </h2>
+                    <div className="flex space-x-1 bg-slate-100 rounded-xl p-1">
+                      <button
+                        onClick={() => setActiveTab('all')}
+                        className={`px-6 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 ${
+                          activeTab === 'all'
+                            ? 'bg-white text-slate-900 shadow-sm'
+                            : 'text-slate-600 hover:text-slate-900'
+                        }`}
+                      >
+                        <UserGroupIcon className="w-4 h-4 mr-2 inline" />
+                        전체 인재 ({portfolios.length})
+                      </button>
+                      <button
+                        onClick={() => setActiveTab('favorites')}
+                        className={`px-6 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 ${
+                          activeTab === 'favorites'
+                            ? 'bg-white text-slate-900 shadow-sm'
+                            : 'text-slate-600 hover:text-slate-900'
+                        }`}
+                      >
+                        <HeartIcon className="w-4 h-4 mr-2 inline text-red-500" />
+                        관심 인재 ({favoriteTalents.length})
+                      </button>
+                    </div>
+                    
                     <div className="flex items-center space-x-2 text-sm text-slate-500">
                       <span>정렬:</span>
                       <select className="border border-slate-300 rounded-lg px-3 py-1 text-slate-700">
@@ -501,6 +643,18 @@ export default function EmployerDashboard() {
                         <option>경력순</option>
                       </select>
                     </div>
+                  </div>
+
+                  {/* Current Tab Title */}
+                  <div className="mb-6">
+                    <h2 className="text-xl font-bold text-slate-900">
+                      {activeTab === 'all' ? '전체 인재 목록' : '관심 인재 목록'} ({filteredPortfolios.length}명)
+                    </h2>
+                    {activeTab === 'favorites' && (
+                      <p className="text-sm text-slate-600 mt-1">
+                        저장한 관심 인재들을 확인하고 관리하세요.
+                      </p>
+                    )}
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
@@ -587,9 +741,40 @@ export default function EmployerDashboard() {
 
                   {filteredPortfolios.length === 0 && (
                     <div className="text-center py-12">
-                      <UserGroupIcon className="mx-auto w-16 h-16 text-slate-300 mb-4" />
-                      <h3 className="text-lg font-medium text-slate-900 mb-2">검색 결과가 없습니다</h3>
-                      <p className="text-slate-600">다른 검색 조건을 시도해보세요.</p>
+                      {activeTab === 'favorites' ? (
+                        <div>
+                          <div className="w-20 h-20 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <HeartIcon className="w-10 h-10 text-red-400" />
+                          </div>
+                          <h3 className="text-lg font-medium text-slate-900 mb-2">
+                            {searchTerm || selectedSpeciality !== 'all' || selectedSkills.length > 0 
+                              ? '검색 조건에 맞는 관심 인재가 없습니다' 
+                              : '아직 관심 인재가 없습니다'
+                            }
+                          </h3>
+                          <p className="text-slate-600 mb-4">
+                            {searchTerm || selectedSpeciality !== 'all' || selectedSkills.length > 0 
+                              ? '다른 검색 조건을 시도해보세요.' 
+                              : '인재 프로필에서 하트 버튼을 눌러 관심 인재로 저장해보세요.'
+                            }
+                          </p>
+                          {(!searchTerm && selectedSpeciality === 'all' && selectedSkills.length === 0) && (
+                            <button
+                              onClick={() => setActiveTab('all')}
+                              className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                            >
+                              <UserGroupIcon className="w-4 h-4 mr-2" />
+                              전체 인재 보기
+                            </button>
+                          )}
+                        </div>
+                      ) : (
+                        <div>
+                          <UserGroupIcon className="mx-auto w-16 h-16 text-slate-300 mb-4" />
+                          <h3 className="text-lg font-medium text-slate-900 mb-2">검색 결과가 없습니다</h3>
+                          <p className="text-slate-600">다른 검색 조건을 시도해보세요.</p>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
@@ -605,6 +790,61 @@ export default function EmployerDashboard() {
         onClose={() => setShowJobPostingModal(false)}
         onSubmit={handleJobPostingSubmit}
       />
+
+      {/* Delete Account Modal */}
+      {showDeleteModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-white rounded-2xl p-6 max-w-md w-full mx-4"
+          >
+            <div className="flex items-center space-x-3 mb-4">
+              <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center">
+                <ExclamationTriangleIcon className="w-6 h-6 text-red-600" />
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900">회원 탈퇴</h3>
+                <p className="text-sm text-gray-600">정말로 탈퇴하시겠습니까?</p>
+              </div>
+            </div>
+            
+            <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+              <p className="text-sm text-red-800">
+                <strong>주의:</strong> 회원 탈퇴 시 모든 데이터가 영구적으로 삭제되며 복구할 수 없습니다.
+              </p>
+              <ul className="mt-2 text-sm text-red-700 list-disc list-inside">
+                <li>기업 정보 및 프로필</li>
+                <li>채용 공고 및 지원 내역</li>
+                <li>모든 활동 기록</li>
+              </ul>
+            </div>
+
+            <div className="flex space-x-3">
+              <button
+                onClick={() => setShowDeleteModal(false)}
+                className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+              >
+                취소
+              </button>
+              <button
+                onClick={handleDeleteAccount}
+                disabled={deleteLoading}
+                className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {deleteLoading ? (
+                  <div className="flex items-center justify-center">
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                    탈퇴 중...
+                  </div>
+                ) : (
+                  '탈퇴하기'
+                )}
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
     </div>
   );
 }

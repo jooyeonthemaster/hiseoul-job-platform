@@ -6,6 +6,12 @@ export interface User {
   role: 'jobseeker' | 'employer' | 'admin';
   createdAt: Date;
   updatedAt: Date;
+  // 기업 담당자 정보 (role이 'employer'인 경우)
+  companyName?: string;
+  position?: string;
+  // 첫 로그인 및 설정 완료 여부
+  isFirstLogin?: boolean;
+  hasCompletedSetup?: boolean;
 }
 
 // Job Seeker Types
@@ -25,6 +31,7 @@ export interface JobSeekerProfile {
   languages: string[];
   profileImage?: string;
   speciality?: string;
+  currentCourse?: string; // 수행 중인 과정 (예: 영상콘텐츠 마케터 양성과정 3기)
   
   // 추가 필드들
   certificates?: CertificateItem[];
@@ -119,7 +126,13 @@ export interface EducationItem {
 // Employer Types
 export interface Employer extends User {
   role: 'employer';
+  companyName: string; // 회사명은 필수
+  position: string; // 담당자 직급은 필수
   company: CompanyInfo;
+  approvalStatus: 'pending' | 'approved' | 'rejected'; // 승인 상태
+  approvedAt?: Date; // 승인 일시
+  approvedBy?: string; // 승인한 관리자 ID
+  rejectedReason?: string; // 거절 사유
 }
 
 export interface CompanyInfo {

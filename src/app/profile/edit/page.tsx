@@ -38,6 +38,8 @@ interface FormData {
     address: string;
     dateOfBirth: string;
     speciality: string;
+    profileImage?: string;
+    currentCourse?: string;
   };
   experience: ExperienceItem[];
   education: EducationItem[];
@@ -69,7 +71,9 @@ export default function ProfileEditPage() {
       phone: '',
       address: '',
       dateOfBirth: '',
-      speciality: ''
+      speciality: '',
+      profileImage: '',
+      currentCourse: ''
     },
     // Experience
     experience: [],
@@ -140,7 +144,9 @@ export default function ProfileEditPage() {
             phone: profile.phone || '',
             address: profile.address || '',
             dateOfBirth: formatDateForInput(profile.dateOfBirth),
-            speciality: profile.speciality || ''
+            speciality: profile.speciality || '',
+            profileImage: profile.profileImage || '',
+            currentCourse: profile.currentCourse || ''
           },
           experience: profile.experience || [],
           education: profile.education || [],
@@ -182,10 +188,12 @@ export default function ProfileEditPage() {
 
       // Prepare profile data
       const profileData = {
-        phone: formData.basicInfo.phone,
-        address: formData.basicInfo.address,
+        phone: formData.basicInfo.phone || '',
+        address: formData.basicInfo.address || '',
         dateOfBirth: formData.basicInfo.dateOfBirth ? new Date(formData.basicInfo.dateOfBirth) : null,
-        speciality: formData.basicInfo.speciality,
+        speciality: formData.basicInfo.speciality || '',
+        profileImage: formData.basicInfo.profileImage || '',
+        currentCourse: formData.basicInfo.currentCourse || '',
         experience: formData.experience,
         education: formData.education,
         skills: formData.skills.skills,

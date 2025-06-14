@@ -1,9 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
-import { updateEmployerInfo, getUserData } from '@/lib/auth';
+import { updateEmployerInfo, getUserData, getEmployerInfo } from '@/lib/auth';
 import { motion } from 'framer-motion';
 import { 
   BuildingOfficeIcon, 
@@ -23,6 +23,9 @@ interface CompanyData {
   location: string;
   website: string;
   description: string;
+  contactName: string;
+  contactPosition: string;
+  contactPhone: string;
   companyAttraction: {
     workingHours: string;
     remoteWork: boolean;
@@ -38,10 +41,20 @@ interface CompanyData {
 
 export default function EmployerSetupPage() {
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, refreshUserData } = useAuth();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [step, setStep] = useState(1);
+
+  // 필수 필드들에 대한 ref 생성
+  const nameRef = useRef<HTMLInputElement>(null);
+  const ceoNameRef = useRef<HTMLInputElement>(null);
+  const industryRef = useRef<HTMLSelectElement>(null);
+  const sizeRef = useRef<HTMLSelectElement>(null);
+  const locationRef = useRef<HTMLInputElement>(null);
+  const descriptionRef = useRef<HTMLTextAreaElement>(null);
+  const contactNameRef = useRef<HTMLInputElement>(null);
+  const contactPhoneRef = useRef<HTMLInputElement>(null);
   
   const [companyData, setCompanyData] = useState<CompanyData>({
     name: '',
@@ -52,6 +65,9 @@ export default function EmployerSetupPage() {
     location: '',
     website: '',
     description: '',
+    contactName: '',
+    contactPosition: '',
+    contactPhone: '',
     companyAttraction: {
       workingHours: '09:00 ~ 18:00',
       remoteWork: false,
@@ -65,9 +81,9 @@ export default function EmployerSetupPage() {
     }
   });
 
-  // 권한 체크
+  // 권한 체크 및 기존 정보 불러오기
   useEffect(() => {
-    const checkAccess = async () => {
+    const checkAccessAndLoadData = async () => {
       if (!user) {
         router.push('/auth');
         return;
@@ -76,10 +92,49 @@ export default function EmployerSetupPage() {
       const userData = await getUserData(user.uid);
       if (!userData || userData.role !== 'employer') {
         router.push('/');
+        return;
+      }
+
+      // 기존 회사 정보 불러오기
+      try {
+        const employerInfo = await getEmployerInfo(user.uid);
+        if (employerInfo && employerInfo.company) {
+          setCompanyData(prev => ({
+            ...prev,
+            name: employerInfo.company.name || userData.companyName || '',
+            ceoName: employerInfo.company.ceoName || '',
+            industry: employerInfo.company.industry || '',
+            businessType: employerInfo.company.businessType || '',
+            size: employerInfo.company.size || '',
+            location: employerInfo.company.location || '',
+            website: employerInfo.company.website || '',
+            description: employerInfo.company.description || '',
+            contactName: employerInfo.company.contactName || userData.name || '',
+            contactPosition: employerInfo.company.contactPosition || '',
+            contactPhone: employerInfo.company.contactPhone || ''
+          }));
+        } else if (userData.companyName) {
+          // employers 컬렉션에 정보가 없지만 users에 회사명이 있는 경우
+          setCompanyData(prev => ({
+            ...prev,
+            name: userData.companyName || '',
+            contactName: userData.name || ''
+          }));
+        }
+      } catch (error) {
+        console.error('기존 회사 정보 불러오기 실패:', error);
+        // 기존 정보 불러오기 실패해도 페이지는 정상 로드
+        if (userData.companyName) {
+          setCompanyData(prev => ({
+            ...prev,
+            name: userData.companyName || '',
+            contactName: userData.name || ''
+          }));
+        }
       }
     };
 
-    checkAccess();
+    checkAccessAndLoadData();
   }, [user, router]);
 
   const handleInputChange = (field: string, value: any) => {
@@ -120,6 +175,10 @@ export default function EmployerSetupPage() {
       if (!user) throw new Error('로그인이 필요합니다.');
       
       await updateEmployerInfo(user.uid, companyData);
+      
+      // 사용자 데이터 새로고침하여 hasCompletedSetup 상태 업데이트
+      await refreshUserData();
+      
       router.push('/employer-dashboard');
     } catch (error: any) {
       setError(error.message);
@@ -128,7 +187,45 @@ export default function EmployerSetupPage() {
     }
   };
 
+  const validateRequiredFields = () => {
+    const requiredFields = [
+      { field: 'name', label: '기업명', ref: nameRef },
+      { field: 'ceoName', label: '대표이사명', ref: ceoNameRef },
+      { field: 'industry', label: '업종', ref: industryRef },
+      { field: 'size', label: '기업 규모', ref: sizeRef },
+      { field: 'location', label: '기업 주소', ref: locationRef },
+      { field: 'description', label: '기업 소개', ref: descriptionRef },
+      { field: 'contactName', label: '담당자명', ref: contactNameRef },
+      { field: 'contactPhone', label: '담당자 연락처', ref: contactPhoneRef }
+    ];
+
+    const emptyFields = requiredFields.filter(({ field }) => !companyData[field as keyof CompanyData]);
+    
+    if (emptyFields.length > 0) {
+      const fieldNames = emptyFields.map(({ label }) => label).join(', ');
+      setError(`다음 필수 항목을 입력해주세요: ${fieldNames}`);
+      
+      // 첫 번째 빈 필드로 스크롤
+      const firstEmptyField = emptyFields[0];
+      if (firstEmptyField.ref.current) {
+        firstEmptyField.ref.current.scrollIntoView({ 
+          behavior: 'smooth', 
+          block: 'center' 
+        });
+        firstEmptyField.ref.current.focus();
+      }
+      
+      return false;
+    }
+    
+    setError('');
+    return true;
+  };
+
   const nextStep = () => {
+    if (step === 1 && !validateRequiredFields()) {
+      return;
+    }
     if (step < 3) setStep(step + 1);
   };
 
@@ -181,6 +278,7 @@ export default function EmployerSetupPage() {
                     기업명 *
                   </label>
                   <input
+                    ref={nameRef}
                     type="text"
                     required
                     value={companyData.name}
@@ -195,6 +293,7 @@ export default function EmployerSetupPage() {
                     대표이사명 *
                   </label>
                   <input
+                    ref={ceoNameRef}
                     type="text"
                     required
                     value={companyData.ceoName}
@@ -210,6 +309,7 @@ export default function EmployerSetupPage() {
                     업종 *
                   </label>
                   <select
+                    ref={industryRef}
                     required
                     value={companyData.industry}
                     onChange={(e) => handleInputChange('industry', e.target.value)}
@@ -231,11 +331,10 @@ export default function EmployerSetupPage() {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    세부 업종 *
+                    세부 업종
                   </label>
                   <input
                     type="text"
-                    required
                     value={companyData.businessType}
                     onChange={(e) => handleInputChange('businessType', e.target.value)}
                     className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -250,6 +349,7 @@ export default function EmployerSetupPage() {
                     기업 규모 *
                   </label>
                   <select
+                    ref={sizeRef}
                     required
                     value={companyData.size}
                     onChange={(e) => handleInputChange('size', e.target.value)}
@@ -284,6 +384,7 @@ export default function EmployerSetupPage() {
                   기업 주소 *
                 </label>
                 <input
+                  ref={locationRef}
                   type="text"
                   required
                   value={companyData.location}
@@ -298,6 +399,7 @@ export default function EmployerSetupPage() {
                   기업 소개 *
                 </label>
                 <textarea
+                  ref={descriptionRef}
                   required
                   rows={4}
                   value={companyData.description}
@@ -305,6 +407,55 @@ export default function EmployerSetupPage() {
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   placeholder="기업의 비전, 미션, 주요 사업 분야 등을 자유롭게 작성해주세요."
                 />
+              </div>
+
+              {/* 담당자 정보 섹션 추가 */}
+              <div className="border-t pt-6 mt-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">담당자 정보</h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      담당자명 *
+                    </label>
+                    <input
+                      ref={contactNameRef}
+                      type="text"
+                      required
+                      value={companyData.contactName}
+                      onChange={(e) => handleInputChange('contactName', e.target.value)}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      placeholder="김담당"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      담당자 직급
+                    </label>
+                    <input
+                      type="text"
+                      value={companyData.contactPosition}
+                      onChange={(e) => handleInputChange('contactPosition', e.target.value)}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      placeholder="인사팀 과장"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      담당자 전화번호 *
+                    </label>
+                    <input
+                      ref={contactPhoneRef}
+                      type="tel"
+                      required
+                      value={companyData.contactPhone}
+                      onChange={(e) => handleInputChange('contactPhone', e.target.value)}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      placeholder="010-1234-5678"
+                    />
+                  </div>
+                </div>
               </div>
             </div>
           )}
@@ -468,11 +619,33 @@ export default function EmployerSetupPage() {
                     <span className="text-gray-600">위치:</span>
                     <span className="ml-2 text-gray-900 font-medium">{companyData.location}</span>
                   </div>
+                  <div>
+                    <span className="text-gray-600">웹사이트:</span>
+                    <span className="ml-2 text-gray-900 font-medium">{companyData.website || '없음'}</span>
+                  </div>
                 </div>
                 
                 <div className="pt-4">
                   <span className="text-gray-600">기업 소개:</span>
                   <p className="mt-2 text-gray-900">{companyData.description}</p>
+                </div>
+
+                <div className="pt-4 border-t">
+                  <h4 className="font-medium text-gray-900 mb-2">담당자 정보</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                    <div>
+                      <span className="text-gray-600">담당자명:</span>
+                      <span className="ml-2 text-gray-900 font-medium">{companyData.contactName}</span>
+                    </div>
+                    <div>
+                      <span className="text-gray-600">직급:</span>
+                      <span className="ml-2 text-gray-900 font-medium">{companyData.contactPosition}</span>
+                    </div>
+                    <div>
+                      <span className="text-gray-600">전화번호:</span>
+                      <span className="ml-2 text-gray-900 font-medium">{companyData.contactPhone}</span>
+                    </div>
+                  </div>
                 </div>
               </div>
 

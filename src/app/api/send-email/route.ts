@@ -169,8 +169,8 @@ export async function POST(request: NextRequest) {
     }
 
     // 실제 이메일 발송
-    if (process.env.SENDGRID_API_KEY && process.env.DEV_MODE !== 'true') {
-      // 프로덕션 환경에서 실제 SendGrid로 발송
+    if (process.env.SENDGRID_API_KEY) {
+      // SendGrid가 설정된 경우 실제 발송
       const msg = {
         to: to,
         cc: cc,
@@ -179,16 +179,27 @@ export async function POST(request: NextRequest) {
         html: emailHtml
       };
 
-      await sgMail.send(msg);
-      console.log('Email sent successfully via SendGrid');
+      try {
+        await sgMail.send(msg);
+        console.log('✅ Email sent successfully via SendGrid');
+      } catch (error) {
+        console.error('❌ SendGrid email sending failed:', error);
+        // SendGrid 실패 시에도 콘솔에 출력
+        console.log('=== EMAIL PREVIEW (SendGrid Failed) ===');
+        console.log('To:', to);
+        console.log('CC:', cc);
+        console.log('Subject:', subject);
+        console.log('HTML Content:', emailHtml);
+        console.log('=========================================');
+      }
     } else {
-      // 개발 환경에서는 콘솔에 출력
-      console.log('=== EMAIL PREVIEW (DEV MODE) ===');
+      // SendGrid가 설정되지 않은 경우 콘솔에 출력
+      console.log('=== EMAIL PREVIEW (DEV MODE - No SendGrid) ===');
       console.log('To:', to);
       console.log('CC:', cc);
       console.log('Subject:', subject);
       console.log('HTML Content:', emailHtml);
-      console.log('================================');
+      console.log('===============================================');
     }
 
     return NextResponse.json({ 
