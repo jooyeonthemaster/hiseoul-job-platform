@@ -101,7 +101,9 @@ export default function HomePage() {
     {
       title: '이력서 & 포트폴리오',
       description: '이력서와 자소서, 개별 포트폴리오까지 한눈에 확인 가능합니다',
-      icon: BriefcaseIcon,
+      icon: ({ className }: { className?: string }) => (
+        <BriefcaseIcon className={className} />
+      ),
     },
   ];
 
@@ -729,11 +731,7 @@ export default function HomePage() {
                   {/* Enhanced Icon Design */}
                   <div className="relative mb-10">
                     <div className="w-28 h-28 bg-gradient-to-br from-blue-600 via-blue-500 to-indigo-600 rounded-3xl flex items-center justify-center mx-auto shadow-[0_12px_40px_rgba(59,130,246,0.3)] group-hover:shadow-[0_20px_60px_rgba(59,130,246,0.4)] transition-all duration-500 group-hover:scale-110 group-hover:rotate-3">
-                      {typeof feature.icon === 'function' ? (
-                        <feature.icon className="w-14 h-14 text-white" />
-                      ) : (
-                        <feature.icon className="w-14 h-14 text-white" />
-                      )}
+                      <feature.icon className="w-14 h-14 text-white" />
                     </div>
                     <div className="absolute -top-2 -right-2 w-8 h-8 bg-gradient-to-r from-yellow-400 to-orange-400 rounded-full flex items-center justify-center text-white text-sm font-bold shadow-lg">
                       {index + 1}
