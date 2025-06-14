@@ -209,7 +209,7 @@ export default function ContactJobSeeker() {
         },
         body: JSON.stringify({
           to: portfolio.email,
-          cc: 'nadr.jooyeon@gmail.com', // 요청하신 이메일 주소로 변경
+          cc: 'nadr.jooyeon@gmail.com, tvs@techventure.co.kr', // 요청하신 이메일 주소로 변경
           subject: `[HiSeoul] ${companyInfo.name}에서 채용 제안이 도착했습니다`,
           type: 'inquiry',
           jobSeekerName: portfolio.name,

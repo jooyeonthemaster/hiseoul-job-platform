@@ -25,7 +25,7 @@ import {
 import TutorialOverlay from '@/components/TutorialOverlay';
 
 export default function HomePage() {
-  const [activeTab, setActiveTab] = useState<'jobseeker' | 'employer'>('jobseeker');
+  const [activeTab, setActiveTab] = useState<'jobseeker' | 'employer'>('employer');
   const { isAuthenticated, user, userData, loading } = useAuth();
   const router = useRouter();
   const [userRole, setUserRole] = useState<'jobseeker' | 'employer' | 'admin' | null>(null);
@@ -81,19 +81,27 @@ export default function HomePage() {
 
   const features = [
     {
-      title: '포트폴리오 기반 매칭',
-      description: '실무 경험과 프로젝트 결과물을 통한 정확한 인재 매칭',
+      title: '자기소개 영상',
+      description: '교육생 1분 자기소개 영상으로 인재의 역량과 개성을 확인하세요',
+      icon: ({ className }: { className?: string }) => (
+        <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+        </svg>
+      ),
+    },
+    {
+      title: '다국적 인재',
+      description: '귀사에서 필요로 하는 다양한 국가의 우수 인재들이 참가합니다',
+      icon: ({ className }: { className?: string }) => (
+        <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+      ),
+    },
+    {
+      title: '이력서 & 포트폴리오',
+      description: '이력서와 자소서, 개별 포트폴리오까지 한눈에 확인 가능합니다',
       icon: BriefcaseIcon,
-    },
-    {
-      title: '실시간 채용 프로세스',
-      description: '온라인 지원부터 면접까지 streamlined 채용 과정',
-      icon: ChartBarIcon,
-    },
-    {
-      title: '서울시 인증 기업',
-      description: '하이서울브랜드 기업들과의 검증된 채용 기회',
-      icon: CheckCircleIcon,
     },
   ];
 
@@ -260,12 +268,15 @@ export default function HomePage() {
                 스마트 프로세스
               </span>
             </h2>
+            {/* 
             <p className="text-2xl text-gray-600 max-w-4xl mx-auto leading-relaxed mb-12">
               AI 기반 매칭 알고리즘과 전문적인 검증 시스템으로<br />
               <span className="text-blue-600 font-semibold">평균 85% 매칭 성공률</span>을 달성하는 혁신적인 프로세스
             </p>
+            */}
             
             {/* Success Metrics */}
+            {/*
             <div className="grid grid-cols-3 gap-8 max-w-3xl mx-auto mb-16">
               <div className="text-center">
                 <div className="text-3xl font-bold text-blue-600 mb-2">85%</div>
@@ -280,27 +291,12 @@ export default function HomePage() {
                 <div className="text-gray-600 text-sm">성공 사례</div>
               </div>
             </div>
+            */}
           </div>
 
           {/* Enhanced Tab Navigation */}
           <div className="flex justify-center mb-24">
             <div className="bg-white/90 backdrop-blur-xl rounded-3xl p-2 shadow-[0_20px_60px_rgba(0,0,0,0.08)] border border-white/40">
-              <button
-                onClick={() => setActiveTab('jobseeker')}
-                className={`relative px-12 py-6 rounded-2xl font-bold text-lg transition-all duration-500 group ${
-                  activeTab === 'jobseeker'
-                    ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-[0_12px_32px_rgba(59,130,246,0.4)] scale-105'
-                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50/80'
-                }`}
-              >
-                {activeTab === 'jobseeker' && (
-                  <div className="absolute inset-0 bg-gradient-to-r from-blue-400 to-indigo-400 rounded-2xl blur opacity-50 group-hover:opacity-75 transition-opacity duration-500"></div>
-                )}
-                <div className="relative flex items-center space-x-3">
-                  <UserGroupIcon className="w-6 h-6" />
-                  <span>구직자 여정</span>
-                </div>
-              </button>
               <button
                 onClick={() => setActiveTab('employer')}
                 className={`relative px-12 py-6 rounded-2xl font-bold text-lg transition-all duration-500 group ${
@@ -317,159 +313,189 @@ export default function HomePage() {
                   <span>기업 여정</span>
                 </div>
               </button>
+              <button
+                onClick={() => setActiveTab('jobseeker')}
+                className={`relative px-12 py-6 rounded-2xl font-bold text-lg transition-all duration-500 group ${
+                  activeTab === 'jobseeker'
+                    ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-[0_12px_32px_rgba(59,130,246,0.4)] scale-105'
+                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50/80'
+                }`}
+              >
+                {activeTab === 'jobseeker' && (
+                  <div className="absolute inset-0 bg-gradient-to-r from-blue-400 to-indigo-400 rounded-2xl blur opacity-50 group-hover:opacity-75 transition-opacity duration-500"></div>
+                )}
+                <div className="relative flex items-center space-x-3">
+                  <UserGroupIcon className="w-6 h-6" />
+                  <span>구직자 여정</span>
+                </div>
+              </button>
             </div>
           </div>
 
           {/* Enhanced Process Flow */}
           <div className="relative">
             {/* Progressive Connection Line */}
-            <div className="hidden lg:block absolute top-20 left-1/2 transform -translate-x-1/2 w-full max-w-5xl">
+            <div className="hidden lg:block absolute top-20 left-1/2 transform -translate-x-1/2 w-full max-w-6xl">
               <div className="relative h-1 bg-gray-200 rounded-full">
-                <div className="absolute inset-0 bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-500 rounded-full"></div>
-                <div className="absolute inset-0 bg-gradient-to-r from-blue-400 via-indigo-400 to-purple-400 rounded-full animate-pulse opacity-60"></div>
+                <div className="absolute inset-0 bg-gradient-to-r from-blue-500 via-indigo-500 via-purple-500 to-emerald-500 rounded-full"></div>
+                <div className="absolute inset-0 bg-gradient-to-r from-blue-400 via-indigo-400 via-purple-400 to-emerald-400 rounded-full animate-pulse opacity-60"></div>
               </div>
               {/* Progress Dots */}
               <div className="absolute -top-2 left-0 w-5 h-5 bg-blue-500 rounded-full border-4 border-white shadow-lg"></div>
-              <div className="absolute -top-2 left-1/2 transform -translate-x-1/2 w-5 h-5 bg-indigo-500 rounded-full border-4 border-white shadow-lg"></div>
-              <div className="absolute -top-2 right-0 w-5 h-5 bg-purple-500 rounded-full border-4 border-white shadow-lg"></div>
+              <div className="absolute -top-2 left-1/3 transform -translate-x-1/2 w-5 h-5 bg-indigo-500 rounded-full border-4 border-white shadow-lg"></div>
+              <div className="absolute -top-2 left-2/3 transform -translate-x-1/2 w-5 h-5 bg-purple-500 rounded-full border-4 border-white shadow-lg"></div>
+              <div className="absolute -top-2 right-0 w-5 h-5 bg-emerald-500 rounded-full border-4 border-white shadow-lg"></div>
             </div>
             
             {/* Process Duration Indicator */}
+            {/*
             <div className="text-center mb-12">
               <div className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-green-100 to-emerald-100 border border-green-200 rounded-full text-green-800 font-semibold text-sm shadow-sm">
                 <ClockIcon className="w-4 h-4 mr-2" />
-                전체 프로세스: {activeTab === 'jobseeker' ? '평균 7-10일' : '평균 5-7일'}
+                전체 프로세스: {activeTab === 'employer' ? '평균 5-7일' : '평균 7-10일'}
               </div>
             </div>
+            */}
             
-            <div className="grid lg:grid-cols-3 gap-16 relative">
-              {activeTab === 'jobseeker' ? (
+            <div className="grid lg:grid-cols-4 gap-16 relative">
+              {activeTab === 'employer' ? (
                 <>
                   <div className="group relative">
-                    <div className="absolute inset-0 bg-gradient-to-br from-blue-500/10 to-indigo-500/10 rounded-3xl transform rotate-6 group-hover:rotate-3 transition-transform duration-500"></div>
-                    <div className="relative bg-white/95 backdrop-blur-xl border border-white/40 rounded-3xl p-12 text-center shadow-[0_20px_60px_rgba(0,0,0,0.08)] group-hover:shadow-[0_30px_80px_rgba(0,0,0,0.12)] transition-all duration-500 hover:-translate-y-4">
-                      {/* Step Number Badge */}
+                    <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/10 to-purple-500/10 rounded-3xl transform rotate-6 group-hover:rotate-3 transition-transform duration-500"></div>
+                    <div className="relative bg-white/95 backdrop-blur-xl border border-white/40 rounded-3xl p-10 text-center shadow-[0_20px_60px_rgba(0,0,0,0.08)] group-hover:shadow-[0_30px_80px_rgba(0,0,0,0.12)] transition-all duration-500 hover:-translate-y-4">
                       <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
-                        <div className="w-12 h-12 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-2xl flex items-center justify-center text-white font-bold text-lg shadow-lg">
+                        <div className="w-12 h-12 bg-gradient-to-br from-indigo-600 to-purple-600 rounded-2xl flex items-center justify-center text-white font-bold text-lg shadow-lg">
                           01
                         </div>
                       </div>
                       
-                      {/* Icon Container */}
-                      <div className="w-32 h-32 bg-gradient-to-br from-blue-600 via-blue-500 to-indigo-600 rounded-3xl flex items-center justify-center mx-auto mb-8 shadow-[0_20px_40px_rgba(59,130,246,0.3)] group-hover:shadow-[0_25px_50px_rgba(59,130,246,0.4)] transition-all duration-500 group-hover:scale-110 group-hover:rotate-3">
-                        <BriefcaseIcon className="w-16 h-16 text-white" />
+                      <div className="w-24 h-24 bg-gradient-to-br from-indigo-600 via-indigo-500 to-purple-600 rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-[0_20px_40px_rgba(99,102,241,0.3)] group-hover:shadow-[0_25px_50px_rgba(99,102,241,0.4)] transition-all duration-500 group-hover:scale-110 group-hover:rotate-3">
+                        <svg className="w-12 h-12 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                        </svg>
                       </div>
                       
-                      <h3 className="text-2xl font-bold mb-6 text-gray-900 group-hover:text-blue-700 transition-colors duration-300">
-                        포트폴리오 작성
+                      <h3 className="text-xl font-bold mb-4 text-gray-900 group-hover:text-indigo-700 transition-colors duration-300">
+                        자기소개 영상 확인
                       </h3>
-                      <p className="text-gray-600 text-base leading-relaxed mb-8">
-                        전문적인 포트폴리오 템플릿을 활용해<br />
-                        당신의 역량과 프로젝트를 효과적으로 어필하세요
+                      <p className="text-gray-600 text-sm leading-relaxed mb-6">
+                        참가자들의 1분 자기소개 영상을 확인하고<br />
+                        귀사에 맞는 인재들을 선별하세요
                       </p>
                       
-                      {/* Key Benefits */}
-                      <div className="space-y-3 mb-8">
-                        <div className="flex items-center justify-center text-sm text-blue-600">
-                          <CheckCircleIcon className="w-4 h-4 mr-2" />
-                          <span>AI 기반 포트폴리오 최적화</span>
+                      <div className="space-y-2 mb-6">
+                        <div className="flex items-center justify-center text-xs text-indigo-600">
+                          <CheckCircleIcon className="w-3 h-3 mr-1" />
+                          <span>전체 영상 한번에 확인</span>
                         </div>
-                        <div className="flex items-center justify-center text-sm text-blue-600">
-                          <CheckCircleIcon className="w-4 h-4 mr-2" />
-                          <span>업계별 맞춤 템플릿 제공</span>
+                        <div className="flex items-center justify-center text-xs text-indigo-600">
+                          <CheckCircleIcon className="w-3 h-3 mr-1" />
+                          <span>인재 스크리닝 완료</span>
                         </div>
-                      </div>
-                      
-                      {/* Duration Badge */}
-                      <div className="inline-flex items-center px-4 py-2 bg-blue-50 border border-blue-200 rounded-full text-blue-700 font-medium text-sm">
-                        <ClockIcon className="w-4 h-4 mr-1" />
-                        소요시간: 2-3일
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div className="group relative">
-                    <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/10 to-purple-500/10 rounded-3xl transform rotate-6 group-hover:rotate-3 transition-transform duration-500"></div>
-                    <div className="relative bg-white/95 backdrop-blur-xl border border-white/40 rounded-3xl p-12 text-center shadow-[0_20px_60px_rgba(0,0,0,0.08)] group-hover:shadow-[0_30px_80px_rgba(0,0,0,0.12)] transition-all duration-500 hover:-translate-y-4">
-                      {/* Step Number Badge */}
-                      <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
-                        <div className="w-12 h-12 bg-gradient-to-br from-indigo-600 to-purple-600 rounded-2xl flex items-center justify-center text-white font-bold text-lg shadow-lg">
-                          02
-                        </div>
-                      </div>
-                      
-                      {/* Icon Container */}
-                      <div className="w-32 h-32 bg-gradient-to-br from-indigo-600 via-indigo-500 to-purple-600 rounded-3xl flex items-center justify-center mx-auto mb-8 shadow-[0_20px_40px_rgba(99,102,241,0.3)] group-hover:shadow-[0_25px_50px_rgba(99,102,241,0.4)] transition-all duration-500 group-hover:scale-110 group-hover:rotate-3">
-                        <ChartBarIcon className="w-16 h-16 text-white" />
-                      </div>
-                      
-                      <h3 className="text-2xl font-bold mb-6 text-gray-900 group-hover:text-indigo-700 transition-colors duration-300">
-                        스마트 매칭
-                      </h3>
-                      <p className="text-gray-600 text-base leading-relaxed mb-8">
-                        AI 알고리즘이 당신의 스킬, 경험, 선호도를<br />
-                        분석하여 최적의 기업을 매칭해드립니다
-                      </p>
-                      
-                      {/* Key Benefits */}
-                      <div className="space-y-3 mb-8">
-                        <div className="flex items-center justify-center text-sm text-indigo-600">
-                          <CheckCircleIcon className="w-4 h-4 mr-2" />
-                          <span>95% 매칭 정확도</span>
-                        </div>
-                        <div className="flex items-center justify-center text-sm text-indigo-600">
-                          <CheckCircleIcon className="w-4 h-4 mr-2" />
-                          <span>실시간 추천 알림</span>
-                        </div>
-                      </div>
-                      
-                      {/* Duration Badge */}
-                      <div className="inline-flex items-center px-4 py-2 bg-indigo-50 border border-indigo-200 rounded-full text-indigo-700 font-medium text-sm">
-                        <ClockIcon className="w-4 h-4 mr-1" />
-                        소요시간: 1-2일
                       </div>
                     </div>
                   </div>
                   
                   <div className="group relative">
                     <div className="absolute inset-0 bg-gradient-to-br from-purple-500/10 to-pink-500/10 rounded-3xl transform rotate-6 group-hover:rotate-3 transition-transform duration-500"></div>
-                    <div className="relative bg-white/95 backdrop-blur-xl border border-white/40 rounded-3xl p-12 text-center shadow-[0_20px_60px_rgba(0,0,0,0.08)] group-hover:shadow-[0_30px_80px_rgba(0,0,0,0.12)] transition-all duration-500 hover:-translate-y-4">
-                      {/* Step Number Badge */}
+                    <div className="relative bg-white/95 backdrop-blur-xl border border-white/40 rounded-3xl p-10 text-center shadow-[0_20px_60px_rgba(0,0,0,0.08)] group-hover:shadow-[0_30px_80px_rgba(0,0,0,0.12)] transition-all duration-500 hover:-translate-y-4">
                       <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
                         <div className="w-12 h-12 bg-gradient-to-br from-purple-600 to-pink-600 rounded-2xl flex items-center justify-center text-white font-bold text-lg shadow-lg">
+                          02
+                        </div>
+                      </div>
+                      
+                      <div className="w-24 h-24 bg-gradient-to-br from-purple-600 via-purple-500 to-pink-600 rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-[0_20px_40px_rgba(147,51,234,0.3)] group-hover:shadow-[0_25px_50px_rgba(147,51,234,0.4)] transition-all duration-500 group-hover:scale-110 group-hover:rotate-3">
+                        <BriefcaseIcon className="w-12 h-12 text-white" />
+                      </div>
+                      
+                      <h3 className="text-xl font-bold mb-4 text-gray-900 group-hover:text-purple-700 transition-colors duration-300">
+                        포트폴리오 확인
+                      </h3>
+                      <p className="text-gray-600 text-sm leading-relaxed mb-6">
+                        상단의 포트폴리오 버튼을 눌러서<br />
+                        지원자의 상세 포트폴리오를 확인하세요
+                      </p>
+                      
+                      <div className="space-y-2 mb-6">
+                        <div className="flex items-center justify-center text-xs text-purple-600">
+                          <CheckCircleIcon className="w-3 h-3 mr-1" />
+                          <span>실무 프로젝트 확인</span>
+                        </div>
+                        <div className="flex items-center justify-center text-xs text-purple-600">
+                          <CheckCircleIcon className="w-3 h-3 mr-1" />
+                          <span>스킬셋 검증</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="group relative">
+                    <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/10 to-teal-500/10 rounded-3xl transform rotate-6 group-hover:rotate-3 transition-transform duration-500"></div>
+                    <div className="relative bg-white/95 backdrop-blur-xl border border-white/40 rounded-3xl p-10 text-center shadow-[0_20px_60px_rgba(0,0,0,0.08)] group-hover:shadow-[0_30px_80px_rgba(0,0,0,0.12)] transition-all duration-500 hover:-translate-y-4">
+                      <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
+                        <div className="w-12 h-12 bg-gradient-to-br from-emerald-600 to-teal-600 rounded-2xl flex items-center justify-center text-white font-bold text-lg shadow-lg">
                           03
                         </div>
                       </div>
                       
-                      {/* Icon Container */}
-                      <div className="w-32 h-32 bg-gradient-to-br from-purple-600 via-purple-500 to-pink-600 rounded-3xl flex items-center justify-center mx-auto mb-8 shadow-[0_20px_40px_rgba(147,51,234,0.3)] group-hover:shadow-[0_25px_50px_rgba(147,51,234,0.4)] transition-all duration-500 group-hover:scale-110 group-hover:rotate-3">
-                        <ArrowRightIcon className="w-16 h-16 text-white" />
+                      <div className="w-24 h-24 bg-gradient-to-br from-emerald-600 via-emerald-500 to-teal-600 rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-[0_20px_40px_rgba(16,185,129,0.3)] group-hover:shadow-[0_25px_50px_rgba(16,185,129,0.4)] transition-all duration-500 group-hover:scale-110 group-hover:rotate-3">
+                        <svg className="w-12 h-12 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
                       </div>
                       
-                      <h3 className="text-2xl font-bold mb-6 text-gray-900 group-hover:text-purple-700 transition-colors duration-300">
-                        원클릭 지원
+                      <h3 className="text-xl font-bold mb-4 text-gray-900 group-hover:text-emerald-700 transition-colors duration-300">
+                        채용 신청서 작성
                       </h3>
-                      <p className="text-gray-600 text-base leading-relaxed mb-8">
-                        관심 기업에 원클릭으로 지원하고<br />
-                        실시간으로 지원 현황을 추적하세요
+                      <p className="text-gray-600 text-sm leading-relaxed mb-6">
+                        선별된 인재에게 채용 신청서를<br />
+                        작성하여 전송하세요
                       </p>
                       
-                      {/* Key Benefits */}
-                      <div className="space-y-3 mb-8">
-                        <div className="flex items-center justify-center text-sm text-purple-600">
-                          <CheckCircleIcon className="w-4 h-4 mr-2" />
-                          <span>즉시 지원 확인</span>
+                      <div className="space-y-2 mb-6">
+                        <div className="flex items-center justify-center text-xs text-emerald-600">
+                          <CheckCircleIcon className="w-3 h-3 mr-1" />
+                          <span>간편한 신청서 양식</span>
                         </div>
-                        <div className="flex items-center justify-center text-sm text-purple-600">
-                          <CheckCircleIcon className="w-4 h-4 mr-2" />
-                          <span>진행상황 실시간 알림</span>
+                        <div className="flex items-center justify-center text-xs text-emerald-600">
+                          <CheckCircleIcon className="w-3 h-3 mr-1" />
+                          <span>마감: 6월 19일</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="group relative">
+                    <div className="absolute inset-0 bg-gradient-to-br from-blue-500/10 to-cyan-500/10 rounded-3xl transform rotate-6 group-hover:rotate-3 transition-transform duration-500"></div>
+                    <div className="relative bg-white/95 backdrop-blur-xl border border-white/40 rounded-3xl p-10 text-center shadow-[0_20px_60px_rgba(0,0,0,0.08)] group-hover:shadow-[0_30px_80px_rgba(0,0,0,0.12)] transition-all duration-500 hover:-translate-y-4">
+                      <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
+                        <div className="w-12 h-12 bg-gradient-to-br from-blue-600 to-cyan-600 rounded-2xl flex items-center justify-center text-white font-bold text-lg shadow-lg">
+                          04
                         </div>
                       </div>
                       
-                      {/* Duration Badge */}
-                      <div className="inline-flex items-center px-4 py-2 bg-purple-50 border border-purple-200 rounded-full text-purple-700 font-medium text-sm">
-                        <ClockIcon className="w-4 h-4 mr-1" />
-                        소요시간: 3-5일
+                      <div className="w-24 h-24 bg-gradient-to-br from-blue-600 via-blue-500 to-cyan-600 rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-[0_20px_40px_rgba(59,130,246,0.3)] group-hover:shadow-[0_25px_50px_rgba(59,130,246,0.4)] transition-all duration-500 group-hover:scale-110 group-hover:rotate-3">
+                        <UserGroupIcon className="w-12 h-12 text-white" />
+                      </div>
+                      
+                      <h3 className="text-xl font-bold mb-4 text-gray-900 group-hover:text-blue-700 transition-colors duration-300">
+                        인턴 매칭
+                      </h3>
+                      <p className="text-gray-600 text-sm leading-relaxed mb-6">
+                        6월 20일에 기업별로<br />
+                        면접 안내를 드립니다
+                      </p>
+                      
+                      <div className="space-y-2 mb-6">
+                        <div className="flex items-center justify-center text-xs text-blue-600">
+                          <CheckCircleIcon className="w-3 h-3 mr-1" />
+                          <span>면접 일정 자동 배정</span>
+                        </div>
+                        <div className="flex items-center justify-center text-xs text-blue-600">
+                          <CheckCircleIcon className="w-3 h-3 mr-1" />
+                          <span>최종 매칭 완료</span>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -477,118 +503,139 @@ export default function HomePage() {
               ) : (
                 <>
                   <div className="group relative">
-                    <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/10 to-purple-500/10 rounded-3xl transform rotate-6 group-hover:rotate-3 transition-transform duration-500"></div>
-                    <div className="relative bg-white/95 backdrop-blur-xl border border-white/40 rounded-3xl p-12 text-center shadow-[0_20px_60px_rgba(0,0,0,0.08)] group-hover:shadow-[0_30px_80px_rgba(0,0,0,0.12)] transition-all duration-500 hover:-translate-y-4">
+                    <div className="absolute inset-0 bg-gradient-to-br from-blue-500/10 to-indigo-500/10 rounded-3xl transform rotate-6 group-hover:rotate-3 transition-transform duration-500"></div>
+                    <div className="relative bg-white/95 backdrop-blur-xl border border-white/40 rounded-3xl p-10 text-center shadow-[0_20px_60px_rgba(0,0,0,0.08)] group-hover:shadow-[0_30px_80px_rgba(0,0,0,0.12)] transition-all duration-500 hover:-translate-y-4">
                       <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
-                        <div className="w-12 h-12 bg-gradient-to-br from-indigo-600 to-purple-600 rounded-2xl flex items-center justify-center text-white font-bold text-lg shadow-lg">
+                        <div className="w-12 h-12 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-2xl flex items-center justify-center text-white font-bold text-lg shadow-lg">
                           01
                         </div>
                       </div>
                       
-                      <div className="w-32 h-32 bg-gradient-to-br from-indigo-600 via-indigo-500 to-purple-600 rounded-3xl flex items-center justify-center mx-auto mb-8 shadow-[0_20px_40px_rgba(99,102,241,0.3)] group-hover:shadow-[0_25px_50px_rgba(99,102,241,0.4)] transition-all duration-500 group-hover:scale-110 group-hover:rotate-3">
-                        <BuildingOfficeIcon className="w-16 h-16 text-white" />
+                      <div className="w-24 h-24 bg-gradient-to-br from-blue-600 via-blue-500 to-indigo-600 rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-[0_20px_40px_rgba(59,130,246,0.3)] group-hover:shadow-[0_25px_50px_rgba(59,130,246,0.4)] transition-all duration-500 group-hover:scale-110 group-hover:rotate-3">
+                        <BriefcaseIcon className="w-12 h-12 text-white" />
                       </div>
                       
-                      <h3 className="text-2xl font-bold mb-6 text-gray-900 group-hover:text-indigo-700 transition-colors duration-300">
-                        기업 프로필 등록
+                      <h3 className="text-xl font-bold mb-4 text-gray-900 group-hover:text-blue-700 transition-colors duration-300">
+                        포트폴리오 & 영상 제작
                       </h3>
-                      <p className="text-gray-600 text-base leading-relaxed mb-8">
-                        하이서울브랜드 기업 인증과 함께<br />
-                        상세한 기업 정보를 등록하세요
+                      <p className="text-gray-600 text-sm leading-relaxed mb-6">
+                        전문적인 포트폴리오와<br />
+                        1분 자기소개 영상을 제작하세요
                       </p>
                       
-                      <div className="space-y-3 mb-8">
-                        <div className="flex items-center justify-center text-sm text-indigo-600">
-                          <CheckCircleIcon className="w-4 h-4 mr-2" />
-                          <span>서울시 공식 인증</span>
+                      <div className="space-y-2 mb-6">
+                        <div className="flex items-center justify-center text-xs text-blue-600">
+                          <CheckCircleIcon className="w-3 h-3 mr-1" />
+                          <span>포트폴리오 템플릿 제공</span>
                         </div>
-                        <div className="flex items-center justify-center text-sm text-indigo-600">
-                          <CheckCircleIcon className="w-4 h-4 mr-2" />
-                          <span>전담 컨설턴트 배정</span>
+                        <div className="flex items-center justify-center text-xs text-blue-600">
+                          <CheckCircleIcon className="w-3 h-3 mr-1" />
+                          <span>영상 가이드라인 제공</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="group relative">
+                    <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/10 to-purple-500/10 rounded-3xl transform rotate-6 group-hover:rotate-3 transition-transform duration-500"></div>
+                    <div className="relative bg-white/95 backdrop-blur-xl border border-white/40 rounded-3xl p-10 text-center shadow-[0_20px_60px_rgba(0,0,0,0.08)] group-hover:shadow-[0_30px_80px_rgba(0,0,0,0.12)] transition-all duration-500 hover:-translate-y-4">
+                      <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
+                        <div className="w-12 h-12 bg-gradient-to-br from-indigo-600 to-purple-600 rounded-2xl flex items-center justify-center text-white font-bold text-lg shadow-lg">
+                          02
                         </div>
                       </div>
                       
-                      <div className="inline-flex items-center px-4 py-2 bg-indigo-50 border border-indigo-200 rounded-full text-indigo-700 font-medium text-sm">
-                        <ClockIcon className="w-4 h-4 mr-1" />
-                        소요시간: 1-2일
+                      <div className="w-24 h-24 bg-gradient-to-br from-indigo-600 via-indigo-500 to-purple-600 rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-[0_20px_40px_rgba(99,102,241,0.3)] group-hover:shadow-[0_25px_50px_rgba(99,102,241,0.4)] transition-all duration-500 group-hover:scale-110 group-hover:rotate-3">
+                        <UserIcon className="w-12 h-12 text-white" />
+                      </div>
+                      
+                      <h3 className="text-xl font-bold mb-4 text-gray-900 group-hover:text-indigo-700 transition-colors duration-300">
+                        플랫폼 등록
+                      </h3>
+                      <p className="text-gray-600 text-sm leading-relaxed mb-6">
+                        플랫폼에 프로필을 등록하고<br />
+                        포트폴리오를 업로드하세요
+                      </p>
+                      
+                      <div className="space-y-2 mb-6">
+                        <div className="flex items-center justify-center text-xs text-indigo-600">
+                          <CheckCircleIcon className="w-3 h-3 mr-1" />
+                          <span>프로필 검증 완료</span>
+                        </div>
+                        <div className="flex items-center justify-center text-xs text-indigo-600">
+                          <CheckCircleIcon className="w-3 h-3 mr-1" />
+                          <span>포트폴리오 공개</span>
+                        </div>
                       </div>
                     </div>
                   </div>
                   
                   <div className="group relative">
                     <div className="absolute inset-0 bg-gradient-to-br from-purple-500/10 to-pink-500/10 rounded-3xl transform rotate-6 group-hover:rotate-3 transition-transform duration-500"></div>
-                    <div className="relative bg-white/95 backdrop-blur-xl border border-white/40 rounded-3xl p-12 text-center shadow-[0_20px_60px_rgba(0,0,0,0.08)] group-hover:shadow-[0_30px_80px_rgba(0,0,0,0.12)] transition-all duration-500 hover:-translate-y-4">
+                    <div className="relative bg-white/95 backdrop-blur-xl border border-white/40 rounded-3xl p-10 text-center shadow-[0_20px_60px_rgba(0,0,0,0.08)] group-hover:shadow-[0_30px_80px_rgba(0,0,0,0.12)] transition-all duration-500 hover:-translate-y-4">
                       <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
                         <div className="w-12 h-12 bg-gradient-to-br from-purple-600 to-pink-600 rounded-2xl flex items-center justify-center text-white font-bold text-lg shadow-lg">
-                          02
+                          03
                         </div>
                       </div>
                       
-                      <div className="w-32 h-32 bg-gradient-to-br from-purple-600 via-purple-500 to-pink-600 rounded-3xl flex items-center justify-center mx-auto mb-8 shadow-[0_20px_40px_rgba(147,51,234,0.3)] group-hover:shadow-[0_25px_50px_rgba(147,51,234,0.4)] transition-all duration-500 group-hover:scale-110 group-hover:rotate-3">
-                        <MagnifyingGlassIcon className="w-16 h-16 text-white" />
+                      <div className="w-24 h-24 bg-gradient-to-br from-purple-600 via-purple-500 to-pink-600 rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-[0_20px_40px_rgba(147,51,234,0.3)] group-hover:shadow-[0_25px_50px_rgba(147,51,234,0.4)] transition-all duration-500 group-hover:scale-110 group-hover:rotate-3">
+                        <ClockIcon className="w-12 h-12 text-white" />
                       </div>
                       
-                      <h3 className="text-2xl font-bold mb-6 text-gray-900 group-hover:text-purple-700 transition-colors duration-300">
-                        인재 발굴
+                      <h3 className="text-xl font-bold mb-4 text-gray-900 group-hover:text-purple-700 transition-colors duration-300">
+                        기업 매칭 대기
                       </h3>
-                      <p className="text-gray-600 text-base leading-relaxed mb-8">
-                        AI 추천 시스템으로 검증된<br />
-                        우수 인재를 빠르게 발굴하세요
+                      <p className="text-gray-600 text-sm leading-relaxed mb-6">
+                        기업들이 포트폴리오를 확인하고<br />
+                        채용 신청을 할 때까지 대기하세요
                       </p>
                       
-                      <div className="space-y-3 mb-8">
-                        <div className="flex items-center justify-center text-sm text-purple-600">
-                          <CheckCircleIcon className="w-4 h-4 mr-2" />
-                          <span>포트폴리오 기반 검색</span>
+                      <div className="space-y-2 mb-6">
+                        <div className="flex items-center justify-center text-xs text-purple-600">
+                          <CheckCircleIcon className="w-3 h-3 mr-1" />
+                          <span>실시간 관심 기업 알림</span>
                         </div>
-                        <div className="flex items-center justify-center text-sm text-purple-600">
-                          <CheckCircleIcon className="w-4 h-4 mr-2" />
-                          <span>스킬 매칭 점수 제공</span>
+                        <div className="flex items-center justify-center text-xs text-purple-600">
+                          <CheckCircleIcon className="w-3 h-3 mr-1" />
+                          <span>매칭 현황 확인</span>
                         </div>
-                      </div>
-                      
-                      <div className="inline-flex items-center px-4 py-2 bg-purple-50 border border-purple-200 rounded-full text-purple-700 font-medium text-sm">
-                        <ClockIcon className="w-4 h-4 mr-1" />
-                        소요시간: 2-3일
                       </div>
                     </div>
                   </div>
                   
                   <div className="group relative">
                     <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/10 to-teal-500/10 rounded-3xl transform rotate-6 group-hover:rotate-3 transition-transform duration-500"></div>
-                    <div className="relative bg-white/95 backdrop-blur-xl border border-white/40 rounded-3xl p-12 text-center shadow-[0_20px_60px_rgba(0,0,0,0.08)] group-hover:shadow-[0_30px_80px_rgba(0,0,0,0.12)] transition-all duration-500 hover:-translate-y-4">
+                    <div className="relative bg-white/95 backdrop-blur-xl border border-white/40 rounded-3xl p-10 text-center shadow-[0_20px_60px_rgba(0,0,0,0.08)] group-hover:shadow-[0_30px_80px_rgba(0,0,0,0.12)] transition-all duration-500 hover:-translate-y-4">
                       <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
                         <div className="w-12 h-12 bg-gradient-to-br from-emerald-600 to-teal-600 rounded-2xl flex items-center justify-center text-white font-bold text-lg shadow-lg">
-                          03
+                          04
                         </div>
                       </div>
                       
-                      <div className="w-32 h-32 bg-gradient-to-br from-emerald-600 via-emerald-500 to-teal-600 rounded-3xl flex items-center justify-center mx-auto mb-8 shadow-[0_20px_40px_rgba(16,185,129,0.3)] group-hover:shadow-[0_25px_50px_rgba(16,185,129,0.4)] transition-all duration-500 group-hover:scale-110 group-hover:rotate-3">
-                        <UserGroupIcon className="w-16 h-16 text-white" />
+                      <div className="w-24 h-24 bg-gradient-to-br from-emerald-600 via-emerald-500 to-teal-600 rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-[0_20px_40px_rgba(16,185,129,0.3)] group-hover:shadow-[0_25px_50px_rgba(16,185,129,0.4)] transition-all duration-500 group-hover:scale-110 group-hover:rotate-3">
+                        <svg className="w-12 h-12 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                        </svg>
                       </div>
                       
-                      <h3 className="text-2xl font-bold mb-6 text-gray-900 group-hover:text-emerald-700 transition-colors duration-300">
-                        스마트 채용
+                      <h3 className="text-xl font-bold mb-4 text-gray-900 group-hover:text-emerald-700 transition-colors duration-300">
+                        면접 & 최종 선발
                       </h3>
-                      <p className="text-gray-600 text-base leading-relaxed mb-8">
-                        통합 채용 관리 시스템으로<br />
-                        효율적인 채용 프로세스를 완성하세요
+                      <p className="text-gray-600 text-sm leading-relaxed mb-6">
+                        6월 20일 면접 안내를 받고<br />
+                        최종 선발 과정을 진행하세요
                       </p>
                       
-                      <div className="space-y-3 mb-8">
-                        <div className="flex items-center justify-center text-sm text-emerald-600">
-                          <CheckCircleIcon className="w-4 h-4 mr-2" />
-                          <span>실시간 지원자 관리</span>
+                      <div className="space-y-2 mb-6">
+                        <div className="flex items-center justify-center text-xs text-emerald-600">
+                          <CheckCircleIcon className="w-3 h-3 mr-1" />
+                          <span>면접 일정 안내</span>
                         </div>
-                        <div className="flex items-center justify-center text-sm text-emerald-600">
-                          <CheckCircleIcon className="w-4 h-4 mr-2" />
-                          <span>자동 스케줄링 시스템</span>
+                        <div className="flex items-center justify-center text-xs text-emerald-600">
+                          <CheckCircleIcon className="w-3 h-3 mr-1" />
+                          <span>인턴십 기회 확정</span>
                         </div>
-                      </div>
-                      
-                      <div className="inline-flex items-center px-4 py-2 bg-emerald-50 border border-emerald-200 rounded-full text-emerald-700 font-medium text-sm">
-                        <ClockIcon className="w-4 h-4 mr-1" />
-                        소요시간: 2-4일
                       </div>
                     </div>
                   </div>
@@ -599,28 +646,28 @@ export default function HomePage() {
             {/* Bottom CTA Section */}
             <div className="mt-24 text-center">
               {!isAuthenticated ? (
-                <Link href="/auth" className="inline-flex items-center px-8 py-4 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-2xl font-bold text-lg shadow-[0_12px_32px_rgba(59,130,246,0.3)] hover:shadow-[0_16px_40px_rgba(59,130,246,0.4)] transition-all duration-300 hover:scale-105">
+                <Link href="/auth" className="inline-flex items-center px-8 py-4 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-2xl font-bold text-lg shadow-[0_12px_32px_rgba(99,102,241,0.3)] hover:shadow-[0_16px_40px_rgba(99,102,241,0.4)] transition-all duration-300 hover:scale-105">
                   <span className="mr-3">
-                    {activeTab === 'jobseeker' ? '무료로 시작하기' : '기업 회원가입'}
+                    {activeTab === 'employer' ? '기업 회원가입' : '무료로 시작하기'}
                   </span>
                   <ArrowRightIcon className="w-5 h-5" />
                 </Link>
               ) : (
                 <Link 
                   href={
-                    userRole === 'jobseeker' 
-                      ? '/profile' 
-                      : userRole === 'employer' 
+                    userRole === 'employer' 
                       ? '/employer-dashboard' 
+                      : userRole === 'jobseeker' 
+                      ? '/profile' 
                       : '/profile'
                   } 
                   className="inline-flex items-center px-8 py-4 bg-gradient-to-r from-emerald-600 to-green-600 text-white rounded-2xl font-bold text-lg shadow-[0_12px_32px_rgba(16,185,129,0.3)] hover:shadow-[0_16px_40px_rgba(16,185,129,0.4)] transition-all duration-300 hover:scale-105"
                 >
                   <span className="mr-3">
-                    {userRole === 'jobseeker' 
-                      ? '포트폴리오 작성하기' 
-                      : userRole === 'employer' 
+                    {userRole === 'employer' 
                       ? '대시보드로 이동' 
+                      : userRole === 'jobseeker' 
+                      ? '포트폴리오 작성하기' 
                       : '마이페이지로 이동'
                     }
                   </span>
@@ -629,14 +676,14 @@ export default function HomePage() {
               )}
               <p className="text-gray-500 text-sm mt-4">
                 {!isAuthenticated ? (
-                  activeTab === 'jobseeker' 
-                    ? '지금 가입하면 포트폴리오 템플릿 무료 제공' 
-                    : '하이서울브랜드 기업 우선 인증 혜택'
+                  activeTab === 'employer' 
+                    ? '하이서울브랜드 기업 우선 인증 혜택' 
+                    : '지금 가입하면 포트폴리오 템플릿 무료 제공'
                 ) : (
-                  userRole === 'jobseeker' 
-                    ? '나만의 포트폴리오를 만들어 취업 기회를 늘려보세요' 
-                    : userRole === 'employer' 
+                  userRole === 'employer' 
                     ? '우수한 인재들을 발굴하고 채용하세요' 
+                    : userRole === 'jobseeker' 
+                    ? '나만의 포트폴리오를 만들어 취업 기회를 늘려보세요' 
                     : '서비스를 최대한 활용해보세요'
                 )}
               </p>
@@ -671,7 +718,7 @@ export default function HomePage() {
             </p>
           </div>
 
-          <div className="grid md:grid-cols-3 gap-8 lg:gap-12">
+          <div className="grid md:grid-cols-3 gap-8 lg:gap-12 mb-24">
             {features.map((feature, index) => (
               <div key={index} className="group relative">
                 {/* Card Background with Enhanced Design */}
@@ -682,7 +729,11 @@ export default function HomePage() {
                   {/* Enhanced Icon Design */}
                   <div className="relative mb-10">
                     <div className="w-28 h-28 bg-gradient-to-br from-blue-600 via-blue-500 to-indigo-600 rounded-3xl flex items-center justify-center mx-auto shadow-[0_12px_40px_rgba(59,130,246,0.3)] group-hover:shadow-[0_20px_60px_rgba(59,130,246,0.4)] transition-all duration-500 group-hover:scale-110 group-hover:rotate-3">
-                      <feature.icon className="w-14 h-14 text-white" />
+                      {typeof feature.icon === 'function' ? (
+                        <feature.icon className="w-14 h-14 text-white" />
+                      ) : (
+                        <feature.icon className="w-14 h-14 text-white" />
+                      )}
                     </div>
                     <div className="absolute -top-2 -right-2 w-8 h-8 bg-gradient-to-r from-yellow-400 to-orange-400 rounded-full flex items-center justify-center text-white text-sm font-bold shadow-lg">
                       {index + 1}
@@ -700,9 +751,9 @@ export default function HomePage() {
                   <div className="flex items-center justify-center space-x-2 opacity-0 group-hover:opacity-100 transition-all duration-500 transform translate-y-4 group-hover:translate-y-0">
                     <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
                     <span className="text-blue-600 font-medium text-sm">
-                      {index === 0 && "95% 매칭 성공률"}
-                      {index === 1 && "평균 3일 내 응답"}
-                      {index === 2 && "450+ 인증 기업"}
+                      {index === 0 && "1분 완성형 영상"}
+                      {index === 1 && "글로벌 인재풀"}
+                      {index === 2 && "통합 문서 관리"}
                     </span>
                     <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
                   </div>
@@ -711,23 +762,257 @@ export default function HomePage() {
             ))}
           </div>
           
-          {/* Statistics Row */}
-          <div className="mt-24 grid grid-cols-2 md:grid-cols-4 gap-8">
-            <div className="text-center">
-              <div className="text-4xl font-bold text-blue-600 mb-2">1,200+</div>
-              <div className="text-gray-600">등록된 포트폴리오</div>
+          {/* 참가자 역량 섹션 */}
+          <div className="bg-gradient-to-r from-orange-400 via-orange-500 to-orange-600 rounded-3xl p-12 text-center text-white mb-24">
+            <h3 className="text-4xl font-bold mb-8">참가자 역량</h3>
+            <div className="grid md:grid-cols-2 gap-12 items-center">
+              <div className="text-left">
+                <h4 className="text-2xl font-bold mb-6">해외 판로개척 위한 자국 시장조사</h4>
+                <div className="text-lg mb-8 leading-relaxed">
+                  <p className="mb-4">+ 생성형 AI활용 시장조사 보고서 작성</p>
+                  <p>글로벌 시장 진출을 위한 전문적인 시장 분석과 AI 기반 인사이트를 제공합니다.</p>
+                </div>
+                <Link 
+                  href="/portfolios" 
+                  className="inline-flex items-center px-8 py-4 bg-white text-orange-600 font-bold rounded-xl hover:bg-gray-50 transition-all duration-200 shadow-lg hover:shadow-xl hover:-translate-y-1"
+                >
+                  <BriefcaseIcon className="w-5 h-5 mr-2" />
+                  Explore Portfolio
+                  <ArrowRightIcon className="w-5 h-5 ml-2" />
+                </Link>
+              </div>
+              <div className="grid grid-cols-3 gap-6 text-center">
+                <div className="bg-white/20 backdrop-blur-sm rounded-2xl p-6">
+                  <svg className="w-12 h-12 mx-auto mb-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                  </svg>
+                  <h5 className="font-bold text-lg mb-2">자기소개 영상</h5>
+                  <p className="text-sm opacity-90">교육생 1분 자기소개 영상</p>
+                </div>
+                <div className="bg-white/20 backdrop-blur-sm rounded-2xl p-6">
+                  <svg className="w-12 h-12 mx-auto mb-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <h5 className="font-bold text-lg mb-2">다국적 인재</h5>
+                  <p className="text-sm opacity-90">귀사에서 필요로 하는 다양한 국가의 인재 참가</p>
+                </div>
+                <div className="bg-white/20 backdrop-blur-sm rounded-2xl p-6">
+                  <BriefcaseIcon className="w-12 h-12 mx-auto mb-4 text-white" />
+                  <h5 className="font-bold text-lg mb-2">이력서 자소서</h5>
+                  <p className="text-sm opacity-90">이력서와 자소서, 개별 포트폴리오까지 한눈에 확인</p>
+                </div>
+              </div>
             </div>
-            <div className="text-center">
-              <div className="text-4xl font-bold text-indigo-600 mb-2">450+</div>
-              <div className="text-gray-600">참여 기업</div>
+          </div>
+          
+          {/* AI 도구 활용 능력 섹션 */}
+          <div className="mt-24 mb-16">
+            <div className="text-center mb-16">
+              <div className="inline-flex items-center px-4 py-2 bg-gradient-to-r from-purple-100 to-blue-100 border border-purple-200 rounded-full text-purple-700 font-medium text-sm mb-6">
+                <span className="w-2 h-2 bg-purple-500 rounded-full mr-2 animate-pulse"></span>
+                전문 도구 활용 능력
+              </div>
+              <h3 className="text-4xl lg:text-5xl font-bold mb-6 text-gray-900">
+                우리 인재들이 활용하는 <br />
+                <span className="bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">최신 AI 도구</span>
+              </h3>
+              <p className="text-xl text-gray-600 max-w-3xl mx-auto leading-relaxed">
+                최신 AI 기술과 디자인 도구를 자유자재로 활용하여<br />
+                프로페셔널한 결과물을 만들어내는 인재들입니다
+              </p>
             </div>
-            <div className="text-center">
-              <div className="text-4xl font-bold text-purple-600 mb-2">890+</div>
-              <div className="text-gray-600">성공 매칭</div>
+
+            {/* 도구 카테고리 탭 */}
+            <div className="flex justify-center mb-12">
+              <div className="bg-white rounded-2xl p-1 shadow-xl border border-gray-100">
+                <div className="grid grid-cols-3 gap-1">
+                  <div className="px-6 py-3 bg-blue-500 text-white rounded-xl font-semibold text-center">
+                    텍스트 기반 콘텐츠
+                  </div>
+                  <div className="px-6 py-3 bg-teal-500 text-white rounded-xl font-semibold text-center">
+                    이미지 기반 콘텐츠
+                  </div>
+                  <div className="px-6 py-3 bg-indigo-500 text-white rounded-xl font-semibold text-center">
+                    프레젠테이션 콘텐츠
+                  </div>
+                </div>
+              </div>
             </div>
-            <div className="text-center">
-              <div className="text-4xl font-bold text-emerald-600 mb-2">95%</div>
-              <div className="text-gray-600">매칭 성공률</div>
+
+            {/* 도구 그리드 */}
+            <div className="grid lg:grid-cols-3 gap-8 max-w-7xl mx-auto">
+              
+              {/* 텍스트 기반 콘텐츠 */}
+              <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-3xl p-8 border border-blue-200">
+                <div className="flex items-center space-x-4 mb-8">
+                  <div className="w-16 h-16 bg-black rounded-2xl flex items-center justify-center shadow-lg">
+                    <svg className="w-8 h-8 text-white" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M22.282 9.821a5.985 5.985 0 0 0-.516-4.91 6.046 6.046 0 0 0-6.51-2.9A6.065 6.065 0 0 0 4.888 4.36a5.99 5.99 0 0 0-2.681 6.258 6.046 6.046 0 0 0 2.9 6.51A6.065 6.065 0 0 0 7.456 21a5.99 5.99 0 0 0 6.258-2.681 6.046 6.046 0 0 0 6.51-2.9 5.985 5.985 0 0 0 2.058-5.598z"/>
+                    </svg>
+                  </div>
+                  <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center shadow-lg border border-gray-200">
+                    <svg className="w-8 h-8 text-gray-700" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+                    </svg>
+                  </div>
+                </div>
+                
+                <div className="space-y-6">
+                  <div className="bg-white rounded-2xl p-6 shadow-sm border border-blue-100">
+                    <h4 className="font-bold text-lg mb-3 text-gray-800">ChatGPT</h4>
+                    <ul className="space-y-2 text-sm text-gray-600">
+                      <li className="flex items-center">
+                        <div className="w-1.5 h-1.5 bg-blue-500 rounded-full mr-3"></div>
+                        블로그 글, 기사, 소셜 미디어 포스트
+                      </li>
+                      <li className="flex items-center">
+                        <div className="w-1.5 h-1.5 bg-blue-500 rounded-full mr-3"></div>
+                        이메일 뉴스레터, 광고 문구
+                      </li>
+                      <li className="flex items-center">
+                        <div className="w-1.5 h-1.5 bg-blue-500 rounded-full mr-3"></div>
+                        다양한 텍스트 콘텐츠 작성
+                      </li>
+                    </ul>
+                  </div>
+                  
+                  <div className="bg-white rounded-2xl p-6 shadow-sm border border-blue-100">
+                    <h4 className="font-bold text-lg mb-3 text-gray-800">딥시크</h4>
+                    <ul className="space-y-2 text-sm text-gray-600">
+                      <li className="flex items-center">
+                        <div className="w-1.5 h-1.5 bg-blue-500 rounded-full mr-3"></div>
+                        데이터 기반 리포트, 분석 자료
+                      </li>
+                      <li className="flex items-center">
+                        <div className="w-1.5 h-1.5 bg-blue-500 rounded-full mr-3"></div>
+                        자동 요약, 전문 문서
+                      </li>
+                      <li className="flex items-center">
+                        <div className="w-1.5 h-1.5 bg-blue-500 rounded-full mr-3"></div>
+                        정밀성 콘텐츠 제작
+                      </li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+
+              {/* 이미지 기반 콘텐츠 */}
+              <div className="bg-gradient-to-br from-teal-50 to-teal-100 rounded-3xl p-8 border border-teal-200">
+                <div className="flex items-center space-x-4 mb-8">
+                  <div className="w-16 h-16 bg-gradient-to-r from-pink-500 to-orange-500 rounded-2xl flex items-center justify-center shadow-lg">
+                    <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                  </div>
+                  <div className="w-16 h-16 bg-gradient-to-r from-blue-400 to-purple-500 rounded-2xl flex items-center justify-center shadow-lg">
+                    <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zM21 5a2 2 0 00-2-2h-4a2 2 0 00-2 2v12a4 4 0 004 4h4a2 2 0 002-2V5z" />
+                    </svg>
+                  </div>
+                </div>
+                
+                <div className="space-y-6">
+                  <div className="bg-white rounded-2xl p-6 shadow-sm border border-teal-100">
+                    <h4 className="font-bold text-lg mb-3 text-gray-800">달리 (DALL-E)</h4>
+                    <ul className="space-y-2 text-sm text-gray-600">
+                      <li className="flex items-center">
+                        <div className="w-1.5 h-1.5 bg-teal-500 rounded-full mr-3"></div>
+                        SNS 포스트, 광고 배너, 일러스트
+                      </li>
+                      <li className="flex items-center">
+                        <div className="w-1.5 h-1.5 bg-teal-500 rounded-full mr-3"></div>
+                        포스터, 제품 디자인 목업
+                      </li>
+                      <li className="flex items-center">
+                        <div className="w-1.5 h-1.5 bg-teal-500 rounded-full mr-3"></div>
+                        창의적인 이미지 제작
+                      </li>
+                    </ul>
+                  </div>
+                  
+                  <div className="bg-white rounded-2xl p-6 shadow-sm border border-teal-100">
+                    <h4 className="font-bold text-lg mb-3 text-gray-800">캔바 (Canva)</h4>
+                    <ul className="space-y-2 text-sm text-gray-600">
+                      <li className="flex items-center">
+                        <div className="w-1.5 h-1.5 bg-teal-500 rounded-full mr-3"></div>
+                        인포그래픽, 프레젠테이션 슬라이드
+                      </li>
+                      <li className="flex items-center">
+                        <div className="w-1.5 h-1.5 bg-teal-500 rounded-full mr-3"></div>
+                        SNS 이미지, 브로셔, 초대장
+                      </li>
+                      <li className="flex items-center">
+                        <div className="w-1.5 h-1.5 bg-teal-500 rounded-full mr-3"></div>
+                        디자인 작업 전반
+                      </li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+
+              {/* 프레젠테이션 콘텐츠 */}
+              <div className="bg-gradient-to-br from-indigo-50 to-indigo-100 rounded-3xl p-8 border border-indigo-200">
+                <div className="flex items-center justify-center mb-8">
+                  <div className="w-20 h-16 bg-gradient-to-r from-purple-600 to-pink-600 rounded-2xl flex items-center justify-center shadow-lg">
+                    <div className="text-white font-bold text-xl">γ</div>
+                  </div>
+                </div>
+                
+                <div className="space-y-6">
+                  <div className="bg-white rounded-2xl p-6 shadow-sm border border-indigo-100">
+                    <h4 className="font-bold text-lg mb-3 text-gray-800">감마</h4>
+                    <ul className="space-y-2 text-sm text-gray-600">
+                      <li className="flex items-center">
+                        <div className="w-1.5 h-1.5 bg-indigo-500 rounded-full mr-3"></div>
+                        비즈니스 프레젠테이션, 제품 소개
+                      </li>
+                      <li className="flex items-center">
+                        <div className="w-1.5 h-1.5 bg-indigo-500 rounded-full mr-3"></div>
+                        투자 제안서, 교육 자료
+                      </li>
+                      <li className="flex items-center">
+                        <div className="w-1.5 h-1.5 bg-indigo-500 rounded-full mr-3"></div>
+                        슬라이드 콘텐츠 제작
+                      </li>
+                    </ul>
+                  </div>
+                  
+                  {/* 추가 도구들을 위한 공간 */}
+                  <div className="bg-white rounded-2xl p-6 shadow-sm border border-indigo-100">
+                    <h4 className="font-bold text-lg mb-3 text-gray-800">기타 전문 도구</h4>
+                    <ul className="space-y-2 text-sm text-gray-600">
+                      <li className="flex items-center">
+                        <div className="w-1.5 h-1.5 bg-indigo-500 rounded-full mr-3"></div>
+                        Figma, Adobe Creative Suite
+                      </li>
+                      <li className="flex items-center">
+                        <div className="w-1.5 h-1.5 bg-indigo-500 rounded-full mr-3"></div>
+                        Notion, Miro, Slack 협업 도구
+                      </li>
+                      <li className="flex items-center">
+                        <div className="w-1.5 h-1.5 bg-indigo-500 rounded-full mr-3"></div>
+                        Google Workspace, Microsoft 365
+                      </li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* 하단 CTA */}
+            <div className="text-center mt-16">
+              <div className="bg-gradient-to-r from-purple-600 to-blue-600 rounded-2xl p-8 text-white">
+                <h4 className="text-2xl font-bold mb-4">이런 전문 도구들을 자유자재로 활용하는 인재들</h4>
+                <p className="text-lg mb-6 opacity-90">최신 기술과 트렌드를 빠르게 습득하고 적용하는 능력을 갖춘 우수 인재들입니다</p>
+                <Link 
+                  href="/portfolios" 
+                  className="inline-flex items-center px-8 py-4 bg-white text-purple-600 font-bold rounded-xl hover:bg-gray-50 transition-all duration-200 shadow-lg hover:shadow-xl hover:-translate-y-1"
+                >
+                  <UserGroupIcon className="w-5 h-5 mr-2" />
+                  인재 포트폴리오 확인하기
+                  <ArrowRightIcon className="w-5 h-5 ml-2" />
+                </Link>
+              </div>
             </div>
           </div>
         </div>

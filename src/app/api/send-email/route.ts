@@ -508,7 +508,7 @@ ${recruiterEmail ? `- 이메일: ${recruiterEmail}` : ''}
 
     const msg = {
       to: to,
-      cc: cc || 'nadr.jooyeon@gmail.com',
+      cc: cc || 'nadr.jooyeon@gmail.com, tvs@techventure.co.kr',
       from: 'noreply@hiseoul.com',
       subject: emailSubject,
       text: textContent,
