@@ -12,7 +12,8 @@ import PortfolioAccessModal from '@/components/PortfolioAccessModal';
 import PortfolioHeader from './components/PortfolioHeader';
 import PortfolioProfile from './components/PortfolioProfile';
 import IntroVideo from './components/PortfolioContent/IntroVideo';
-import PDFViewer from '@/components/PDFViewer';
+import PortfolioImageGallery from '@/components/PortfolioImageGallery';
+import PDFImageViewer from '@/components/PDFImageViewer';
 
 // 타입
 import { Portfolio } from './types/portfolio.types';
@@ -23,7 +24,6 @@ import { formatFirebaseDate } from './utils/portfolio.utils';
 // Heroicons
 import { 
   BriefcaseIcon,
-  CheckBadgeIcon,
   DocumentIcon,
   AcademicCapIcon,
   TrophyIcon,
@@ -174,99 +174,11 @@ export default function PortfolioDetailPage() {
               </div>
             )}
 
-            {/* 포트폴리오 문서 */}
-            {portfolio.portfolioPdfs && portfolio.portfolioPdfs.length > 0 && (
-              <div className="bg-white/80 backdrop-blur-lg rounded-2xl p-8 shadow-xl border border-white/20">
-                <h2 className="text-2xl font-bold text-gray-900 mb-6">포트폴리오 문서</h2>
-                <div className="space-y-6">
-                  {portfolio.portfolioPdfs.map((pdf, index) => (
-                    <div key={index} className="border border-gray-200 rounded-lg p-6">
-                      <div className="flex items-center justify-between mb-4">
-                        <div className="flex items-center space-x-3">
-                          <DocumentIcon className="h-8 w-8 text-red-500" />
-                          <div>
-                            <h3 className="font-semibold text-gray-900">{pdf.fileName}</h3>
-                            <p className="text-sm text-gray-500">
-                              업로드: {pdf.uploadedAt ? formatFirebaseDate(pdf.uploadedAt) : '날짜 정보 없음'}
-                            </p>
-                          </div>
-                        </div>
-                        <a
-                          href={pdf.url}
-                          download={pdf.fileName}
-                          className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
-                        >
-                          다운로드
-                        </a>
-                      </div>
-                      <PDFViewer pdfUrl={pdf.url} />
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
 
-            {/* 프로젝트 상세 */}
-            <div className="bg-white/80 backdrop-blur-lg rounded-2xl p-8 shadow-xl border border-white/20">
-              <h2 className="text-2xl font-bold text-gray-900 mb-6">프로젝트 상세</h2>
-              <div className="space-y-6">
-                {portfolio.projectDetails.map((project, index) => (
-                  <div key={index} className="border border-gray-200 rounded-lg p-6">
-                    <h3 className="text-xl font-semibold text-gray-900 mb-3">{project.title}</h3>
-                    <p className="text-gray-700 mb-4">{project.description}</p>
-                    
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                      <div>
-                        <h4 className="font-medium text-gray-900 mb-2">사용 기술</h4>
-                        <div className="flex flex-wrap gap-2">
-                          {project.technologies.map((tech, techIndex) => (
-                            <span key={techIndex} className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-sm">
-                              {typeof tech === 'string' ? tech : String(tech)}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                      <div>
-                        <h4 className="font-medium text-gray-900 mb-2">프로젝트 기간</h4>
-                        <p className="text-gray-700">{project.duration}</p>
-                      </div>
-                    </div>
-                    
-                    <div>
-                      <h4 className="font-medium text-gray-900 mb-2">주요 성과</h4>
-                      <ul className="list-disc list-inside space-y-1">
-                        {project.results.map((result, resultIndex) => (
-                          <li key={resultIndex} className="text-gray-700">{typeof result === 'string' ? result : String(result)}</li>
-                        ))}
-                      </ul>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
 
-            {/* 경력 사항 */}
-            <div className="bg-white/80 backdrop-blur-lg rounded-2xl p-8 shadow-xl border border-white/20">
-              <h2 className="text-2xl font-bold text-gray-900 mb-6">경력 사항</h2>
-              <div className="space-y-6">
-                {portfolio.workHistory.map((work, index) => (
-                  <div key={index} className="flex items-start space-x-4">
-                    <div className="flex-shrink-0">
-                      <BriefcaseIcon className="h-6 w-6 text-blue-600 mt-1" />
-                    </div>
-                    <div className="flex-grow">
-                      <div className="flex items-center space-x-2 mb-1">
-                        <h3 className="text-lg font-semibold text-gray-900">{work.company}</h3>
-                        <span className="text-gray-500">•</span>
-                        <span className="text-gray-700">{work.position}</span>
-                      </div>
-                      <p className="text-gray-600 mb-2">{work.period}</p>
-                      <p className="text-gray-700">{work.description}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
+
+
+
           </div>
 
           {/* Sidebar */}
@@ -283,18 +195,46 @@ export default function PortfolioDetailPage() {
               </div>
             </div>
 
-            {/* 성과 및 실적 */}
-            <div className="bg-white/80 backdrop-blur-lg rounded-2xl p-6 shadow-xl border border-white/20">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">주요 성과</h3>
-              <div className="space-y-3">
-                {portfolio.achievements.map((achievement, index) => (
-                  <div key={index} className="flex items-start space-x-2">
-                    <CheckBadgeIcon className="h-5 w-5 text-green-600 mt-0.5 flex-shrink-0" />
-                    <span className="text-gray-700 text-sm">{typeof achievement === 'string' ? achievement : String(achievement)}</span>
-                  </div>
-                ))}
+            {/* 사용 가능 언어 */}
+            {portfolio.languages && portfolio.languages.length > 0 && (
+              <div className="bg-white/80 backdrop-blur-lg rounded-2xl p-6 shadow-xl border border-white/20">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">사용 가능 언어</h3>
+                <div className="flex flex-wrap gap-2">
+                  {portfolio.languages.map((language, index) => (
+                    <span key={index} className="bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm">
+                      {typeof language === 'string' ? language : String(language)}
+                    </span>
+                  ))}
+                </div>
               </div>
-            </div>
+            )}
+
+            {/* 경력 사항 */}
+            {portfolio.workHistory && portfolio.workHistory.length > 0 && (
+              <div className="bg-white/80 backdrop-blur-lg rounded-2xl p-6 shadow-xl border border-white/20">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">경력 사항</h3>
+                <div className="space-y-4">
+                  {portfolio.workHistory.map((work, index) => (
+                    <div key={index} className="flex items-start space-x-3">
+                      <div className="flex-shrink-0">
+                        <BriefcaseIcon className="h-5 w-5 text-blue-600 mt-0.5" />
+                      </div>
+                      <div className="flex-grow">
+                        <div className="flex items-center space-x-2 mb-1">
+                          <h4 className="font-medium text-gray-900">{work.company}</h4>
+                          <span className="text-gray-400">•</span>
+                          <span className="text-sm text-gray-600">{work.position}</span>
+                        </div>
+                        <p className="text-sm text-gray-500 mb-1">{work.period}</p>
+                        <p className="text-sm text-gray-700">{work.description}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+
 
             {/* 자격증 */}
             {portfolio.certificates && portfolio.certificates.length > 0 && (
@@ -359,6 +299,47 @@ export default function PortfolioDetailPage() {
             )}
           </div>
         </div>
+
+        {/* 포트폴리오 문서 - 전체 너비 */}
+        {portfolio.portfolioPdfs && portfolio.portfolioPdfs.length > 0 && (
+          <div className="mt-8">
+            <div className="bg-white/80 backdrop-blur-lg rounded-2xl p-8 shadow-xl border border-white/20">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-2xl font-bold text-gray-900">포트폴리오 문서</h2>
+                {portfolio.portfolioPdfs && portfolio.portfolioPdfs.length === 1 && (
+                  <a
+                    href={portfolio.portfolioPdfs?.[0]?.url}
+                    download={portfolio.portfolioPdfs?.[0]?.fileName}
+                    className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2"
+                  >
+                    <DocumentIcon className="h-5 w-5" />
+                    <span>다운로드</span>
+                  </a>
+                )}
+              </div>
+              <div className="space-y-8">
+                {portfolio.portfolioPdfs.map((pdf, index) => (
+                  <div key={index} className="space-y-4">
+                    {portfolio.portfolioPdfs && portfolio.portfolioPdfs.length > 1 && (
+                      <div className="flex items-center justify-between">
+                        <h3 className="text-lg font-medium text-gray-900">{pdf.fileName}</h3>
+                        <a
+                          href={pdf.url}
+                          download={pdf.fileName}
+                          className="bg-blue-600 text-white px-3 py-1.5 rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2 text-sm"
+                        >
+                          <DocumentIcon className="h-4 w-4" />
+                          <span>다운로드</span>
+                        </a>
+                      </div>
+                    )}
+                    <PDFImageViewer pdfUrl={pdf.url} fileName={pdf.fileName} className="w-full" />
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

@@ -5,6 +5,7 @@ export interface Portfolio {
   speciality: string;
   experience: string;
   skills: string[];
+  languages: string[];
   description: string;
   avatar: string;
   projects: number;

@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { PlusIcon, TrashIcon, VideoCameraIcon, DocumentIcon } from '@heroicons/react/24/outline';
 import { MediaContent } from '@/types';
 import PDFUpload from '@/components/PDFUpload';
+import PDFImageViewer from '@/components/PDFImageViewer';
 
 interface MediaStepProps {
   data: {
@@ -25,26 +26,20 @@ export default function MediaStep({ data, onChange }: MediaStepProps) {
   const formatDate = (dateValue: any): string => {
     if (!dateValue) return '날짜 정보 없음';
     
-    // 빈 객체 체크
-    if (typeof dateValue === 'object' && Object.keys(dateValue).length === 0) {
-      console.warn('Empty object passed as date:', dateValue);
-      return '날짜 정보 없음';
-    }
-    
     try {
       let date: Date;
       
+      // JavaScript Date 객체인 경우 (가장 일반적)
+      if (dateValue instanceof Date) {
+        date = dateValue;
+      }
       // Firebase Timestamp 객체인 경우
-      if (dateValue && typeof dateValue === 'object' && 'seconds' in dateValue) {
+      else if (dateValue && typeof dateValue === 'object' && 'seconds' in dateValue) {
         date = new Date(dateValue.seconds * 1000);
       }
       // Firebase Timestamp 객체 (toDate 메서드가 있는 경우)
       else if (dateValue && typeof dateValue === 'object' && typeof dateValue.toDate === 'function') {
         date = dateValue.toDate();
-      }
-      // JavaScript Date 객체인 경우
-      else if (dateValue instanceof Date) {
-        date = dateValue;
       }
       // 문자열인 경우
       else if (typeof dateValue === 'string') {
@@ -54,6 +49,12 @@ export default function MediaStep({ data, onChange }: MediaStepProps) {
       // 숫자(timestamp)인 경우
       else if (typeof dateValue === 'number') {
         date = new Date(dateValue);
+      }
+      // 기타 객체인 경우 (빈 객체 등)
+      else if (typeof dateValue === 'object') {
+        // Date 객체가 아닌 일반 객체는 현재 시간으로 처리하지 않고 에러로 처리
+        console.warn('Invalid date object:', dateValue);
+        return '날짜 정보 없음';
       }
       else {
         console.warn('Unknown date format:', dateValue);
@@ -178,25 +179,36 @@ export default function MediaStep({ data, onChange }: MediaStepProps) {
         {data.portfolioPdfs && data.portfolioPdfs.length > 0 && (
           <div className="mt-6">
             <h4 className="text-md font-medium text-gray-900 mb-3">업로드된 PDF 파일</h4>
-            <div className="space-y-3">
+            <div className="space-y-6">
               {data.portfolioPdfs.map((pdf, index) => (
-                <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                  <div className="flex items-center space-x-3">
-                    <DocumentIcon className="h-8 w-8 text-red-500" />
-                    <div>
-                      <div className="font-medium text-gray-900">{pdf.fileName}</div>
-                      <div className="text-sm text-gray-500">
-                        업로드: {formatDate(pdf.uploadedAt)}
+                <div key={index} className="bg-gray-50 rounded-lg p-4">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center space-x-3">
+                      <DocumentIcon className="h-8 w-8 text-red-500" />
+                      <div>
+                        <div className="font-medium text-gray-900">{pdf.fileName}</div>
+                        <div className="text-sm text-gray-500">
+                          업로드: {formatDate(pdf.uploadedAt)}
+                        </div>
                       </div>
                     </div>
+                    <button
+                      type="button"
+                      onClick={() => removePDF(index)}
+                      className="text-red-600 hover:text-red-700 p-1"
+                    >
+                      <TrashIcon className="h-5 w-5" />
+                    </button>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => removePDF(index)}
-                    className="text-red-600 hover:text-red-700 p-1"
-                  >
-                    <TrashIcon className="h-5 w-5" />
-                  </button>
+                  
+                  {/* PDF 미리보기 */}
+                  <div className="mt-4">
+                    <PDFImageViewer
+                      pdfUrl={pdf.url}
+                      fileName={pdf.fileName}
+                      className="max-w-full"
+                    />
+                  </div>
                 </div>
               ))}
             </div>

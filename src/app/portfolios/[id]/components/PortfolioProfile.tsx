@@ -68,14 +68,19 @@ export default function PortfolioProfile({
                 <MapPinIcon className="h-4 w-4" />
                 <span>{portfolio.location}</span>
               </div>
-              <div className="flex items-center space-x-1">
-                <EnvelopeIcon className="h-4 w-4" />
-                <span>{portfolio.email}</span>
-              </div>
-              <div className="flex items-center space-x-1">
-                <PhoneIcon className="h-4 w-4" />
-                <span>{portfolio.phone}</span>
-              </div>
+              {/* 기업 회원이 아닐 때만 이메일과 전화번호 표시 */}
+              {userData?.role !== 'employer' && (
+                <>
+                  <div className="flex items-center space-x-1">
+                    <EnvelopeIcon className="h-4 w-4" />
+                    <span>{portfolio.email}</span>
+                  </div>
+                  <div className="flex items-center space-x-1">
+                    <PhoneIcon className="h-4 w-4" />
+                    <span>{portfolio.phone}</span>
+                  </div>
+                </>
+              )}
             </div>
           </div>
         </div>

@@ -65,6 +65,7 @@ export default function PDFUpload({
       setUploadProgress(100);
       
       setTimeout(() => {
+        // PDF URL과 파일명 전달
         onUploadSuccess(result.url, file.name);
         setSelectedFile(null);
         setIsUploading(false);

@@ -46,6 +46,7 @@ export const usePortfolioData = (portfolioId: string, hasAccess: boolean, access
               speciality: (firebasePortfolio as any).speciality || '일반',
               experience: '경력',
               skills: Array.isArray((firebasePortfolio as any).skills) ? (firebasePortfolio as any).skills : [],
+              languages: Array.isArray(profile?.languages) ? profile.languages : [],
               description: (firebasePortfolio as any).description || '설명이 없습니다.',
               avatar: getAvatarBySpeciality((firebasePortfolio as any).speciality || '일반'),
               projects: (firebasePortfolio as any).projects || 0,
@@ -122,8 +123,8 @@ export const usePortfolioData = (portfolioId: string, hasAccess: boolean, access
                     description: award.description || ''
                   }))
                 : [],
-              detailedEducation: Array.isArray(profile?.detailedEducation) && profile.detailedEducation.length > 0
-                ? profile.detailedEducation.map((edu: any) => ({
+              detailedEducation: Array.isArray(profile?.education) && profile.education.length > 0
+                ? profile.education.map((edu: any) => ({
                     institution: edu.institution || '학교명 없음',
                     degree: edu.degree || '학위 없음',
                     field: edu.field || '전공 없음',
