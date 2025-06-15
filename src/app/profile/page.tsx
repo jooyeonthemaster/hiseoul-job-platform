@@ -11,6 +11,7 @@ import {
   PortfolioStatusCard,
   RecommendedCompaniesCard
 } from '@/components/dashboard';
+import { calculateProfileCompletion as calculateProfileCompletionUtil } from '@/lib/profileCompletion';
 import {
   getJobSeekerProfile,
   updateJobSeekerProfile,
@@ -165,8 +166,30 @@ export default function ProfilePage() {
       }
       setFavoriteCompanies(favoriteCompaniesData);
       
-      // Calculate profile completion using passed profileFormData or current formData
-      const completion = calculateProfileCompletion(profileFormData || formData);
+      // 프로필 데이터를 직접 로드하여 완성도 계산
+      const profileData = await getJobSeekerProfile(user.uid);
+      const portfolio = await getPortfolio(user.uid);
+      
+      // 메인 페이지와 동일한 방식으로 데이터 변환
+      const profileForCalculation = profileData?.profile ? {
+        skills: Array.isArray(profileData.profile.skills) ? profileData.profile.skills : [],
+        languages: Array.isArray(profileData.profile.languages) ? profileData.profile.languages : [],
+        experience: Array.isArray(profileData.profile.experience) ? profileData.profile.experience : [],
+        education: Array.isArray(profileData.profile.education) ? profileData.profile.education : [],
+        speciality: profileData.profile.speciality,
+        phone: profileData.profile.phone,
+        address: profileData.profile.address,
+        profileImage: profileData.profile.profileImage,
+        selfIntroduction: profileData.profile.selfIntroduction
+      } : null;
+      
+      const completion = profileForCalculation ? 
+        calculateProfileCompletionUtil(profileForCalculation, !!portfolio).percentage : 0;
+      
+      console.log('👤 프로필 페이지: loadDashboardData에서 계산된 완성도:', completion);
+      
+      // 포트폴리오 상태도 업데이트
+      setPortfolioRegistered(!!portfolio);
       
       // Load recommended companies
       const allCompanies = await getAllEmployers();
@@ -188,26 +211,34 @@ export default function ProfilePage() {
     }
   };
   const calculateProfileCompletion = (dataToCheck?: any) => {
-    // 매개변수로 받은 데이터를 우선 사용, 없으면 현재 formData 사용
-    const currentData = dataToCheck || formData;
-    console.log('calculateProfileCompletion - using data:', currentData);
+    console.log('👤 프로필 페이지: calculateProfileCompletion 호출');
+    console.log('👤 프로필 페이지: profile 상태:', profile);
+    console.log('👤 프로필 페이지: portfolioRegistered:', portfolioRegistered);
     
-    if (!currentData) {
-      console.log('No data found, returning 0');
+    if (!profile?.profile) {
+      console.log('👤 프로필 페이지: No profile data found, returning 0');
       return 0;
     }
     
-    const fields = ['name', 'phone', 'address', 'speciality', 'skills', 'languages'];
-    const completedFields = fields.filter(field => {
-      const hasValue = currentData[field] && currentData[field].trim() !== '';
-      console.log(`Field ${field}: ${currentData[field]} -> ${hasValue ? 'completed' : 'missing'}`);
-      return hasValue;
-    });
+    // 메인 페이지와 동일한 방식으로 데이터 변환 (Firebase 원본 데이터 사용)
+    const profileData = {
+      skills: Array.isArray(profile.profile.skills) ? profile.profile.skills : [],
+      languages: Array.isArray(profile.profile.languages) ? profile.profile.languages : [],
+      experience: Array.isArray(profile.profile.experience) ? profile.profile.experience : [],
+      education: Array.isArray(profile.profile.education) ? profile.profile.education : [],
+      speciality: profile.profile.speciality,
+      phone: profile.profile.phone,
+      address: profile.profile.address,
+      profileImage: profile.profile.profileImage,
+      selfIntroduction: profile.profile.selfIntroduction
+    };
     
-    const percentage = Math.round((completedFields.length / fields.length) * 100);
-    console.log(`Profile completion: ${completedFields.length}/${fields.length} = ${percentage}%`);
+    console.log('👤 프로필 페이지: 변환된 profileData:', profileData);
     
-    return percentage;
+    const result = calculateProfileCompletionUtil(profileData, portfolioRegistered);
+    console.log(`👤 프로필 페이지: Profile completion: ${result.completedCount}/${result.totalItems} = ${result.percentage}%`);
+    
+    return result.percentage;
   };
 
   const getRecommendedCompanies = (companies: any[]) => {
@@ -302,18 +333,25 @@ export default function ProfilePage() {
   };
   // Get missing fields for profile completion
   const getMissingFields = () => {
-    const fields = {
-      name: '이름',
-      phone: '전화번호',
-      address: '주소',
-      speciality: '전문분야',
-      skills: '보유 스킬',
-      languages: '언어'
+    if (!profile?.profile) {
+      return [];
+    }
+    
+    // 메인 페이지와 동일한 방식으로 데이터 변환 (Firebase 원본 데이터 사용)
+    const profileData = {
+      skills: Array.isArray(profile.profile.skills) ? profile.profile.skills : [],
+      languages: Array.isArray(profile.profile.languages) ? profile.profile.languages : [],
+      experience: Array.isArray(profile.profile.experience) ? profile.profile.experience : [],
+      education: Array.isArray(profile.profile.education) ? profile.profile.education : [],
+      speciality: profile.profile.speciality,
+      phone: profile.profile.phone,
+      address: profile.profile.address,
+      profileImage: profile.profile.profileImage,
+      selfIntroduction: profile.profile.selfIntroduction
     };
     
-    return Object.entries(fields)
-      .filter(([key]) => !formData[key] || formData[key].trim() === '')
-      .map(([_, label]) => label);
+    const result = calculateProfileCompletionUtil(profileData, portfolioRegistered);
+    return result.missingItems;
   };
 
   if (authLoading || loading || loadingDashboard) {

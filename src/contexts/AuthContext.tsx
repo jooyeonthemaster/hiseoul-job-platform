@@ -49,21 +49,25 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     const unsubscribe = onAuthChange(async (firebaseUser) => {
       if (!isSubscribed) return; // 이미 cleanup된 경우 무시
       
+      console.log('🔄 AuthContext - Auth state changed:', !!firebaseUser);
       setUser(firebaseUser);
       
       if (firebaseUser) {
         try {
+          console.log('📋 AuthContext - Fetching user data for:', firebaseUser.uid);
           const data = await getUserData(firebaseUser.uid);
           if (isSubscribed) {
+            console.log('✅ AuthContext - User data loaded:', data);
             setUserData(data);
           }
         } catch (error) {
-          console.error('Error fetching user data:', error);
+          console.error('❌ AuthContext - Error fetching user data:', error);
           if (isSubscribed) {
             setUserData(null);
           }
         }
       } else {
+        console.log('🚫 AuthContext - No user, clearing data');
         if (isSubscribed) {
           setUserData(null);
         }
@@ -71,6 +75,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       
       if (isSubscribed) {
         setLoading(false);
+        console.log('🏁 AuthContext - Loading complete');
       }
     });
 

@@ -134,19 +134,19 @@ export default function Navigation() {
                 >
                   <div className="w-8 h-8 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-full flex items-center justify-center">
                     <span className="text-white font-medium text-sm">
-                      {userData?.name?.charAt(0) || '사'}
+                      {userData?.name?.charAt(0) || user?.displayName?.charAt(0) || '사'}
                     </span>
                   </div>
                   <span className="text-gray-700 font-medium hidden sm:block">
-                    {userData?.name || '사용자'}
+                    {userData?.name || user?.displayName || '사용자'}
                   </span>
                   <ChevronDownIcon className={`w-4 h-4 text-gray-500 transition-transform duration-200 ${isUserMenuOpen ? 'rotate-180' : ''}`} />
                 </button>
 
                 {/* 사용자 드롭다운 메뉴 */}
                 {isUserMenuOpen && (
-                  <div className="absolute right-0 mt-2 w-64 bg-white rounded-xl shadow-lg border border-gray-200 py-2 z-[60]">
-                    {userData?.role === 'jobseeker' && (
+                  <div className="absolute right-0 mt-2 w-64 bg-white rounded-xl shadow-lg border border-gray-200 py-2 z-[70]">
+                    {(userData?.role === 'jobseeker' || (!userData && user && !loading)) && (
                       <>
                         <Link 
                           href={`/portfolios/${user.uid}`}

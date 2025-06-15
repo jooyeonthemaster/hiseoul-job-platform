@@ -86,13 +86,16 @@ export default function AuthPage() {
           role === 'employer' ? { companyName: formData.companyName, position: formData.position } : undefined
         );
         if (result) {
-          if (role === 'employer') {
-            // 기업 회원가입 후 새로고침 플래그 설정
-            localStorage.setItem('newEmployerSignup', 'true');
-            router.push('/');
-          } else {
-            router.push('/');
-          }
+          console.log('✅ 회원가입 성공:', result);
+          // AuthContext가 사용자 데이터를 로드할 시간을 주기 위해 약간의 지연 후 강제 새로고침
+          setTimeout(() => {
+            if (role === 'employer') {
+              // 기업 회원가입 후 새로고침 플래그 설정
+              localStorage.setItem('newEmployerSignup', 'true');
+            }
+            // 강제 새로고침으로 모든 상태를 완전히 초기화
+            window.location.href = '/';
+          }, 1000); // 1초 지연
         }
       } else if (mode === 'reset') {
         await resetPassword(formData.email);
@@ -114,21 +117,25 @@ export default function AuthPage() {
       const result = await signInWithGoogle(role);
       
       if (result) {
-        if (result.isNewUser) {
-          if (role === 'employer') {
-            // 기업 신규 구글 로그인시에도 새로고침 플래그 설정
-            localStorage.setItem('newEmployerSignup', 'true');
-            router.push('/');
+        console.log('✅ 구글 로그인 성공:', result);
+        // AuthContext가 사용자 데이터를 로드할 시간을 주기 위해 약간의 지연
+        setTimeout(() => {
+          if (result.isNewUser) {
+            if (role === 'employer') {
+              // 기업 신규 구글 로그인시에도 새로고침 플래그 설정
+              localStorage.setItem('newEmployerSignup', 'true');
+            }
+            // 신규 사용자는 강제 새로고침으로 모든 상태를 완전히 초기화
+            window.location.href = '/';
           } else {
-            router.push('/');
+            // 기존 사용자는 일반 라우팅 사용
+            if (role === 'employer') {
+              router.push('/employer-dashboard');
+            } else {
+              router.push('/');
+            }
           }
-        } else {
-          if (role === 'employer') {
-            router.push('/employer-dashboard');
-          } else {
-            router.push('/');
-          }
-        }
+        }, 1000); // 1초 지연
       } else {
         setError('구글 로그인에 실패했습니다.');
       }

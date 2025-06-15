@@ -4,8 +4,10 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useAuth } from '@/contexts/AuthContext';
-import { logOut, getUserData } from '@/lib/auth';
+import { logOut, getUserData, getJobSeekerProfile, getPortfolio } from '@/lib/auth';
 import { useRouter } from 'next/navigation';
+import { calculateProfileCompletion, ProfileCompletionResult } from '@/lib/profileCompletion';
+import { JobSeekerProfile } from '@/types';
 import { 
   MagnifyingGlassIcon, 
   BriefcaseIcon, 
@@ -29,6 +31,8 @@ export default function HomePage() {
   const { isAuthenticated, user, userData, loading } = useAuth();
   const router = useRouter();
   const [userRole, setUserRole] = useState<'jobseeker' | 'employer' | 'admin' | null>(null);
+  const [profileCompletion, setProfileCompletion] = useState<ProfileCompletionResult | null>(null);
+  const [profileLoading, setProfileLoading] = useState(false);
   const [showTutorial, setShowTutorial] = useState(false);
 
   // 새 기업 회원가입 시 강제 새로고침 처리
@@ -67,6 +71,54 @@ export default function HomePage() {
 
     checkUserRole();
   }, [user, userData, loading]);
+
+  // 구직자 프로필 완성도 가져오기
+  useEffect(() => {
+    const fetchProfileCompletion = async () => {
+      if (user && userData?.role === 'jobseeker') {
+        console.log('🏠 메인 페이지: 프로필 완성도 계산 시작');
+        setProfileLoading(true);
+        try {
+          const [profile, portfolio] = await Promise.all([
+            getJobSeekerProfile(user.uid),
+            getPortfolio(user.uid)
+          ]);
+          
+          console.log('🏠 메인 페이지: 가져온 데이터');
+          console.log('   - profile:', profile);
+          console.log('   - profile.profile:', profile?.profile);
+          console.log('   - profile.profile.skills:', profile?.profile?.skills);
+          console.log('   - profile.profile.languages:', profile?.profile?.languages);
+          console.log('   - portfolio:', portfolio);
+          
+          // 프로필 페이지와 동일한 방식으로 데이터 변환
+          const profileData = profile?.profile ? {
+            ...profile.profile,
+            // 배열이 아닌 경우 빈 배열로 초기화
+            skills: Array.isArray(profile.profile.skills) ? profile.profile.skills : [],
+            languages: Array.isArray(profile.profile.languages) ? profile.profile.languages : [],
+            experience: Array.isArray(profile.profile.experience) ? profile.profile.experience : [],
+            education: Array.isArray(profile.profile.education) ? profile.profile.education : []
+          } : null;
+          
+          console.log('🏠 메인 페이지: 변환된 profileData:', profileData);
+          
+          const completion = calculateProfileCompletion(
+            profileData,
+            !!portfolio
+          );
+          console.log('🏠 메인 페이지: 계산된 완성도:', completion);
+          setProfileCompletion(completion);
+        } catch (error) {
+          console.error('프로필 완성도 계산 오류:', error);
+        } finally {
+          setProfileLoading(false);
+        }
+      }
+    };
+
+    fetchProfileCompletion();
+  }, [user, userData]);
 
   const handleTutorialComplete = () => {
     setShowTutorial(false);
@@ -185,16 +237,13 @@ export default function HomePage() {
               ) : isAuthenticated && userRole === 'jobseeker' ? (
                 // 구직자용 CTA
                 <>
-                  <Link href="/portfolios" className="group bg-blue-600 hover:bg-blue-700 text-white font-semibold px-8 py-4 rounded-xl transition-all duration-200 shadow-xl hover:shadow-2xl hover:-translate-y-1 w-full sm:w-auto">
+                  <Link href={`/portfolios/${user?.uid}`} className="group bg-blue-600 hover:bg-blue-700 text-white font-semibold px-8 py-4 rounded-xl transition-all duration-200 shadow-xl hover:shadow-2xl hover:-translate-y-1 w-full sm:w-auto">
                     내 포트폴리오 보기
                     <ArrowRightIcon className="w-5 h-5 ml-2 inline-block group-hover:translate-x-1 transition-transform" />
                   </Link>
                   <Link href="/profile" className="group bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white font-semibold px-8 py-4 rounded-xl transition-all duration-200 shadow-xl hover:shadow-2xl hover:-translate-y-1 w-full sm:w-auto">
                     마이페이지
                     <UserIcon className="w-5 h-5 ml-2 inline-block group-hover:scale-110 transition-transform" />
-                  </Link>
-                  <Link href="/portfolios" className="group border-2 border-gray-300 hover:border-blue-600 text-gray-700 hover:text-blue-600 font-semibold px-8 py-4 rounded-xl transition-all duration-200 hover:shadow-lg w-full sm:w-auto">
-                    다른 포트폴리오 둘러보기
                   </Link>
                 </>
               ) : (
@@ -215,14 +264,57 @@ export default function HomePage() {
                     기업 회원가입
                   </Link>
                 </>
-              )}
-            </div>
+                          )}
+          </div>
 
-            {/* Video Preview */}
-            {/* 
-            <div className="relative max-w-5xl mx-auto">
-              <div className="relative rounded-3xl overflow-hidden shadow-2xl border border-gray-100 bg-white">
-                <div className="aspect-video">
+          {/* 구직자 프로필 완성도 섹션 */}
+          {isAuthenticated && userRole === 'jobseeker' && profileCompletion && (
+            <div className="max-w-2xl mx-auto mb-16">
+              <div className="bg-white rounded-2xl p-6 shadow-lg border border-gray-100">
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-xl font-bold text-gray-900 flex items-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-6 h-6 mr-2 text-yellow-500">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 18.75h-9m9 0a3 3 0 0 1 3 3h-15a3 3 0 0 1 3-3m9 0v-3.375c0-.621-.503-1.125-1.125-1.125h-.871M7.5 18.75v-3.375c0-.621.504-1.125 1.125-1.125h.872m5.007 0H9.497m5.007 0a7.454 7.454 0 0 1-.982-3.172M9.497 14.25a7.454 7.454 0 0 0 .981-3.172M5.25 4.236c-.982.143-1.954.317-2.916.52A6.003 6.003 0 0 0 7.73 9.728M5.25 4.236V4.5c0 2.108.966 3.99 2.48 5.228M5.25 4.236V2.721C7.456 2.41 9.71 2.25 12 2.25c2.291 0 4.545.16 6.75.47v1.516M7.73 9.728a6.726 6.726 0 0 0 2.748 1.35m8.272-6.842V4.5c0 2.108-.966 3.99-2.48 5.228m2.48-5.492a46.32 46.32 0 0 1 2.916.52 6.003 6.003 0 0 1-5.395 4.972m0 0a6.726 6.726 0 0 1-2.749 1.35m0 0a6.772 6.772 0 0 1-3.044 0" />
+                    </svg>
+                    프로필 완성도
+                  </h2>
+                  <span className="text-2xl font-bold text-indigo-600">{profileCompletion.percentage}%</span>
+                </div>
+                <div className="w-full bg-gray-200 rounded-full h-3 mb-4">
+                  <div 
+                    className="bg-gradient-to-r from-indigo-500 to-purple-600 h-3 rounded-full transition-all duration-300" 
+                    style={{ width: `${profileCompletion.percentage}%` }}
+                  ></div>
+                </div>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-gray-600">프로필을 완성하여 더 많은 기회를 얻으세요!</p>
+                    {profileCompletion.missingItems.length > 0 && (
+                      <p className="text-sm text-gray-500 mt-1">
+                        미완성 항목: {profileCompletion.missingItems.slice(0, 3).join(', ')}
+                        {profileCompletion.missingItems.length > 3 && ` 외 ${profileCompletion.missingItems.length - 3}개`}
+                      </p>
+                    )}
+                  </div>
+                                     <Link 
+                     href="/profile" 
+                     className="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition-colors flex items-center space-x-2"
+                   >
+                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-4 h-4">
+                       <path strokeLinecap="round" strokeLinejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L6.832 19.82a4.5 4.5 0 0 1-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 0 1 1.13-1.897L16.863 4.487Zm0 0L19.5 7.125" />
+                     </svg>
+                     <span>포트폴리오 완성하기</span>
+                   </Link>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Video Preview */}
+          {/* 
+          <div className="relative max-w-5xl mx-auto">
+            <div className="relative rounded-3xl overflow-hidden shadow-2xl border border-gray-100 bg-white">
+              <div className="aspect-video">
                   <iframe
                     src="https://www.youtube.com/embed/RNVUAf8JhRo"
                     title="HiSeoul Job Platform 소개 영상"
