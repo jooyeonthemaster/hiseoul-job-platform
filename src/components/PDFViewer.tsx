@@ -1,11 +1,13 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { Document, Page, pdfjs } from 'react-pdf';
 import { ChevronLeftIcon, ChevronRightIcon, MagnifyingGlassMinusIcon, MagnifyingGlassPlusIcon } from '@heroicons/react/24/outline';
 
-// PDF.js worker 설정
-pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.js`;
+// PDF.js worker 설정 - unpkg CDN 사용 (CORS 문제 해결)
+if (typeof window !== 'undefined') {
+  pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.js`;
+}
 
 interface PDFViewerProps {
   pdfUrl: string;
@@ -27,7 +29,7 @@ export default function PDFViewer({ pdfUrl, className = '' }: PDFViewerProps) {
 
   const onDocumentLoadError = useCallback((error: Error) => {
     console.error('PDF 로드 에러:', error);
-    setError('PDF 파일을 불러올 수 없습니다.');
+    setError('PDF 파일을 불러올 수 없습니다. 파일이 손상되었거나 지원되지 않는 형식일 수 있습니다.');
     setLoading(false);
   }, []);
 
@@ -53,12 +55,55 @@ export default function PDFViewer({ pdfUrl, className = '' }: PDFViewerProps) {
     }
   };
 
+  // 키보드 네비게이션
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.target && (event.target as HTMLElement).tagName === 'INPUT') {
+        return; // 입력 필드에서는 키보드 네비게이션 비활성화
+      }
+      
+      switch (event.key) {
+        case 'ArrowLeft':
+          event.preventDefault();
+          goToPrevPage();
+          break;
+        case 'ArrowRight':
+          event.preventDefault();
+          goToNextPage();
+          break;
+        case '+':
+        case '=':
+          event.preventDefault();
+          zoomIn();
+          break;
+        case '-':
+          event.preventDefault();
+          zoomOut();
+          break;
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [pageNumber, numPages, scale]);
+
   if (error) {
     return (
-      <div className={`flex items-center justify-center p-8 bg-gray-50 rounded-lg ${className}`}>
+      <div className={`flex items-center justify-center p-8 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300 ${className}`}>
         <div className="text-center">
-          <div className="text-red-500 text-lg font-medium mb-2">오류 발생</div>
-          <div className="text-gray-600">{error}</div>
+          <div className="text-red-500 text-lg font-medium mb-2">PDF 로드 실패</div>
+          <div className="text-gray-600 mb-4">{error}</div>
+          <a
+            href={pdfUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            PDF 다운로드
+          </a>
         </div>
       </div>
     );

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
+import "@/lib/polyfills";
 import { AuthProvider } from "@/contexts/AuthContext";
 import Navigation from "@/components/Navigation";
 import GoogleSheetsProvider from "@/components/providers/GoogleSheetsProvider";
@@ -35,6 +36,7 @@ export default function RootLayout({
     <html lang="ko" className="h-full">
       <body
         className={`${inter.variable} antialiased h-full bg-gradient-to-br from-slate-50 via-white to-slate-100 font-sans`}
+        suppressHydrationWarning={true}
       >
         <AuthProvider>
           <GoogleSheetsProvider>

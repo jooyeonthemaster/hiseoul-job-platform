@@ -21,6 +21,57 @@ interface MediaStepProps {
 export default function MediaStep({ data, onChange }: MediaStepProps) {
   const [showPreview, setShowPreview] = useState(false);
 
+  // 안전한 날짜 포맷팅 함수
+  const formatDate = (dateValue: any): string => {
+    if (!dateValue) return '날짜 정보 없음';
+    
+    // 빈 객체 체크
+    if (typeof dateValue === 'object' && Object.keys(dateValue).length === 0) {
+      console.warn('Empty object passed as date:', dateValue);
+      return '날짜 정보 없음';
+    }
+    
+    try {
+      let date: Date;
+      
+      // Firebase Timestamp 객체인 경우
+      if (dateValue && typeof dateValue === 'object' && 'seconds' in dateValue) {
+        date = new Date(dateValue.seconds * 1000);
+      }
+      // Firebase Timestamp 객체 (toDate 메서드가 있는 경우)
+      else if (dateValue && typeof dateValue === 'object' && typeof dateValue.toDate === 'function') {
+        date = dateValue.toDate();
+      }
+      // JavaScript Date 객체인 경우
+      else if (dateValue instanceof Date) {
+        date = dateValue;
+      }
+      // 문자열인 경우
+      else if (typeof dateValue === 'string') {
+        if (dateValue.trim() === '') return '날짜 정보 없음';
+        date = new Date(dateValue);
+      }
+      // 숫자(timestamp)인 경우
+      else if (typeof dateValue === 'number') {
+        date = new Date(dateValue);
+      }
+      else {
+        console.warn('Unknown date format:', dateValue);
+        return '날짜 정보 없음';
+      }
+      
+      if (isNaN(date.getTime())) {
+        console.warn('Invalid date:', dateValue);
+        return '날짜 정보 없음';
+      }
+      
+      return date.toLocaleDateString('ko-KR');
+    } catch (error) {
+      console.error('Date formatting error:', error, 'Value:', dateValue);
+      return '날짜 정보 없음';
+    }
+  };
+
   const handleIntroVideoChange = (url: string) => {
     onChange({ ...data, introVideo: url });
   };
@@ -135,7 +186,7 @@ export default function MediaStep({ data, onChange }: MediaStepProps) {
                     <div>
                       <div className="font-medium text-gray-900">{pdf.fileName}</div>
                       <div className="text-sm text-gray-500">
-                        업로드: {pdf.uploadedAt.toLocaleDateString()}
+                        업로드: {formatDate(pdf.uploadedAt)}
                       </div>
                     </div>
                   </div>
