@@ -4,9 +4,10 @@ import { useState, useCallback, useEffect } from 'react';
 import { Document, Page, pdfjs } from 'react-pdf';
 import { ChevronLeftIcon, ChevronRightIcon, MagnifyingGlassMinusIcon, MagnifyingGlassPlusIcon } from '@heroicons/react/24/outline';
 
-// PDF.js worker 설정 - unpkg CDN 사용 (CORS 문제 해결)
+// PDF.js worker 설정 - 메인 스레드에서 처리하도록 설정
 if (typeof window !== 'undefined') {
-  pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.js`;
+  // Worker를 false로 설정하여 메인 스레드에서 처리
+  pdfjs.GlobalWorkerOptions.workerSrc = false as any;
 }
 
 interface PDFViewerProps {
