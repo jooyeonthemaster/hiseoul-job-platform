@@ -15,10 +15,12 @@ import {
   PlayIcon,
   AcademicCapIcon,
   TrophyIcon,
-  LockClosedIcon
+  LockClosedIcon,
+  DocumentIcon
 } from '@heroicons/react/24/outline';
 import { getPortfolio, getJobSeekerProfile, canAccessPortfolio, addToFavoriteTalents, removeFromFavoriteTalents, isFavoriteTalent, getEmployerWithApprovalStatus } from '@/lib/auth';
 import PortfolioAccessModal from '@/components/PortfolioAccessModal';
+import PDFViewer from '@/components/PDFViewer';
 
 interface Portfolio {
   id: string;
@@ -63,6 +65,11 @@ interface Portfolio {
     url: string;
     title: string;
     description?: string;
+  }>;
+  portfolioPdfs?: Array<{
+    url: string;
+    fileName: string;
+    uploadedAt: Date;
   }>;
   certificates?: Array<{
     name: string;
@@ -1031,6 +1038,49 @@ export default function PortfolioDetailPage() {
                           />
                         </div>
                       )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Portfolio PDFs */}
+            {portfolio.portfolioPdfs && portfolio.portfolioPdfs.length > 0 && (
+              <div className="bg-white/80 backdrop-blur-lg rounded-2xl p-8 shadow-xl border border-white/20">
+                <div className="flex items-center space-x-3 mb-6">
+                  <DocumentIcon className="w-6 h-6 text-red-600" />
+                  <h2 className="text-2xl font-bold text-gray-900">포트폴리오 문서</h2>
+                </div>
+                <div className="space-y-8">
+                  {portfolio.portfolioPdfs.map((pdf, index) => (
+                    <div key={index} className="border rounded-lg overflow-hidden bg-gray-50/50">
+                      <div className="p-4 bg-white border-b">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center space-x-3">
+                            <DocumentIcon className="w-8 h-8 text-red-500" />
+                            <div>
+                              <h3 className="text-lg font-semibold text-gray-900">{pdf.fileName}</h3>
+                              <p className="text-sm text-gray-500">
+                                업로드: {formatFirebaseDate(pdf.uploadedAt)}
+                              </p>
+                            </div>
+                          </div>
+                          <a
+                            href={pdf.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                          >
+                            다운로드
+                          </a>
+                        </div>
+                      </div>
+                      <div className="p-4">
+                        <PDFViewer 
+                          pdfUrl={pdf.url} 
+                          className="w-full"
+                        />
+                      </div>
                     </div>
                   ))}
                 </div>

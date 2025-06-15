@@ -324,3 +324,20 @@ body {
 .animation-delay-4000 {
   animation-delay: 4s;
 }
+
+/* React PDF Styles */
+.react-pdf__Page {
+  @apply shadow-lg border border-gray-200 rounded-lg overflow-hidden;
+}
+
+.react-pdf__Page__canvas {
+  @apply w-full h-auto;
+}
+
+.react-pdf__Document {
+  @apply flex justify-center;
+}
+
+.react-pdf__message {
+  @apply text-gray-600 text-center p-4;
+}

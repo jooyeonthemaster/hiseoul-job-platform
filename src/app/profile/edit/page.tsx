@@ -53,6 +53,11 @@ interface FormData {
   media: {
     introVideo: string;
     mediaContent: any[];
+    portfolioPdfs?: Array<{
+      url: string;
+      fileName: string;
+      uploadedAt: Date;
+    }>;
   };
 }
 
@@ -96,7 +101,8 @@ export default function ProfileEditPage() {
     // Media
     media: {
       introVideo: '',
-      mediaContent: []
+      mediaContent: [],
+      portfolioPdfs: []
     }
   });
 
@@ -164,7 +170,8 @@ export default function ProfileEditPage() {
           },
           media: {
             introVideo: profile.introVideo || '',
-            mediaContent: profile.mediaContent || []
+            mediaContent: profile.mediaContent || [],
+            portfolioPdfs: profile.portfolioPdfs || []
           }
         });
       }
@@ -202,7 +209,8 @@ export default function ProfileEditPage() {
         awards: formData.skills.awards,
         selfIntroduction: formData.selfIntroduction,
         introVideo: formData.media.introVideo,
-        mediaContent: formData.media.mediaContent
+        mediaContent: formData.media.mediaContent,
+        portfolioPdfs: formData.media.portfolioPdfs
       };
 
       // Update jobseeker profile

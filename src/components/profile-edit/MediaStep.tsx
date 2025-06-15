@@ -1,13 +1,19 @@
 'use client';
 
 import { useState } from 'react';
-import { PlusIcon, TrashIcon, VideoCameraIcon } from '@heroicons/react/24/outline';
+import { PlusIcon, TrashIcon, VideoCameraIcon, DocumentIcon } from '@heroicons/react/24/outline';
 import { MediaContent } from '@/types';
+import PDFUpload from '@/components/PDFUpload';
 
 interface MediaStepProps {
   data: {
     introVideo?: string;
     mediaContent?: MediaContent[];
+    portfolioPdfs?: Array<{
+      url: string;
+      fileName: string;
+      uploadedAt: Date;
+    }>;
   };
   onChange: (data: any) => void;
 }
@@ -39,6 +45,25 @@ export default function MediaStep({ data, onChange }: MediaStepProps) {
   const removeMediaContent = (index: number) => {
     const updated = data.mediaContent?.filter((_, i) => i !== index) || [];
     onChange({ ...data, mediaContent: updated });
+  };
+
+  const handlePDFUploadSuccess = (url: string, fileName: string) => {
+    const newPdf = {
+      url,
+      fileName,
+      uploadedAt: new Date()
+    };
+    const updated = [...(data.portfolioPdfs || []), newPdf];
+    onChange({ ...data, portfolioPdfs: updated });
+  };
+
+  const handlePDFUploadError = (error: string) => {
+    alert(`PDF 업로드 오류: ${error}`);
+  };
+
+  const removePDF = (index: number) => {
+    const updated = data.portfolioPdfs?.filter((_, i) => i !== index) || [];
+    onChange({ ...data, portfolioPdfs: updated });
   };
   const getYouTubeId = (url: string) => {
     const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
@@ -85,6 +110,49 @@ export default function MediaStep({ data, onChange }: MediaStepProps) {
           )}
         </div>
       </div>
+      {/* Portfolio PDF Upload Section */}
+      <div>
+        <h3 className="text-lg font-medium text-gray-900 mb-4">포트폴리오 PDF</h3>
+        <p className="text-sm text-gray-600 mb-4">
+          자소서, 포트폴리오, 작품집 등의 PDF 파일을 업로드하세요. 업로드된 PDF는 포트폴리오 페이지에서 페이지별로 확인할 수 있습니다.
+        </p>
+        
+        <PDFUpload
+          onUploadSuccess={handlePDFUploadSuccess}
+          onUploadError={handlePDFUploadError}
+          className="mb-4"
+        />
+
+        {/* Uploaded PDFs List */}
+        {data.portfolioPdfs && data.portfolioPdfs.length > 0 && (
+          <div className="mt-6">
+            <h4 className="text-md font-medium text-gray-900 mb-3">업로드된 PDF 파일</h4>
+            <div className="space-y-3">
+              {data.portfolioPdfs.map((pdf, index) => (
+                <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                  <div className="flex items-center space-x-3">
+                    <DocumentIcon className="h-8 w-8 text-red-500" />
+                    <div>
+                      <div className="font-medium text-gray-900">{pdf.fileName}</div>
+                      <div className="text-sm text-gray-500">
+                        업로드: {pdf.uploadedAt.toLocaleDateString()}
+                      </div>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => removePDF(index)}
+                    className="text-red-600 hover:text-red-700 p-1"
+                  >
+                    <TrashIcon className="h-5 w-5" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+
       {/* Additional Media Content */}
       <div>
         <div className="flex items-center justify-between mb-4">
