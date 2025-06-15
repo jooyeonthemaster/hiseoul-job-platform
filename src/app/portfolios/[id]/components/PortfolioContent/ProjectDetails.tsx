@@ -30,3 +30,7 @@ export default function ProjectDetails({ projectDetails, currentCourse }: Projec
             </div>
           </div>
         )}
+      </div>
+    </div>
+  );
+}

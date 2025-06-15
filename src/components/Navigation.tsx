@@ -15,7 +15,9 @@ import {
   XMarkIcon,
   DocumentTextIcon,
   BuildingOffice2Icon,
-  ChevronDownIcon
+  ChevronDownIcon,
+  ArrowRightOnRectangleIcon,
+  UserPlusIcon
 } from '@heroicons/react/24/outline';
 
 export default function Navigation() {
@@ -238,18 +240,22 @@ export default function Navigation() {
                 )}
               </div>
             ) : (
-              <div className="flex items-center space-x-3">
+              <div className="flex items-center space-x-1 sm:space-x-2 md:space-x-3">
                 <Link 
                   href="/auth" 
-                  className="text-gray-700 hover:text-blue-600 transition-colors font-medium px-4 py-2 rounded-lg hover:bg-blue-50"
+                  className="text-gray-700 hover:text-blue-600 transition-colors font-medium px-2 py-2 sm:px-3 sm:py-2 md:px-4 md:py-2 rounded-md sm:rounded-lg hover:bg-blue-50 flex items-center space-x-1 sm:space-x-2"
+                  title="로그인"
                 >
-                  로그인
+                  <ArrowRightOnRectangleIcon className="w-5 h-5" />
+                  <span className="hidden sm:inline text-sm sm:text-base">로그인</span>
                 </Link>
                 <Link 
-                  href="/auth" 
-                  className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold px-6 py-2 rounded-lg transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105"
+                  href="/auth?mode=signup" 
+                  className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold px-2 py-2 sm:px-4 sm:py-2 md:px-6 md:py-2 rounded-md sm:rounded-lg transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105 flex items-center space-x-1 sm:space-x-2"
+                  title="회원가입"
                 >
-                  회원가입
+                  <UserPlusIcon className="w-5 h-5" />
+                  <span className="hidden sm:inline text-sm sm:text-base">회원가입</span>
                 </Link>
               </div>
             )}

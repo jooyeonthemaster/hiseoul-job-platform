@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { signIn, signUp, resetPassword, signInWithGoogle } from '@/lib/auth';
 import { useAuth } from '@/contexts/AuthContext';
 import { motion } from 'framer-motion';
@@ -10,8 +10,11 @@ import { EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline';
 type AuthMode = 'login' | 'signup' | 'reset';
 type UserRole = 'jobseeker' | 'employer';
 
-export default function AuthPage() {
-  const [mode, setMode] = useState<AuthMode>('login');
+function AuthContent() {
+  const searchParams = useSearchParams();
+  const initialMode = (searchParams.get('mode') as AuthMode) || 'login';
+  
+  const [mode, setMode] = useState<AuthMode>(initialMode);
   const [role, setRole] = useState<UserRole>('jobseeker');
   const [formData, setFormData] = useState({
     email: '',
@@ -29,8 +32,6 @@ export default function AuthPage() {
   
   const router = useRouter();
   const { user } = useAuth();
-
-
 
   // 이미 로그인된 사용자는 메인 페이지로 리다이렉트 (useEffect 사용)
   // 로그인/회원가입 처리 중일 때는 리다이렉션하지 않음
@@ -500,5 +501,13 @@ export default function AuthPage() {
         </motion.form>
       </motion.div>
     </div>
+  );
+}
+
+export default function AuthPage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <AuthContent />
+    </Suspense>
   );
 } 

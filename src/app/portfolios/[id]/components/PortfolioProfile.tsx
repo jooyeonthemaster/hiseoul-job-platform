@@ -37,16 +37,16 @@ export default function PortfolioProfile({
               <img
                 src={portfolio.profileImage}
                 alt={portfolio.name}
-                className="w-24 h-24 rounded-full object-cover border-4 border-white shadow-lg"
+                className="w-40 h-40 rounded-xl object-cover border-4 border-white shadow-lg"
               />
             ) : (
-              <div className="w-24 h-24 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-3xl font-bold shadow-lg">
+              <div className="w-40 h-40 rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-4xl font-bold shadow-lg">
                 {portfolio.avatar}
               </div>
             )}
             {portfolio.verified && (
-              <div className="absolute -bottom-1 -right-1 bg-blue-600 rounded-full p-1">
-                <CheckBadgeIcon className="h-5 w-5 text-white" />
+              <div className="absolute -bottom-2 -right-2 bg-blue-600 rounded-full p-2">
+                <CheckBadgeIcon className="h-6 w-6 text-white" />
               </div>
             )}
           </div>
