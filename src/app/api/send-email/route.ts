@@ -364,7 +364,7 @@ const createEmailTemplate = (data: any) => {
                 <p style="color: #6b7280; margin-bottom: 25px;">
                     위 연락처로 직접 연락하시거나, 테크벤처 잡 매칭 플랫폼을 통해 응답해주세요.
                 </p>
-                <a href="https://hiseoul-job-platform.vercel.app" class="cta-button">
+                <a href="${process.env.NEXT_PUBLIC_SITE_URL || 'https://techventure-job-matching.vercel.app'}" class="cta-button">
                     HiSeoul에서 응답하기
                 </a>
             </div>
