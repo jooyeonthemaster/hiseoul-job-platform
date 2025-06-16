@@ -39,6 +39,11 @@ export const usePortfolioData = (portfolioId: string, hasAccess: boolean, access
             const profileData = await getJobSeekerProfile(portfolioId);
             const profile = profileData?.profile;
             console.log('🖼️ 포트폴리오 상세 - 프로필 데이터:', profile);
+            console.log('📁 추가 문서 데이터:', profile?.additionalDocuments);
+            console.log('🎥 영상 데이터 확인:', {
+              introVideo: profile?.introVideo,
+              introVideos: profile?.introVideos
+            });
             
             const convertedPortfolio: Portfolio = {
               id: portfolioId,
@@ -85,6 +90,7 @@ export const usePortfolioData = (portfolioId: string, hasAccess: boolean, access
               profileImage: profile?.profileImage,
               currentCourse: profile?.currentCourse,
               introVideo: profile?.introVideo,
+              introVideos: profile?.introVideos || [],
               selfIntroduction: profile?.selfIntroduction && 
                 Object.keys(profile.selfIntroduction).length > 0 &&
                 (profile.selfIntroduction.motivation || 
@@ -139,6 +145,16 @@ export const usePortfolioData = (portfolioId: string, hasAccess: boolean, access
                     startDate: edu.startDate ? formatFirebaseDate(edu.startDate) : '시작일 없음',
                     endDate: edu.endDate ? formatFirebaseDate(edu.endDate) : '',
                     grade: edu.grade || ''
+                  }))
+                : [],
+              additionalDocuments: Array.isArray(profile?.additionalDocuments) && profile.additionalDocuments.length > 0
+                ? profile.additionalDocuments.map((doc: any) => ({
+                    url: doc.url || '',
+                    fileName: doc.fileName || '파일명 없음',
+                    fileSize: doc.fileSize || 0,
+                    fileType: doc.fileType || 'unknown',
+                    downloadUrl: doc.downloadUrl || doc.url || '',
+                    publicId: doc.publicId || ''
                   }))
                 : []
             };

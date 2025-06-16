@@ -1,4 +1,10 @@
 // Portfolio 관련 타입 정의
+export interface VideoLink {
+  url: string;
+  title?: string;
+  addedAt: Date;
+}
+
 export interface Portfolio {
   id: string;
   name: string;
@@ -21,9 +27,11 @@ export interface Portfolio {
   profileImage?: string;
   currentCourse?: string;
   introVideo?: string;
+  introVideos?: VideoLink[];
   selfIntroduction?: SelfIntroduction;
   mediaContent?: MediaContent[];
   portfolioPdfs?: PortfolioPdf[];
+  additionalDocuments?: AdditionalDocument[];
   certificates?: Certificate[];
   awards?: Award[];
   detailedEducation?: DetailedEducation[];
@@ -72,6 +80,15 @@ export interface PortfolioPdf {
   url: string;
   fileName: string;
   uploadedAt: Date;
+}
+
+export interface AdditionalDocument {
+  url: string;
+  fileName: string;
+  fileSize: number;
+  fileType: string;
+  downloadUrl: string;
+  publicId: string;
 }
 
 export interface Certificate {

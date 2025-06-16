@@ -85,7 +85,7 @@ export default function TutorialOverlay({ isVisible, onComplete }: TutorialOverl
                     transition={{ delay: 0.4, duration: 0.5 }}
                     className="text-xs sm:text-sm md:text-base lg:text-lg text-gray-600 leading-relaxed"
                   >
-                    <span className="font-semibold text-blue-600">HiSeoul Job Platform</span>에 기업 회원으로 가입해주셔서 감사합니다
+                    <span className="font-semibold text-blue-600">테크벤처 잡 매칭</span>에 기업 회원으로 가입해주셔서 감사합니다
                   </motion.p>
                 </div>
 

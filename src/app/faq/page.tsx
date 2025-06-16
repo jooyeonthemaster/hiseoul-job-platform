@@ -49,7 +49,7 @@ export default function FAQPage() {
   const faqs = {
     jobseeker: [
       {
-        question: 'HiSeoul에 회원가입하려면 어떻게 해야 하나요?',
+        question: '테크벤처 잡 매칭에 회원가입하려면 어떻게 해야 하나요?',
         answer: '메인 페이지 우상단의 "시작하기" 버튼을 클릭하거나 /auth 페이지에서 이메일 또는 구글 소셜 로그인으로 간편하게 가입할 수 있습니다.'
       },
       {
@@ -83,8 +83,8 @@ export default function FAQPage() {
     ],
     employer: [
       {
-        question: 'HiSeoul 기업 회원가입 조건이 있나요?',
-        answer: '서울시 소재 중소기업으로 하이서울브랜드 인증을 받은 기업이 가입 가능합니다. 사업자등록증과 관련 서류 제출이 필요합니다.'
+        question: '테크벤처 잡 매칭 기업 회원가입 조건이 있나요?',
+        answer: '서울시 소재 중소기업으로 테크벤처 잡 매칭 인증을 받은 기업이 가입 가능합니다. 사업자등록증과 관련 서류 제출이 필요합니다.'
       },
       {
         question: '채용공고는 어떻게 등록하나요?',
@@ -117,7 +117,7 @@ export default function FAQPage() {
     ],
     general: [
       {
-        question: 'HiSeoul은 어떤 서비스인가요?',
+        question: '테크벤처 잡 매칭은 어떤 서비스인가요?',
         answer: '서울시 중소기업과 우수한 인재를 연결하는 포트폴리오 기반 구인구직 플랫폼으로, AI 매칭 기술을 활용한 혁신적인 채용 서비스입니다.'
       },
       {
@@ -161,7 +161,7 @@ export default function FAQPage() {
               <div className="w-10 h-10 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg">
                 <span className="text-white font-bold text-lg">H</span>
               </div>
-              <span className="text-2xl font-bold text-gray-900">HiSeoul</span>
+              <span className="text-2xl font-bold text-gray-900">테크벤처 잡 매칭</span>
             </Link>
             
             <nav className="hidden md:flex items-center space-x-8">
@@ -202,7 +202,7 @@ export default function FAQPage() {
             <span className="bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">FAQ</span>
           </h1>
           <p className="text-xl text-gray-600 max-w-3xl mx-auto leading-relaxed">
-            HiSeoul 이용 중 궁금한 점들을 모아두었습니다.<br />
+            테크벤처 잡 매칭 이용 중 궁금한 점들을 모아두었습니다.<br />
             찾는 답변이 없다면 언제든 문의해주세요.
           </p>
         </div>
@@ -292,10 +292,10 @@ export default function FAQPage() {
             <div className="w-10 h-10 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg">
               <span className="text-white font-bold text-lg">H</span>
             </div>
-            <span className="text-2xl font-bold">HiSeoul</span>
+            <span className="text-2xl font-bold">테크벤처 잡 매칭</span>
           </Link>
           <p className="text-gray-400">
-            &copy; 2024 HiSeoul Job Platform. All rights reserved.
+            &copy; 2025 테크벤처 잡 매칭 Job Platform. All rights reserved.
           </p>
         </div>
       </footer>

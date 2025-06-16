@@ -65,7 +65,7 @@ export default function HelpPage() {
     {
       icon: BuildingOfficeIcon,
       title: '1. 기업 등록 및 인증',
-      description: '서울시 하이서울브랜드 기업 인증을 받고 기업 정보를 등록하세요.',
+      description: '테크벤처 잡 매칭 기업 인증을 받고 기업 정보를 등록하세요.',
       details: [
         '사업자 등록증 및 관련 서류 제출',
         '서울시 공식 인증 프로세스 진행',
@@ -118,7 +118,7 @@ export default function HelpPage() {
               <div className="w-10 h-10 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg">
                 <span className="text-white font-bold text-lg">H</span>
               </div>
-              <span className="text-2xl font-bold text-gray-900">HiSeoul</span>
+              <span className="text-2xl font-bold text-gray-900">테크벤처 잡 매칭</span>
             </Link>
             
             <nav className="hidden md:flex items-center space-x-8">
@@ -156,12 +156,12 @@ export default function HelpPage() {
             도움말 센터
           </div>
           <h1 className="text-5xl lg:text-6xl font-bold mb-8 text-gray-900 leading-tight">
-            <span className="bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">HiSeoul</span> 
+            <span className="bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">테크벤처 잡 매칭</span> 
             사용법
           </h1>
           <p className="text-xl text-gray-600 max-w-3xl mx-auto leading-relaxed">
             구직자와 기업을 위한 상세한 가이드를 확인하고,<br />
-            HiSeoul의 모든 기능을 효과적으로 활용해보세요.
+            테크벤처 잡 매칭의 모든 기능을 효과적으로 활용해보세요.
           </p>
         </div>
       </section>
@@ -250,10 +250,10 @@ export default function HelpPage() {
             <div className="w-10 h-10 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg">
               <span className="text-white font-bold text-lg">H</span>
             </div>
-            <span className="text-2xl font-bold">HiSeoul</span>
+            <span className="text-2xl font-bold">테크벤처 잡 매칭</span>
           </Link>
           <p className="text-gray-400">
-            &copy; 2024 HiSeoul Job Platform. All rights reserved.
+            &copy; 2025 테크벤처 잡 매칭 Job Platform. All rights reserved.
           </p>
         </div>
       </footer>

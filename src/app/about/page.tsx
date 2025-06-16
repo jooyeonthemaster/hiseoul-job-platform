@@ -33,7 +33,7 @@ export default function AboutPage() {
     {
       name: '김기홍',
       position: '대표 / 전 HBA 사무국장',
-      description: '20년간의 채용 및 인사 전문 경험을 바탕으로 HiSeoul을 설립했습니다.',
+      description: '채용 및 인사 전문 경험을 바탕으로 테크벤처 잡 매칭을 설립했습니다.',
       email: 'tvs@techventure.co.kr'
     }
   ];
@@ -55,7 +55,7 @@ export default function AboutPage() {
               <div className="w-10 h-10 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg">
                 <span className="text-white font-bold text-lg">H</span>
               </div>
-              <span className="text-2xl font-bold text-gray-900">HiSeoul</span>
+              <span className="text-2xl font-bold text-gray-900">테크벤처 잡 매칭</span>
             </Link>
             
             <nav className="hidden md:flex items-center space-x-8">
@@ -87,10 +87,10 @@ export default function AboutPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <div className="inline-flex items-center px-4 py-2 bg-blue-100 border border-blue-200 rounded-full text-blue-700 font-medium text-sm mb-8">
             <span className="w-2 h-2 bg-blue-500 rounded-full mr-2"></span>
-            About HiSeoul
+            About 테크벤처 잡 매칭
           </div>
           <h1 className="text-5xl lg:text-6xl font-bold mb-8 text-gray-900 leading-tight">
-            <span className="bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">HiSeoul</span>을 
+            <span className="bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">테크벤처 잡 매칭</span>을 
             소개합니다
           </h1>
           <p className="text-xl text-gray-600 max-w-3xl mx-auto leading-relaxed">
@@ -109,7 +109,7 @@ export default function AboutPage() {
                 우리의 <span className="text-blue-600">미션</span>
               </h2>
               <p className="text-lg text-gray-600 leading-relaxed mb-8">
-                HiSeoul은 서울시의 우수한 중소기업들이 필요로 하는 인재와 
+              테크벤처 잡 매칭은 서울시의 우수한 중소기업들이 필요로 하는 인재와 
                 실력 있는 구직자들을 효과적으로 연결하여, 
                 모두가 성장할 수 있는 채용 생태계를 구축하는 것을 목표로 합니다.
               </p>
@@ -148,7 +148,7 @@ export default function AboutPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
             <h2 className="text-4xl font-bold mb-6 text-gray-900">핵심 가치</h2>
-            <p className="text-xl text-gray-600">HiSeoul이 추구하는 가치와 원칙입니다</p>
+            <p className="text-xl text-gray-600">테크벤처 잡 매칭이 추구하는 가치와 원칙입니다</p>
           </div>
           
           <div className="grid md:grid-cols-3 gap-8">
@@ -170,7 +170,7 @@ export default function AboutPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
             <h2 className="text-4xl font-bold mb-6 text-gray-900">성과와 현황</h2>
-            <p className="text-xl text-gray-600">HiSeoul이 만들어낸 성과를 숫자로 확인하세요</p>
+            <p className="text-xl text-gray-600">테크벤처 잡 매칭이 만들어낸 성과를 숫자로 확인하세요</p>
           </div>
           
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
@@ -189,7 +189,7 @@ export default function AboutPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
             <h2 className="text-4xl font-bold mb-6 text-gray-900">팀 소개</h2>
-            <p className="text-xl text-gray-600">HiSeoul을 이끌어가는 전문가를 만나보세요</p>
+            <p className="text-xl text-gray-600">테크벤처 잡 매칭을 이끌어가는 전문가를 만나보세요</p>
           </div>
           
           <div className="flex justify-center">
@@ -222,10 +222,10 @@ export default function AboutPage() {
             <div className="w-10 h-10 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg">
               <span className="text-white font-bold text-lg">H</span>
             </div>
-            <span className="text-2xl font-bold">HiSeoul</span>
+            <span className="text-2xl font-bold">테크벤처 잡 매칭</span>
           </Link>
           <p className="text-gray-400">
-            &copy; 2024 HiSeoul Job Platform. All rights reserved.
+            &copy; 2025 테크벤처 잡 매칭 Job Platform. All rights reserved.
           </p>
         </div>
       </footer>

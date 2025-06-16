@@ -108,7 +108,7 @@ export default function JobInquiryDetailPage() {
         body: JSON.stringify({
           to: inquiry.recruiterInfo.email,
           cc: 'jooyeon74397430@gmail.com',
-          subject: `[HiSeoul] 채용 제안에 대한 응답이 도착했습니다`,
+          subject: `[테크벤처 잡 매칭] 채용 제안에 대한 응답이 도착했습니다`,
           type: 'response',
           jobSeekerName: inquiry.jobSeekerName || '구직자',
           companyName: inquiry.companyInfo.name,

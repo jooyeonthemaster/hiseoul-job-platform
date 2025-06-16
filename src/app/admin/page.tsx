@@ -960,7 +960,7 @@ export default function AdminPage() {
           </form>
 
           <div className="text-center text-sm text-gray-500">
-            <p>HiSeoul 관리자 대시보드</p>
+            <p>테크벤처 잡 매칭 관리자 대시보드</p>
             <p className="mt-1">무단 접근을 금지합니다</p>
           </div>
         </motion.div>

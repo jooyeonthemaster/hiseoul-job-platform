@@ -216,7 +216,7 @@ export default function CompanyDetailPage() {
                     {company.approvalStatus === 'approved' && (
                       <div className="flex items-center bg-emerald-50 px-3 py-1 rounded-full border border-emerald-200">
                         <CheckBadgeIcon className="w-5 h-5 text-emerald-500 mr-1" />
-                        <span className="text-sm font-medium text-emerald-700">하이서울 인증</span>
+                        <span className="text-sm font-medium text-emerald-700">테크벤처 잡 매칭 인증</span>
                       </div>
                     )}
                   </div>
@@ -529,11 +529,11 @@ export default function CompanyDetailPage() {
                 <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-lg p-1">
                   <img 
                     src="/images/logo.png" 
-                    alt="HiSeoul Logo" 
+                    alt="테크벤처 잡 매칭 Logo" 
                     className="w-full h-full object-contain"
                   />
                 </div>
-                <span className="text-2xl font-bold">HiSeoul</span>
+                <span className="text-2xl font-bold">테크벤처 잡 매칭</span>
               </div>
               <p className="text-gray-400 text-lg leading-relaxed">
                 서울시 중소기업과 모든 직군의 전문 인재를 연결하는 프리미엄 구인구직 플랫폼
@@ -570,7 +570,7 @@ export default function CompanyDetailPage() {
           </div>
           
           <div className="border-t border-gray-800 mt-16 pt-10 text-center text-gray-400 text-lg">
-            <p>&copy; 2025 HiSeoul Job Platform. All rights reserved.</p>
+            <p>&copy; 2025 테크벤처 잡 매칭 Job Platform. All rights reserved.</p>
           </div>
         </div>
       </footer>

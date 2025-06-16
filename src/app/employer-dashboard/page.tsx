@@ -214,7 +214,7 @@ export default function EmployerDashboard() {
                     <span className="text-white font-bold text-lg">H</span>
                   </div>
                   <div>
-                    <span className="text-xl font-bold text-slate-900">HiSeoul</span>
+                    <span className="text-xl font-bold text-slate-900">테크벤처 잡 매칭</span>
                     <p className="text-xs text-slate-500 mt-0.5">기업 대시보드</p>
                   </div>
                 </Link>
@@ -313,7 +313,7 @@ export default function EmployerDashboard() {
                     <div className="w-8 h-8 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-lg flex items-center justify-center">
                       <span className="text-white font-bold text-sm">H</span>
                     </div>
-                    <span className="text-lg font-bold text-slate-900">HiSeoul</span>
+                    <span className="text-lg font-bold text-slate-900">테크벤처 잡 매칭</span>
                   </Link>
                 </div>
                 

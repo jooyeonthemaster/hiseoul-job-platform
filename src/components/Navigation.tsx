@@ -103,7 +103,7 @@ export default function Navigation() {
           <Link href="/" className="flex items-center group">
             <img 
               src="/images/logo.png" 
-              alt="HiSeoul Logo" 
+              alt="테크벤처 잡 매칭 Logo" 
               className="h-10 w-auto group-hover:scale-105 transition-all duration-300"
             />
           </Link>

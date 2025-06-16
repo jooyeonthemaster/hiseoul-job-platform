@@ -10,6 +10,13 @@ interface PDFUploadProps {
   maxSize?: number; // MB 단위
 }
 
+interface UploadingFile {
+  file: File;
+  progress: number;
+  status: 'uploading' | 'success' | 'error';
+  error?: string;
+}
+
 export default function PDFUpload({ 
   onUploadSuccess, 
   onUploadError, 
@@ -17,9 +24,7 @@ export default function PDFUpload({
   maxSize = 10 
 }: PDFUploadProps) {
   const [isDragging, setIsDragging] = useState(false);
-  const [isUploading, setIsUploading] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState(0);
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [uploadingFiles, setUploadingFiles] = useState<UploadingFile[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const validateFile = (file: File): string | null => {
@@ -37,15 +42,15 @@ export default function PDFUpload({
     return null;
   };
 
-  const uploadFile = async (file: File) => {
+  const uploadFile = async (file: File, index: number) => {
     const validationError = validateFile(file);
     if (validationError) {
+      setUploadingFiles(prev => prev.map((f, i) => 
+        i === index ? { ...f, status: 'error', error: validationError } : f
+      ));
       onUploadError(validationError);
       return;
     }
-
-    setIsUploading(true);
-    setUploadProgress(0);
 
     try {
       const formData = new FormData();
@@ -62,22 +67,46 @@ export default function PDFUpload({
       }
 
       const result = await response.json();
-      setUploadProgress(100);
       
+      // 업로드 완료 상태로 변경
+      setUploadingFiles(prev => prev.map((f, i) => 
+        i === index ? { ...f, progress: 100, status: 'success' } : f
+      ));
+      
+      // 성공 콜백 호출
+      onUploadSuccess(result.url, file.name);
+      
+      // 일정 시간 후 목록에서 제거
       setTimeout(() => {
-        // PDF URL과 파일명 전달
-        onUploadSuccess(result.url, file.name);
-        setSelectedFile(null);
-        setIsUploading(false);
-        setUploadProgress(0);
-      }, 500);
+        setUploadingFiles(prev => prev.filter((_, i) => i !== index));
+      }, 2000);
 
     } catch (error) {
       console.error('PDF 업로드 에러:', error);
-      onUploadError(error instanceof Error ? error.message : 'PDF 업로드 중 오류가 발생했습니다.');
-      setIsUploading(false);
-      setUploadProgress(0);
+      const errorMessage = error instanceof Error ? error.message : 'PDF 업로드 중 오류가 발생했습니다.';
+      
+      setUploadingFiles(prev => prev.map((f, i) => 
+        i === index ? { ...f, status: 'error', error: errorMessage } : f
+      ));
+      
+      onUploadError(errorMessage);
     }
+  };
+
+  const handleFiles = (files: FileList) => {
+    const newFiles = Array.from(files).map(file => ({
+      file,
+      progress: 0,
+      status: 'uploading' as const
+    }));
+
+    setUploadingFiles(prev => [...prev, ...newFiles]);
+
+    // 각 파일을 개별적으로 업로드
+    newFiles.forEach((fileData, relativeIndex) => {
+      const absoluteIndex = uploadingFiles.length + relativeIndex;
+      uploadFile(fileData.file, absoluteIndex);
+    });
   };
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
@@ -94,34 +123,25 @@ export default function PDFUpload({
     e.preventDefault();
     setIsDragging(false);
 
-    const files = Array.from(e.dataTransfer.files);
+    const files = e.dataTransfer.files;
     if (files.length > 0) {
-      const file = files[0];
-      setSelectedFile(file);
-      uploadFile(file);
+      handleFiles(files);
     }
-  }, []);
+  }, [uploadingFiles.length]);
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (files && files.length > 0) {
-      const file = files[0];
-      setSelectedFile(file);
-      uploadFile(file);
+      handleFiles(files);
     }
   };
 
   const handleClick = () => {
-    if (!isUploading) {
-      fileInputRef.current?.click();
-    }
+    fileInputRef.current?.click();
   };
 
-  const handleRemoveFile = () => {
-    setSelectedFile(null);
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
-    }
+  const removeUploadingFile = (index: number) => {
+    setUploadingFiles(prev => prev.filter((_, i) => i !== index));
   };
 
   const formatFileSize = (bytes: number): string => {
@@ -138,77 +158,88 @@ export default function PDFUpload({
         ref={fileInputRef}
         type="file"
         accept=".pdf"
+        multiple
         onChange={handleFileSelect}
         className="hidden"
       />
 
-      {!selectedFile && !isUploading && (
-        <div
-          onClick={handleClick}
-          onDragOver={handleDragOver}
-          onDragLeave={handleDragLeave}
-          onDrop={handleDrop}
-          className={`
-            relative border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors
-            ${isDragging 
-              ? 'border-blue-500 bg-blue-50' 
-              : 'border-gray-300 hover:border-gray-400 hover:bg-gray-50'
-            }
-          `}
-        >
-          <CloudArrowUpIcon className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-          <div className="text-lg font-medium text-gray-900 mb-2">
-            PDF 파일을 업로드하세요
-          </div>
-          <div className="text-sm text-gray-500 mb-4">
-            파일을 드래그하여 놓거나 클릭하여 선택하세요
-          </div>
-          <div className="text-xs text-gray-400">
-            최대 {maxSize}MB, PDF 파일만 지원
-          </div>
+      {/* 드래그 앤 드롭 영역 */}
+      <div
+        onClick={handleClick}
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
+        className={`
+          relative border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors
+          ${isDragging 
+            ? 'border-blue-500 bg-blue-50' 
+            : 'border-gray-300 hover:border-gray-400 hover:bg-gray-50'
+          }
+        `}
+      >
+        <CloudArrowUpIcon className="mx-auto h-12 w-12 text-gray-400 mb-4" />
+        <div className="text-lg font-medium text-gray-900 mb-2">
+          PDF 파일을 업로드하세요
         </div>
-      )}
+        <div className="text-sm text-gray-500 mb-4">
+          파일을 드래그하여 놓거나 클릭하여 선택하세요
+        </div>
+        <div className="text-xs text-gray-400">
+          최대 {maxSize}MB, PDF 파일만 지원 • 여러 파일 동시 선택 가능
+        </div>
+      </div>
 
-      {selectedFile && !isUploading && (
-        <div className="border border-gray-300 rounded-lg p-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-3">
-              <DocumentIcon className="h-8 w-8 text-red-500" />
-              <div>
-                <div className="font-medium text-gray-900">{selectedFile.name}</div>
-                <div className="text-sm text-gray-500">{formatFileSize(selectedFile.size)}</div>
+      {/* 업로딩 중인 파일들 */}
+      {uploadingFiles.length > 0 && (
+        <div className="mt-4 space-y-3">
+          {uploadingFiles.map((uploadingFile, index) => (
+            <div key={index} className="border border-gray-300 rounded-lg p-4">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center space-x-3">
+                  <DocumentIcon className="h-8 w-8 text-red-500" />
+                  <div className="flex-1">
+                    <div className="font-medium text-gray-900">{uploadingFile.file.name}</div>
+                    <div className="text-sm text-gray-500">
+                      {formatFileSize(uploadingFile.file.size)} • 
+                      {uploadingFile.status === 'uploading' && ' 업로드 중...'}
+                      {uploadingFile.status === 'success' && ' 업로드 완료!'}
+                      {uploadingFile.status === 'error' && ` 오류: ${uploadingFile.error}`}
+                    </div>
+                  </div>
+                </div>
+                <button
+                  onClick={() => removeUploadingFile(index)}
+                  className="p-1 hover:bg-gray-100 rounded"
+                >
+                  <XMarkIcon className="h-5 w-5 text-gray-400" />
+                </button>
               </div>
+              
+              {/* 진행률 바 */}
+              {uploadingFile.status === 'uploading' && (
+                <div className="w-full bg-gray-200 rounded-full h-2">
+                  <div 
+                    className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                    style={{ width: `${uploadingFile.progress}%` }}
+                  />
+                </div>
+              )}
+              
+              {/* 성공 표시 */}
+              {uploadingFile.status === 'success' && (
+                <div className="w-full bg-gray-200 rounded-full h-2">
+                  <div className="bg-green-600 h-2 rounded-full w-full" />
+                </div>
+              )}
+              
+              {/* 오류 표시 */}
+              {uploadingFile.status === 'error' && (
+                <div className="w-full bg-gray-200 rounded-full h-2">
+                  <div className="bg-red-600 h-2 rounded-full w-full" />
+                </div>
+              )}
             </div>
-            <button
-              onClick={handleRemoveFile}
-              className="p-1 hover:bg-gray-100 rounded"
-            >
-              <XMarkIcon className="h-5 w-5 text-gray-400" />
-            </button>
-          </div>
-        </div>
-      )}
-
-      {isUploading && (
-        <div className="border border-gray-300 rounded-lg p-4">
-          <div className="flex items-center space-x-3 mb-3">
-            <DocumentIcon className="h-8 w-8 text-red-500" />
-            <div className="flex-1">
-              <div className="font-medium text-gray-900">{selectedFile?.name}</div>
-              <div className="text-sm text-gray-500">업로드 중...</div>
-            </div>
-          </div>
-          
-          <div className="w-full bg-gray-200 rounded-full h-2">
-            <div 
-              className="bg-blue-600 h-2 rounded-full transition-all duration-300"
-              style={{ width: `${uploadProgress}%` }}
-            />
-          </div>
-          
-          <div className="text-xs text-gray-500 mt-1 text-right">
-            {uploadProgress}%
-          </div>
+          ))}
         </div>
       )}
     </div>

@@ -52,11 +52,24 @@ interface FormData {
   selfIntroduction: SelfIntroduction;
   media: {
     introVideo: string;
+    introVideos?: Array<{
+      url: string;
+      title?: string;
+      addedAt: Date;
+    }>;
     mediaContent: any[];
     portfolioPdfs?: Array<{
       url: string;
       fileName: string;
       uploadedAt: Date;
+    }>;
+    additionalDocuments?: Array<{
+      url: string;
+      fileName: string;
+      fileSize: number;
+      fileType: string;
+      downloadUrl: string;
+      publicId: string;
     }>;
   };
 }
@@ -101,6 +114,7 @@ export default function ProfileEditPage() {
     // Media
     media: {
       introVideo: '',
+      introVideos: [],
       mediaContent: [],
       portfolioPdfs: []
     }
@@ -170,8 +184,10 @@ export default function ProfileEditPage() {
           },
           media: {
             introVideo: profile.introVideo || '',
+            introVideos: profile.introVideos || [],
             mediaContent: profile.mediaContent || [],
-            portfolioPdfs: profile.portfolioPdfs || []
+            portfolioPdfs: profile.portfolioPdfs || [],
+            additionalDocuments: profile.additionalDocuments || []
           }
         });
       }
@@ -209,8 +225,10 @@ export default function ProfileEditPage() {
         awards: formData.skills.awards,
         selfIntroduction: formData.selfIntroduction,
         introVideo: formData.media.introVideo,
+        introVideos: formData.media.introVideos,
         mediaContent: formData.media.mediaContent,
-        portfolioPdfs: formData.media.portfolioPdfs
+        portfolioPdfs: formData.media.portfolioPdfs,
+        additionalDocuments: formData.media.additionalDocuments
       };
 
       // Update jobseeker profile
@@ -232,13 +250,16 @@ export default function ProfileEditPage() {
         certificates: formData.skills.certificates,
         awards: formData.skills.awards,
         introVideo: formData.media.introVideo,
+        introVideos: formData.media.introVideos,
         selfIntroduction: {
           motivation: formData.selfIntroduction.motivation || '',
           personality: formData.selfIntroduction.personality || '',
           experience: formData.selfIntroduction.experience || '',
           aspiration: formData.selfIntroduction.aspiration || ''
         },
-        mediaContent: formData.media.mediaContent
+        mediaContent: formData.media.mediaContent,
+        portfolioPdfs: formData.media.portfolioPdfs,
+        additionalDocuments: formData.media.additionalDocuments
       });
 
       alert('프로필이 성공적으로 저장되었습니다!');

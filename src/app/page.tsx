@@ -170,7 +170,7 @@ export default function HomePage() {
     {
       name: '박소영',
       role: '채용 담당자',
-      company: '하이서울브랜드기업',
+      company: '테크벤처 잡 매칭',
       content: '우수한 인재들의 실무 능력을 포트폴리오로 미리 확인할 수 있어 채용 효율성이 크게 향상되었습니다.',
       rating: 5,
     },
@@ -185,7 +185,7 @@ export default function HomePage() {
         <div className="absolute inset-0 z-0">
           <Image
             src="/images/hero-background.png"
-            alt="HiSeoul Job Platform Background"
+            alt="테크벤처 잡 매칭 Job Platform Background"
             fill
             className="object-cover object-center"
             priority
@@ -772,7 +772,7 @@ export default function HomePage() {
               <p className="text-gray-500 text-sm mt-4">
                 {!isAuthenticated ? (
                   activeTab === 'employer' 
-                    ? '하이서울브랜드 기업 우선 인증 혜택' 
+                    ? '테크벤처 잡 매칭' 
                     : '지금 가입하면 포트폴리오 템플릿 무료 제공'
                 ) : (
                   userRole === 'employer' 
@@ -804,7 +804,7 @@ export default function HomePage() {
               차별화된 서비스
             </div>
             <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl 2xl:text-7xl font-bold mb-6 sm:mb-8 text-gray-900 leading-tight">
-              왜 <span className="bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">HiSeoul</span>을<br />
+              왜 <span className="bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">테크벤처 잡 매칭</span>을<br />
               선택하나요?
             </h2>
             <p className="text-base sm:text-lg md:text-xl lg:text-2xl text-gray-600 max-w-3xl mx-auto leading-relaxed">
@@ -1175,7 +1175,7 @@ export default function HomePage() {
                   ? '포트폴리오를 완성하고 맞춤형 채용 정보를 받아보세요' 
                   : userRole === 'employer' 
                   ? '우수한 인재를 찾고 효율적인 채용 프로세스를 경험하세요' 
-                  : 'HiSeoul의 다양한 기능을 통해 목표를 달성하세요'
+                  : '테크벤처 잡 매칭의 다양한 기능을 통해 목표를 달성하세요'
                 }
               </p>
               <div className="flex flex-col sm:flex-row gap-6 justify-center">
@@ -1219,7 +1219,7 @@ export default function HomePage() {
                 <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-lg p-1">
                   <img 
                     src="/images/logo.png" 
-                    alt="HiSeoul Logo" 
+                    alt="테크벤처 잡 매칭 Logo" 
                     className="w-full h-full object-contain"
                   />
                 </div>

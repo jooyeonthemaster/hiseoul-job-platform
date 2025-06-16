@@ -14,6 +14,7 @@ import PortfolioProfile from './components/PortfolioProfile';
 import IntroVideo from './components/PortfolioContent/IntroVideo';
 import PortfolioImageGallery from '@/components/PortfolioImageGallery';
 import PDFImageViewer from '@/components/PDFImageViewer';
+import { DocumentList } from '@/components/DocumentUpload';
 
 // 타입
 import { Portfolio } from './types/portfolio.types';
@@ -27,7 +28,8 @@ import {
   DocumentIcon,
   AcademicCapIcon,
   TrophyIcon,
-  PlayIcon
+  PlayIcon,
+  FolderIcon
 } from '@heroicons/react/24/outline';
 
 export default function PortfolioDetailPage() {
@@ -111,7 +113,10 @@ export default function PortfolioDetailPage() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Main Content */}
           <div className="lg:col-span-2 space-y-8">
-            <IntroVideo introVideo={portfolio.introVideo} />
+            <IntroVideo 
+              introVideo={portfolio.introVideo} 
+              introVideos={portfolio.introVideos}
+            />
             
             {/* 상세 자기소개서 */}
             {portfolio.selfIntroduction && (
@@ -181,26 +186,55 @@ export default function PortfolioDetailPage() {
             {portfolio.mediaContent && portfolio.mediaContent.length > 0 && (
               <div className="bg-white/80 backdrop-blur-lg rounded-2xl p-8 shadow-xl border border-white/20">
                 <h2 className="text-2xl font-bold text-gray-900 mb-6">미디어 콘텐츠</h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {portfolio.mediaContent.map((media, index) => (
-                    <div key={index} className="bg-gray-50 rounded-lg p-4">
-                      <div className="flex items-center space-x-3 mb-3">
-                        <PlayIcon className="h-5 w-5 text-blue-600" />
-                        <h3 className="font-semibold text-gray-900">{media.title}</h3>
+                <div className="space-y-6">
+                  {portfolio.mediaContent.map((media, index) => {
+                    const getYouTubeId = (url: string) => {
+                      const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+                      const match = url.match(regExp);
+                      return match && match[2].length === 11 ? match[2] : null;
+                    };
+                    
+                    const youtubeId = getYouTubeId(media.url);
+                    
+                    return (
+                      <div key={index} className="border-b border-gray-200 pb-6 last:border-b-0 last:pb-0">
+                        <div className="flex items-center space-x-3 mb-4">
+                          <PlayIcon className="h-5 w-5 text-blue-600" />
+                          <h3 className="font-semibold text-gray-900">{media.title}</h3>
+                        </div>
+                        {media.description && (
+                          <p className="text-gray-600 text-sm mb-4">{media.description}</p>
+                        )}
+                        
+                        {youtubeId ? (
+                          <div className="relative aspect-video rounded-lg overflow-hidden shadow-lg">
+                            <iframe
+                              src={`https://www.youtube.com/embed/${youtubeId}`}
+                              title={media.title}
+                              className="w-full h-full"
+                              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                              allowFullScreen
+                            />
+                          </div>
+                        ) : (
+                          <div className="relative aspect-video bg-gray-100 rounded-lg flex items-center justify-center">
+                            <div className="text-center">
+                              <PlayIcon className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+                              <p className="text-gray-600">영상을 재생할 수 없습니다</p>
+                              <a 
+                                href={media.url} 
+                                target="_blank" 
+                                rel="noopener noreferrer"
+                                className="text-blue-600 hover:text-blue-700 text-sm font-medium mt-2 inline-block"
+                              >
+                                원본 링크로 보기 →
+                              </a>
+                            </div>
+                          </div>
+                        )}
                       </div>
-                      {media.description && (
-                        <p className="text-gray-600 text-sm mb-3">{media.description}</p>
-                      )}
-                      <a 
-                        href={media.url} 
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                        className="text-blue-600 hover:text-blue-700 text-sm font-medium"
-                      >
-                        콘텐츠 보기 →
-                      </a>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             )}
@@ -368,6 +402,30 @@ export default function PortfolioDetailPage() {
                   </div>
                 ))}
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* 추가 문서 - 전체 너비 */}
+        {portfolio.additionalDocuments && portfolio.additionalDocuments.length > 0 && (
+          <div className="mt-8">
+            <div className="bg-white/80 backdrop-blur-lg rounded-2xl p-8 shadow-xl border border-white/20">
+              <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center space-x-3">
+                  <FolderIcon className="h-8 w-8 text-blue-600" />
+                  <h2 className="text-2xl font-bold text-gray-900">추가 자료</h2>
+                </div>
+                <div className="text-sm text-gray-500">
+                  {portfolio.additionalDocuments.length}개의 파일
+                </div>
+              </div>
+              <p className="text-gray-600 mb-6">
+                구직자가 업로드한 추가 문서 파일들입니다. 클릭하여 다운로드할 수 있습니다.
+              </p>
+              <DocumentList 
+                documents={portfolio.additionalDocuments}
+                onRemove={undefined}
+              />
             </div>
           </div>
         )}

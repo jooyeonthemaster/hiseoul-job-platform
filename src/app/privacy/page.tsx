@@ -85,7 +85,7 @@ export default function PrivacyPage() {
               <div className="w-10 h-10 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg">
                 <span className="text-white font-bold text-lg">H</span>
               </div>
-              <span className="text-2xl font-bold text-gray-900">HiSeoul</span>
+              <span className="text-2xl font-bold text-gray-900">테크벤처 잡 매칭</span>
             </Link>
             
             <nav className="hidden md:flex items-center space-x-8">
@@ -127,7 +127,7 @@ export default function PrivacyPage() {
             처리방침
           </h1>
           <p className="text-xl text-gray-600 max-w-3xl mx-auto leading-relaxed">
-            HiSeoul은 이용자의 개인정보를 소중히 여기며,<br />
+            테크벤처 잡 매칭은 이용자의 개인정보를 소중히 여기며,<br />
             관련 법령에 따라 안전하게 보호하고 있습니다.
           </p>
           <div className="mt-8 text-sm text-gray-500">
@@ -143,7 +143,7 @@ export default function PrivacyPage() {
           <div className="mb-16 text-center">
             <h2 className="text-3xl font-bold mb-6 text-gray-900">개인정보처리방침 개요</h2>
             <p className="text-lg text-gray-600 max-w-4xl mx-auto leading-relaxed">
-              HiSeoul('https://hiseoul.com' 이하 'HiSeoul')은 개인정보보호법에 따라 이용자의 개인정보 보호 및 권익을 보호하고 
+              테크벤처 잡 매칭('https://techventure.co.kr' 이하 '테크벤처 잡 매칭')은 개인정보보호법에 따라 이용자의 개인정보 보호 및 권익을 보호하고 
               개인정보와 관련한 이용자의 고충을 원활하게 처리할 수 있도록 다음과 같은 처리방침을 수립·공개합니다.
             </p>
           </div>
@@ -260,10 +260,10 @@ export default function PrivacyPage() {
             <div className="w-10 h-10 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg">
               <span className="text-white font-bold text-lg">H</span>
             </div>
-            <span className="text-2xl font-bold">HiSeoul</span>
+            <span className="text-2xl font-bold">테크벤처 잡 매칭</span>
           </Link>
           <p className="text-gray-400">
-            &copy; 2024 HiSeoul Job Platform. All rights reserved.
+            &copy; 2025 테크벤처 잡 매칭 Job Platform. All rights reserved.
           </p>
         </div>
       </footer>

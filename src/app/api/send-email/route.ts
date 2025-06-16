@@ -238,7 +238,7 @@ const createEmailTemplate = (data: any) => {
         <!-- 헤더 -->
         <div class="header">
             <h1>🎉 채용 제안이 도착했습니다!</h1>
-            <p>HiSeoul 채용 플랫폼</p>
+            <p>테크벤처 잡 매칭</p>
         </div>
 
         <!-- 메인 콘텐츠 -->
@@ -362,7 +362,7 @@ const createEmailTemplate = (data: any) => {
             <div class="cta-section">
                 <h3 style="color: #1f2937; margin-bottom: 15px;">관심이 있으시다면 언제든 연락주세요!</h3>
                 <p style="color: #6b7280; margin-bottom: 25px;">
-                    위 연락처로 직접 연락하시거나, HiSeoul 플랫폼을 통해 응답해주세요.
+                    위 연락처로 직접 연락하시거나, 테크벤처 잡 매칭 플랫폼을 통해 응답해주세요.
                 </p>
                 <a href="https://hiseoul-job-platform.vercel.app" class="cta-button">
                     HiSeoul에서 응답하기

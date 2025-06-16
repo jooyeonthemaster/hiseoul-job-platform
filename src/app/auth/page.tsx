@@ -164,8 +164,8 @@ function AuthContent() {
       >
         <div>
           <h2 className="mt-6 text-center text-3xl font-bold text-gray-900">
-            {mode === 'login' && 'HiSeoul에 로그인'}
-            {mode === 'signup' && 'HiSeoul 회원가입'}
+            {mode === 'login' && '테크벤처 잡 매칭에 로그인'}
+            {mode === 'signup' && '테크벤처 잡 매칭 회원가입'}
             {mode === 'reset' && '비밀번호 재설정'}
           </h2>
           <div className="mt-4">

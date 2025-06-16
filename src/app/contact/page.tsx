@@ -84,7 +84,7 @@ export default function ContactPage() {
               <div className="w-10 h-10 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg">
                 <span className="text-white font-bold text-lg">H</span>
               </div>
-              <span className="text-2xl font-bold text-gray-900">HiSeoul</span>
+              <span className="text-2xl font-bold text-gray-900">테크벤처 잡 매칭</span>
             </Link>
             
             <nav className="hidden md:flex items-center space-x-8">
@@ -125,7 +125,7 @@ export default function ContactPage() {
             언제든 <span className="bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">문의하세요</span>
           </h1>
           <p className="text-xl text-gray-600 max-w-3xl mx-auto leading-relaxed">
-            HiSeoul에 대한 궁금한 점이나 제안사항이 있으시면<br />
+            테크벤처 잡 매칭에 대한 궁금한 점이나 제안사항이 있으시면<br />
             언제든지 편하게 연락주세요. 빠르게 답변드리겠습니다.
           </p>
         </div>
@@ -286,10 +286,10 @@ export default function ContactPage() {
             <div className="w-10 h-10 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg">
               <span className="text-white font-bold text-lg">H</span>
             </div>
-            <span className="text-2xl font-bold">HiSeoul</span>
+            <span className="text-2xl font-bold">테크벤처 잡 매칭</span>
           </Link>
           <p className="text-gray-400">
-            &copy; 2024 HiSeoul Job Platform. All rights reserved.
+            &copy; 2025 테크벤처 잡 매칭 Job Platform. All rights reserved.
           </p>
         </div>
       </footer>

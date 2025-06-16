@@ -203,7 +203,7 @@ export default function CompaniesPage() {
           >
             <div className="inline-flex items-center px-4 py-2 bg-blue-50 border border-blue-200 rounded-full text-blue-700 font-medium text-sm mb-8">
               <CheckBadgeIcon className="w-4 h-4 mr-2" />
-              하이서울브랜드 인증 기업
+              테크벤처 잡 매칭 인증 기업
             </div>
             
             <h1 className="text-5xl lg:text-6xl font-bold mb-6 leading-tight">
@@ -213,7 +213,7 @@ export default function CompaniesPage() {
             </h1>
             
             <p className="text-xl text-gray-600 mb-12 max-w-3xl mx-auto leading-relaxed">
-              하이서울브랜드 인증을 받은 우수 기업들과 다양한 성장 기회를 만나보세요.<br />
+            테크벤처 잡 매칭 인증을 받은 우수 기업들과 다양한 성장 기회를 만나보세요.<br />
               투명한 정보 공개와 전문적인 채용 프로세스를 제공합니다.
             </p>
 
@@ -512,11 +512,11 @@ export default function CompaniesPage() {
                 <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-lg p-1">
                   <img 
                     src="/images/logo.png" 
-                    alt="HiSeoul Logo" 
+                    alt="테크벤처 잡 매칭 Logo" 
                     className="w-full h-full object-contain"
                   />
                 </div>
-                <span className="text-2xl font-bold">HiSeoul</span>
+                <span className="text-2xl font-bold">테크벤처 잡 매칭</span>
               </div>
               <p className="text-gray-400 text-lg leading-relaxed">
                 서울시 중소기업과 모든 직군의 전문 인재를 연결하는 프리미엄 구인구직 플랫폼
@@ -553,7 +553,7 @@ export default function CompaniesPage() {
           </div>
           
           <div className="border-t border-gray-800 mt-16 pt-10 text-center text-gray-400 text-lg">
-            <p>&copy; 2025 HiSeoul Job Platform. All rights reserved.</p>
+            <p>&copy; 2025 테크벤처 잡 매칭 Job Platform. All rights reserved.</p>
           </div>
         </div>
       </footer>

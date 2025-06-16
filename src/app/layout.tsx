@@ -13,12 +13,12 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "HiSeoul Job Platform - 디지털 마케터 구인구직 플랫폼",
+  title: "테크벤처 잡 매칭 Job Platform - 디지털 마케터 구인구직 플랫폼",
   description: "서울시 중소기업과 디지털 마케팅 전문가를 연결하는 프리미엄 구인구직 플랫폼입니다.",
   keywords: "구인구직, 디지털마케팅, 서울시, 취업, 채용, 포트폴리오",
-  authors: [{ name: "HiSeoul Team" }],
+  authors: [{ name: "테크벤처 잡 매칭 Team" }],
   openGraph: {
-    title: "HiSeoul Job Platform",
+    title: "테크벤처 잡 매칭 Job Platform",
     description: "서울시 중소기업과 디지털 마케팅 전문가를 연결합니다",
     type: "website",
     locale: "ko_KR",

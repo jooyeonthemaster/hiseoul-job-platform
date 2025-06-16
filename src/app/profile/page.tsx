@@ -377,7 +377,7 @@ export default function ProfilePage() {
                 onClick={() => router.push('/')}
                 className="text-2xl font-bold text-indigo-600"
               >
-                HiSeoul
+                테크벤처 잡 매칭
               </button>
             </div>
             <div className="flex items-center space-x-4">

@@ -532,6 +532,11 @@ export const registerPortfolio = async (uid: string, portfolioData: {
   certificates?: any[];
   awards?: any[];
   introVideo?: string;
+  introVideos?: Array<{
+    url: string;
+    title?: string;
+    addedAt: Date;
+  }>;
   profileImage?: string;
   selfIntroduction?: {
     motivation?: string;
@@ -540,6 +545,19 @@ export const registerPortfolio = async (uid: string, portfolioData: {
     aspiration?: string;
   };
   mediaContent?: any[];
+  portfolioPdfs?: Array<{
+    url: string;
+    fileName: string;
+    uploadedAt: Date;
+  }>;
+  additionalDocuments?: Array<{
+    url: string;
+    fileName: string;
+    fileSize: number;
+    fileType: string;
+    downloadUrl: string;
+    publicId: string;
+  }>;
 }) => {
   try {
     const userData = await getUserData(uid);
@@ -562,6 +580,7 @@ export const registerPortfolio = async (uid: string, portfolioData: {
       certificates: portfolioData.certificates || [],
       awards: portfolioData.awards || [],
       introVideo: portfolioData.introVideo || '',
+      introVideos: portfolioData.introVideos || [],
       profileImage: portfolioData.profileImage || '',
       selfIntroduction: portfolioData.selfIntroduction || {
         motivation: '',
@@ -570,6 +589,8 @@ export const registerPortfolio = async (uid: string, portfolioData: {
         aspiration: ''
       },
       mediaContent: portfolioData.mediaContent || [],
+      portfolioPdfs: portfolioData.portfolioPdfs || [],
+      additionalDocuments: portfolioData.additionalDocuments || [],
       isPublic: true,
       rating: 0,
       projects: 0,
@@ -657,6 +678,8 @@ export const getAllPortfolios = async () => {
           isPublic: data.isPublic || true,
           profileImage: profileImage, // 실시간 프로필 이미지
           currentCourse: currentCourse, // 수행 중인 과정
+          portfolioPdfs: data.portfolioPdfs || [],
+          additionalDocuments: data.additionalDocuments || [],
           createdAt: data.createdAt?.toDate(),
           updatedAt: data.updatedAt?.toDate()
         };
