@@ -90,8 +90,16 @@ export const usePortfolioData = (portfolioId: string, hasAccess: boolean, access
                 (profile.selfIntroduction.motivation || 
                  profile.selfIntroduction.personality || 
                  profile.selfIntroduction.experience || 
-                 profile.selfIntroduction.aspiration)
-                ? profile.selfIntroduction 
+                 profile.selfIntroduction.aspiration ||
+                 (profile.selfIntroduction.useCustomSections && profile.selfIntroduction.sections))
+                ? {
+                    motivation: profile.selfIntroduction.motivation,
+                    personality: profile.selfIntroduction.personality,
+                    experience: profile.selfIntroduction.experience,
+                    aspiration: profile.selfIntroduction.aspiration,
+                    sections: profile.selfIntroduction.sections,
+                    useCustomSections: profile.selfIntroduction.useCustomSections
+                  }
                 : undefined,
               mediaContent: Array.isArray(profile?.mediaContent) && profile.mediaContent.length > 0
                 ? profile.mediaContent.map((media: any) => ({

@@ -68,11 +68,26 @@ export interface ProjectItem {
   images?: string[];
 }
 
+export interface SelfIntroductionSection {
+  id: string;
+  title: string;        // 사용자가 입력하는 소제목
+  content: string;      // 사용자가 입력하는 내용
+  order: number;        // 섹션 순서
+  color?: string;       // 섹션별 색상 (선택사항)
+}
+
 export interface SelfIntroduction {
+  // 기존 필드들 (하위 호환성 유지)
   motivation?: string; // 지원동기
   personality?: string; // 성격의 장단점
   experience?: string; // 경험
   aspiration?: string; // 입사 후 포부
+  
+  // 새로운 섹션 기반 구조
+  sections?: SelfIntroductionSection[];
+  
+  // 사용자가 새로운 형식을 사용하는지 여부
+  useCustomSections?: boolean;
 }
 
 export interface MediaContent {

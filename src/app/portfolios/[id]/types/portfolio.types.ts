@@ -44,11 +44,21 @@ export interface ProjectDetail {
   results: string[];
 }
 
+export interface SelfIntroductionSection {
+  id: string;
+  title: string;
+  content: string;
+  order: number;
+  color?: string;
+}
+
 export interface SelfIntroduction {
   motivation?: string;
   personality?: string;
   experience?: string;
   aspiration?: string;
+  sections?: SelfIntroductionSection[];
+  useCustomSections?: boolean;
 }
 
 export interface MediaContent {

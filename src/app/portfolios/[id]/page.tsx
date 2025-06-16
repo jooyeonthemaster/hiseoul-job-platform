@@ -118,29 +118,60 @@ export default function PortfolioDetailPage() {
               <div className="bg-white/80 backdrop-blur-lg rounded-2xl p-8 shadow-xl border border-white/20">
                 <h2 className="text-2xl font-bold text-gray-900 mb-6">상세 자기소개</h2>
                 <div className="space-y-6">
-                  {portfolio.selfIntroduction.motivation && (
-                    <div className="border-l-4 border-blue-500 pl-6">
-                      <h3 className="text-lg font-semibold text-gray-900 mb-2">지원 동기</h3>
-                      <p className="text-gray-700 leading-relaxed">{portfolio.selfIntroduction.motivation}</p>
-                    </div>
-                  )}
-                  {portfolio.selfIntroduction.personality && (
-                    <div className="border-l-4 border-green-500 pl-6">
-                      <h3 className="text-lg font-semibold text-gray-900 mb-2">성격 및 장점</h3>
-                      <p className="text-gray-700 leading-relaxed">{portfolio.selfIntroduction.personality}</p>
-                    </div>
-                  )}
-                  {portfolio.selfIntroduction.experience && (
-                    <div className="border-l-4 border-purple-500 pl-6">
-                      <h3 className="text-lg font-semibold text-gray-900 mb-2">경험 및 역량</h3>
-                      <p className="text-gray-700 leading-relaxed">{portfolio.selfIntroduction.experience}</p>
-                    </div>
-                  )}
-                  {portfolio.selfIntroduction.aspiration && (
-                    <div className="border-l-4 border-orange-500 pl-6">
-                      <h3 className="text-lg font-semibold text-gray-900 mb-2">포부 및 목표</h3>
-                      <p className="text-gray-700 leading-relaxed">{portfolio.selfIntroduction.aspiration}</p>
-                    </div>
+                  {/* 새로운 섹션 기반 구조 우선 표시 */}
+                  {portfolio.selfIntroduction.useCustomSections && portfolio.selfIntroduction.sections ? (
+                    portfolio.selfIntroduction.sections
+                      .sort((a, b) => a.order - b.order)
+                      .map((section, index) => {
+                        const getColorClasses = (color: string) => {
+                          const colorMap: { [key: string]: string } = {
+                            blue: 'border-blue-500 bg-blue-50/50',
+                            green: 'border-green-500 bg-green-50/50',
+                            purple: 'border-purple-500 bg-purple-50/50',
+                            orange: 'border-orange-500 bg-orange-50/50',
+                            red: 'border-red-500 bg-red-50/50',
+                            indigo: 'border-indigo-500 bg-indigo-50/50',
+                            pink: 'border-pink-500 bg-pink-50/50',
+                            yellow: 'border-yellow-500 bg-yellow-50/50'
+                          };
+                          return colorMap[color] || 'border-gray-500 bg-gray-50/50';
+                        };
+
+                        return (
+                          <div key={section.id} className={`border-l-4 ${getColorClasses(section.color || 'blue')} pl-6 py-4 rounded-r-lg`}>
+                            <h3 className="text-lg font-semibold text-gray-900 mb-3">{section.title}</h3>
+                            <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">{section.content}</p>
+                          </div>
+                        );
+                      })
+                  ) : (
+                    /* 기존 구조 (하위 호환성) */
+                    <>
+                      {portfolio.selfIntroduction.motivation && (
+                        <div className="border-l-4 border-blue-500 bg-blue-50/50 pl-6 py-4 rounded-r-lg">
+                          <h3 className="text-lg font-semibold text-gray-900 mb-3">지원 동기</h3>
+                          <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">{portfolio.selfIntroduction.motivation}</p>
+                        </div>
+                      )}
+                      {portfolio.selfIntroduction.personality && (
+                        <div className="border-l-4 border-green-500 bg-green-50/50 pl-6 py-4 rounded-r-lg">
+                          <h3 className="text-lg font-semibold text-gray-900 mb-3">성격 및 장점</h3>
+                          <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">{portfolio.selfIntroduction.personality}</p>
+                        </div>
+                      )}
+                      {portfolio.selfIntroduction.experience && (
+                        <div className="border-l-4 border-purple-500 bg-purple-50/50 pl-6 py-4 rounded-r-lg">
+                          <h3 className="text-lg font-semibold text-gray-900 mb-3">경험 및 역량</h3>
+                          <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">{portfolio.selfIntroduction.experience}</p>
+                        </div>
+                      )}
+                      {portfolio.selfIntroduction.aspiration && (
+                        <div className="border-l-4 border-orange-500 bg-orange-50/50 pl-6 py-4 rounded-r-lg">
+                          <h3 className="text-lg font-semibold text-gray-900 mb-3">포부 및 목표</h3>
+                          <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">{portfolio.selfIntroduction.aspiration}</p>
+                        </div>
+                      )}
+                    </>
                   )}
                 </div>
               </div>
