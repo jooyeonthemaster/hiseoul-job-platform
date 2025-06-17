@@ -273,6 +273,17 @@ export default function ProfileEditPage() {
         endDate: edu.endDate instanceof Date ? edu.endDate : processDateForSave(String(edu.endDate || ''))
       }));
 
+      // certificates와 awards 배열의 날짜들도 처리
+      const processedCertificates = formData.skills.certificates.map(cert => ({
+        ...cert,
+        issueDate: cert.issueDate instanceof Date ? cert.issueDate : processDateForSave(String(cert.issueDate || ''))
+      }));
+
+      const processedAwards = formData.skills.awards.map(award => ({
+        ...award,
+        date: award.date instanceof Date ? award.date : processDateForSave(String(award.date || ''))
+      }));
+
       // Prepare profile data
       const profileData = {
         phone: formData.basicInfo.phone || '',
@@ -285,8 +296,8 @@ export default function ProfileEditPage() {
         education: processedEducation,
         skills: formData.skills.skills,
         languages: formData.skills.languages,
-        certificates: formData.skills.certificates,
-        awards: formData.skills.awards,
+        certificates: processedCertificates,
+        awards: processedAwards,
         selfIntroduction: formData.selfIntroduction,
         introVideo: formData.media.introVideo,
         introVideos: formData.media.introVideos,
@@ -306,13 +317,13 @@ export default function ProfileEditPage() {
         address: formData.basicInfo.address,
         skills: formData.skills.skills,
         languages: formData.skills.languages,
-        experience: formData.experience,
-        education: formData.education,
+        experience: processedExperience,
+        education: processedEducation,
         description: formData.selfIntroduction.motivation || `${formData.basicInfo.speciality || '일반'} 전문가입니다.`,
         
         // 새로 추가된 필드들
-        certificates: formData.skills.certificates,
-        awards: formData.skills.awards,
+        certificates: processedCertificates,
+        awards: processedAwards,
         introVideo: formData.media.introVideo,
         introVideos: formData.media.introVideos,
         selfIntroduction: {
