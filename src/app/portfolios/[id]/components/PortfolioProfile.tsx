@@ -68,8 +68,8 @@ export default function PortfolioProfile({
                 <MapPinIcon className="h-4 w-4" />
                 <span>{portfolio.location}</span>
               </div>
-              {/* 기업 회원이 아닐 때만 이메일과 전화번호 표시 */}
-              {userData?.role !== 'employer' && (
+              {/* 관리자와 구직자에게만 이메일과 전화번호 표시 (기업 회원에게는 완전 숨김) */}
+              {(userData?.role === 'admin' || userData?.role === 'jobseeker') && (
                 <>
                   <div className="flex items-center space-x-1">
                     <EnvelopeIcon className="h-4 w-4" />

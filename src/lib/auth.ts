@@ -608,11 +608,17 @@ export const registerPortfolio = async (uid: string, portfolioData: {
 };
 
 // 포트폴리오 조회
-export const getPortfolio = async (uid: string) => {
+export const getPortfolio = async (uid: string, includeHidden: boolean = false) => {
   try {
     const portfolioDoc = await getDoc(doc(db, 'portfolios', uid));
     if (portfolioDoc.exists()) {
       const data = portfolioDoc.data();
+      
+      // 숨겨진 포트폴리오 체크 (관리자가 아닌 경우)
+      if (!includeHidden && data.isHidden === true) {
+        return null; // 숨겨진 포트폴리오는 접근 차단
+      }
+      
       return {
         ...data,
         createdAt: data.createdAt?.toDate(),
@@ -627,8 +633,9 @@ export const getPortfolio = async (uid: string) => {
 };
 
 // 모든 포트폴리오 조회
-export const getAllPortfolios = async () => {
+export const getAllPortfolios = async (includeHidden: boolean = false) => {
   try {
+    // 모든 경우에 isPublic == true 조건만 사용 (인덱스 불필요)
     const portfoliosQuery = query(
       collection(db, 'portfolios'),
       where('isPublic', '==', true)
@@ -676,6 +683,7 @@ export const getAllPortfolios = async () => {
           projects: data.projects || 0,
           verified: data.verified || false,
           isPublic: data.isPublic || true,
+          isHidden: data.isHidden || false, // 숨김 상태 추가
           profileImage: profileImage, // 실시간 프로필 이미지
           currentCourse: currentCourse, // 수행 중인 과정
           portfolioPdfs: data.portfolioPdfs || [],
@@ -685,6 +693,11 @@ export const getAllPortfolios = async () => {
         };
       })
     );
+    
+    // 클라이언트 사이드에서 숨김 처리 필터링 (인덱스 불필요)
+    if (!includeHidden) {
+      return portfolios.filter(portfolio => !portfolio.isHidden);
+    }
     
     return portfolios;
   } catch (error) {
@@ -707,8 +720,9 @@ export const deletePortfolio = async (uid: string) => {
 };
 
 // 모든 기업 정보 조회
-export const getAllEmployers = async () => {
+export const getAllEmployers = async (includeHidden: boolean = false) => {
   try {
+    // 모든 기업 정보 조회 (인덱스 불필요)
     const employersQuery = collection(db, 'employers');
     const querySnapshot = await getDocs(employersQuery);
     
@@ -718,6 +732,7 @@ export const getAllEmployers = async () => {
         id: doc.id,
         userId: data.userId,
         approvalStatus: data.approvalStatus || 'pending',
+        isHidden: data.isHidden || false, // 숨김 상태 추가
         company: {
           name: data.company?.name || '',
           ceoName: data.company?.ceoName || '',
@@ -743,6 +758,11 @@ export const getAllEmployers = async () => {
         updatedAt: data.updatedAt?.toDate()
       };
     }).filter(employer => employer.company.name); // 회사명이 있는 기업만 필터링
+    
+    // 클라이언트 사이드에서 숨김 처리 필터링 (인덱스 불필요)
+    if (!includeHidden) {
+      return employers.filter(employer => !employer.isHidden);
+    }
     
     return employers;
   } catch (error) {
@@ -1074,6 +1094,36 @@ export const deleteUserAccountWithReauth = async (uid: string, password?: string
 
   } catch (error) {
     console.error('Error deleting user account with reauth:', error);
+    throw error;
+  }
+};
+
+// 포트폴리오 숨김/표시 토글
+export const togglePortfolioVisibility = async (portfolioId: string, isHidden: boolean) => {
+  try {
+    await updateDoc(doc(db, 'portfolios', portfolioId), {
+      isHidden: isHidden,
+      updatedAt: serverTimestamp()
+    });
+    console.log(`포트폴리오 ${portfolioId} 숨김 상태가 ${isHidden ? '숨김' : '표시'}로 변경되었습니다.`);
+    return true;
+  } catch (error) {
+    console.error('포트폴리오 숨김 상태 변경 실패:', error);
+    throw error;
+  }
+};
+
+// 기업 정보 숨김/표시 토글
+export const toggleEmployerVisibility = async (employerId: string, isHidden: boolean) => {
+  try {
+    await updateDoc(doc(db, 'employers', employerId), {
+      isHidden: isHidden,
+      updatedAt: serverTimestamp()
+    });
+    console.log(`기업 ${employerId} 숨김 상태가 ${isHidden ? '숨김' : '표시'}로 변경되었습니다.`);
+    return true;
+  } catch (error) {
+    console.error('기업 숨김 상태 변경 실패:', error);
     throw error;
   }
 };

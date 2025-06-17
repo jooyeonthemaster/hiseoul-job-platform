@@ -30,6 +30,11 @@ export const getYouTubeId = (url: string): string | null => {
 export const formatFirebaseDate = (dateValue: any): string => {
   if (!dateValue) return '날짜 정보 없음';
   
+  // null, undefined, 빈 문자열 체크
+  if (dateValue === null || dateValue === undefined || dateValue === '') {
+    return '날짜 정보 없음';
+  }
+  
   // 빈 객체 체크
   if (typeof dateValue === 'object' && Object.keys(dateValue).length === 0) {
     console.warn('Empty object passed as date:', dateValue);
@@ -39,7 +44,7 @@ export const formatFirebaseDate = (dateValue: any): string => {
   try {
     let date: Date;
     
-    // Firebase Timestamp 객체인 경우
+    // Firebase Timestamp 객체인 경우 (seconds 필드가 있는 경우)
     if (dateValue && typeof dateValue === 'object' && 'seconds' in dateValue) {
       date = new Date(dateValue.seconds * 1000);
     }
@@ -54,14 +59,20 @@ export const formatFirebaseDate = (dateValue: any): string => {
     // 문자열인 경우
     else if (typeof dateValue === 'string') {
       if (dateValue.trim() === '') return '날짜 정보 없음';
-      date = new Date(dateValue);
+      // ISO 형식 문자열인 경우 그대로 사용
+      if (dateValue.includes('T') || dateValue.includes('Z')) {
+        date = new Date(dateValue);
+      } else {
+        // YYYY-MM-DD 형식인 경우 UTC로 처리
+        date = new Date(dateValue + 'T00:00:00.000Z');
+      }
     }
     // 숫자(timestamp)인 경우
     else if (typeof dateValue === 'number') {
       date = new Date(dateValue);
     }
     else {
-      console.warn('Unknown date format:', dateValue);
+      console.warn('Unknown date format:', dateValue, 'Type:', typeof dateValue);
       return '날짜 정보 없음';
     }
     

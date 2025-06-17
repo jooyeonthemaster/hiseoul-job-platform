@@ -23,12 +23,51 @@ export default function SkillsStep({ data, onChange }: SkillsStepProps) {
     if (!dateValue) return '';
     
     try {
-      const date = new Date(dateValue);
+      let date: Date;
+      
+      // Firebase Timestamp 객체인 경우
+      if (dateValue && typeof dateValue === 'object' && 'seconds' in dateValue) {
+        date = new Date(dateValue.seconds * 1000);
+      }
+      // Firebase Timestamp 객체 (toDate 메서드가 있는 경우)
+      else if (dateValue && typeof dateValue === 'object' && typeof dateValue.toDate === 'function') {
+        date = dateValue.toDate();
+      }
+      // JavaScript Date 객체인 경우
+      else if (dateValue instanceof Date) {
+        date = dateValue;
+      }
+      // 문자열인 경우
+      else if (typeof dateValue === 'string') {
+        if (dateValue.trim() === '') return '';
+        date = new Date(dateValue);
+      }
+      // 숫자(timestamp)인 경우
+      else if (typeof dateValue === 'number') {
+        date = new Date(dateValue);
+      }
+      else {
+        console.warn('Unknown date format:', dateValue);
+        return '';
+      }
+      
       if (isNaN(date.getTime())) return '';
       return date.toISOString().split('T')[0];
     } catch (error) {
       console.warn('Invalid date value:', dateValue);
       return '';
+    }
+  };
+
+  // 안전한 날짜 생성 함수
+  const createSafeDate = (dateString: string) => {
+    if (!dateString || dateString.trim() === '') return null;
+    try {
+      const date = new Date(dateString + 'T00:00:00.000Z'); // UTC 시간으로 명시적 설정
+      return isNaN(date.getTime()) ? null : date;
+    } catch (error) {
+      console.warn('Invalid date string:', dateString);
+      return null;
     }
   };
 
@@ -220,7 +259,7 @@ export default function SkillsStep({ data, onChange }: SkillsStepProps) {
                     <input
                       type="date"
                       value={formatDateForInput(cert.issueDate)}
-                      onChange={(e) => updateCertificate(index, 'issueDate', new Date(e.target.value))}
+                      onChange={(e) => updateCertificate(index, 'issueDate', createSafeDate(e.target.value))}
                       className="flex-1 px-3 py-2 border border-gray-300 rounded-lg"
                     />
                     <button
@@ -277,7 +316,7 @@ export default function SkillsStep({ data, onChange }: SkillsStepProps) {
                     <input
                       type="date"
                       value={formatDateForInput(award.date)}
-                      onChange={(e) => updateAward(index, 'date', new Date(e.target.value))}
+                      onChange={(e) => updateAward(index, 'date', createSafeDate(e.target.value))}
                       className="flex-1 px-3 py-2 border border-gray-300 rounded-lg"
                     />
                     <button

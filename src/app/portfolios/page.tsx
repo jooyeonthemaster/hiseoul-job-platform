@@ -170,7 +170,7 @@ export default function PortfoliosPage() {
   const loadPortfolios = async () => {
     try {
       setLoading(true);
-      const data = await getAllPortfolios();
+      const data = await getAllPortfolios(false); // 일반 사용자는 숨겨진 포트폴리오 제외
       console.log('🎯 포트폴리오 목록 로드됨:', data);
       
       // 실제 데이터와 샘플 데이터를 합침 (실제 데이터가 적을 경우 샘플 데이터로 보완)
@@ -431,7 +431,7 @@ export default function PortfoliosPage() {
                     </p>
 
                     {/* Location and Contact */}
-                    {(portfolio.address || portfolio.phone) && (
+                    {(portfolio.address || (portfolio.phone && (userData?.role === 'admin' || userData?.role === 'jobseeker'))) && (
                       <div className="mb-4 space-y-2">
                         {portfolio.address && (
                           <div className="flex items-center text-sm text-gray-500">
@@ -442,7 +442,8 @@ export default function PortfoliosPage() {
                             {portfolio.address}
                           </div>
                         )}
-                        {portfolio.phone && (
+                        {/* 관리자와 구직자에게만 전화번호 표시 (기업 회원에게는 완전 숨김) */}
+                        {portfolio.phone && (userData?.role === 'admin' || userData?.role === 'jobseeker') && (
                           <div className="flex items-center text-sm text-gray-500">
                             <svg className="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />

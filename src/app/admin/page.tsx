@@ -5,7 +5,7 @@ import { collection, query, where, getDocs, updateDoc, doc, serverTimestamp } fr
 import { db } from '@/lib/firebase';
 import { motion } from 'framer-motion';
 import { CheckCircleIcon, XCircleIcon, ClockIcon, BuildingOfficeIcon, LockClosedIcon, EyeIcon, EyeSlashIcon, EnvelopeIcon, UserGroupIcon, UserIcon, BriefcaseIcon, MagnifyingGlassIcon, FunnelIcon, CalendarDaysIcon, PencilIcon, ArrowLeftIcon, ArrowRightIcon } from '@heroicons/react/24/outline';
-import { getAllPortfolios, updateJobSeekerProfile, getJobSeekerProfile, updateUserProfile, registerPortfolio } from '@/lib/auth';
+import { getAllPortfolios, updateJobSeekerProfile, getJobSeekerProfile, updateUserProfile, registerPortfolio, togglePortfolioVisibility, toggleEmployerVisibility, getAllEmployers } from '@/lib/auth';
 import {
   StepNavigation,
   BasicInfoStep,
@@ -39,6 +39,7 @@ interface PendingEmployer {
   approvedAt?: any;
   rejectedAt?: any;
   canceledAt?: any;
+  isHidden?: boolean; // 숨김 상태 추가
 }
 
 interface JobInquiry {
@@ -100,6 +101,7 @@ interface Portfolio {
     uploadedAt: Date;
   }>;
   dateOfBirth?: Date;
+  isHidden?: boolean; // 숨김 상태 추가
 }
 
 // 프로필 수정을 위한 FormData 인터페이스
@@ -264,21 +266,18 @@ export default function AdminPage() {
       try {
         setLoading(true);
         
-        // 모든 기업 정보 조회
-        const employersRef = collection(db, 'employers');
-        const employersSnapshot = await getDocs(employersRef);
+        // 모든 기업 정보 조회 (숨겨진 기업 포함)
+        const employersData = await getAllEmployers(true); // 관리자는 숨겨진 기업도 포함
         
         const pending: PendingEmployer[] = [];
         const approved: PendingEmployer[] = [];
         const rejected: PendingEmployer[] = [];
 
         // 각 기업의 사용자 정보도 함께 조회
-        for (const doc of employersSnapshot.docs) {
-          const employerData = doc.data();
-          
+        for (const employer of employersData) {
           // 사용자 정보 조회
           const usersRef = collection(db, 'users');
-          const userQuery = query(usersRef, where('__name__', '==', employerData.userId));
+          const userQuery = query(usersRef, where('__name__', '==', employer.userId));
           const userSnapshot = await getDocs(userQuery);
           
           let userInfo = { email: '', name: '' };
@@ -290,28 +289,29 @@ export default function AdminPage() {
             };
           }
 
-          const employer: PendingEmployer = {
-            id: doc.id,
-            userId: employerData.userId,
-            company: employerData.company || {},
-            approvalStatus: employerData.approvalStatus || 'pending',
-            createdAt: employerData.createdAt,
+          const employerWithUserInfo: PendingEmployer = {
+            id: employer.id,
+            userId: employer.userId,
+            company: employer.company || {},
+            approvalStatus: employer.approvalStatus || 'pending',
+            createdAt: employer.createdAt,
             userEmail: userInfo.email,
             userName: userInfo.name,
-            rejectedReason: employerData.rejectedReason,
-            canceledReason: employerData.canceledReason,
-            approvedAt: employerData.approvedAt,
-            rejectedAt: employerData.rejectedAt,
-            canceledAt: employerData.canceledAt
+            rejectedReason: (employer as any).rejectedReason,
+            canceledReason: (employer as any).canceledReason,
+            approvedAt: (employer as any).approvedAt,
+            rejectedAt: (employer as any).rejectedAt,
+            canceledAt: (employer as any).canceledAt,
+            isHidden: employer.isHidden
           };
 
           // 상태별로 분류
-          if (employer.approvalStatus === 'pending') {
-            pending.push(employer);
-          } else if (employer.approvalStatus === 'approved') {
-            approved.push(employer);
-          } else if (employer.approvalStatus === 'rejected') {
-            rejected.push(employer);
+          if (employerWithUserInfo.approvalStatus === 'pending') {
+            pending.push(employerWithUserInfo);
+          } else if (employerWithUserInfo.approvalStatus === 'approved') {
+            approved.push(employerWithUserInfo);
+          } else if (employerWithUserInfo.approvalStatus === 'rejected') {
+            rejected.push(employerWithUserInfo);
           }
         }
 
@@ -420,7 +420,7 @@ export default function AdminPage() {
     const fetchPortfolios = async () => {
       try {
         setLoading(true);
-        const portfolioData = await getAllPortfolios();
+        const portfolioData = await getAllPortfolios(true); // 관리자는 숨겨진 포트폴리오도 포함
         setPortfolios(portfolioData as Portfolio[]);
       } catch (error) {
         console.error('Error fetching portfolios:', error);
@@ -720,6 +720,78 @@ export default function AdminPage() {
         portfolioPdfs: []
       }
     });
+  };
+
+  // 포트폴리오 숨김/표시 토글
+  const handleTogglePortfolioVisibility = async (portfolioId: string, currentHidden: boolean) => {
+    try {
+      await togglePortfolioVisibility(portfolioId, !currentHidden);
+      // 포트폴리오 목록 새로고침
+      const portfolioData = await getAllPortfolios(true);
+      setPortfolios(portfolioData as Portfolio[]);
+    } catch (error) {
+      console.error('포트폴리오 숨김 상태 변경 실패:', error);
+      alert('포트폴리오 숨김 상태 변경에 실패했습니다.');
+    }
+  };
+
+  // 기업 정보 숨김/표시 토글
+  const handleToggleEmployerVisibility = async (employerId: string, currentHidden: boolean) => {
+    try {
+      await toggleEmployerVisibility(employerId, !currentHidden);
+      // 기업 목록 새로고침
+      const employersData = await getAllEmployers(true);
+      
+      const pending: PendingEmployer[] = [];
+      const approved: PendingEmployer[] = [];
+      const rejected: PendingEmployer[] = [];
+
+      for (const employer of employersData) {
+        const usersRef = collection(db, 'users');
+        const userQuery = query(usersRef, where('__name__', '==', employer.userId));
+        const userSnapshot = await getDocs(userQuery);
+        
+        let userInfo = { email: '', name: '' };
+        if (!userSnapshot.empty) {
+          const userData = userSnapshot.docs[0].data();
+          userInfo = {
+            email: userData.email || '',
+            name: userData.name || ''
+          };
+        }
+
+        const employerWithUserInfo: PendingEmployer = {
+          id: employer.id,
+          userId: employer.userId,
+          company: employer.company || {},
+          approvalStatus: employer.approvalStatus || 'pending',
+          createdAt: employer.createdAt,
+          userEmail: userInfo.email,
+          userName: userInfo.name,
+          rejectedReason: (employer as any).rejectedReason,
+          canceledReason: (employer as any).canceledReason,
+          approvedAt: (employer as any).approvedAt,
+          rejectedAt: (employer as any).rejectedAt,
+          canceledAt: (employer as any).canceledAt,
+          isHidden: employer.isHidden
+        };
+
+        if (employerWithUserInfo.approvalStatus === 'pending') {
+          pending.push(employerWithUserInfo);
+        } else if (employerWithUserInfo.approvalStatus === 'approved') {
+          approved.push(employerWithUserInfo);
+        } else if (employerWithUserInfo.approvalStatus === 'rejected') {
+          rejected.push(employerWithUserInfo);
+        }
+      }
+
+      setPendingEmployers(pending);
+      setApprovedEmployers(approved);
+      setRejectedEmployers(rejected);
+    } catch (error) {
+      console.error('기업 숨김 상태 변경 실패:', error);
+      alert('기업 숨김 상태 변경에 실패했습니다.');
+    }
   };
 
   // 포트폴리오 업데이트
@@ -1300,6 +1372,13 @@ export default function AdminPage() {
                         {employer.approvalStatus === 'approved' ? '승인됨' : 
                          employer.approvalStatus === 'rejected' ? '거절됨' : '대기중'}
                       </span>
+                      {/* 숨김 상태 표시 */}
+                      {employer.isHidden && (
+                        <span className="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                          <EyeSlashIcon className="w-3 h-3 mr-1" />
+                          숨김
+                        </span>
+                      )}
                     </div>
                     
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
@@ -1380,47 +1459,67 @@ export default function AdminPage() {
                   
                   {/* 액션 버튼들 */}
                   <div className="ml-6">
-                    {/* 승인 대기 상태 */}
-                    {employer.approvalStatus === 'pending' && (
-                      <div className="flex flex-col space-y-2">
-                        <button
-                          onClick={() => handleApprove(employer.id)}
-                          className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 transition"
-                        >
-                          승인
-                        </button>
-                        <button
-                          onClick={() => setSelectedEmployerId(employer.id)}
-                          className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 transition"
-                        >
-                          거절
-                        </button>
-                      </div>
-                    )}
+                    <div className="flex flex-col space-y-2">
+                      {/* 숨김/표시 토글 버튼 */}
+                      <button
+                        onClick={() => handleToggleEmployerVisibility(employer.id, employer.isHidden || false)}
+                        className={`px-4 py-2 rounded hover:opacity-80 transition flex items-center text-sm ${
+                          employer.isHidden 
+                            ? 'bg-blue-600 text-white' 
+                            : 'bg-gray-600 text-white'
+                        }`}
+                      >
+                        {employer.isHidden ? (
+                          <>
+                            <EyeIcon className="w-4 h-4 mr-1" />
+                            표시
+                          </>
+                        ) : (
+                          <>
+                            <EyeSlashIcon className="w-4 h-4 mr-1" />
+                            숨김
+                          </>
+                        )}
+                      </button>
+                      
+                      {/* 승인 대기 상태 */}
+                      {employer.approvalStatus === 'pending' && (
+                        <>
+                          <button
+                            onClick={() => handleApprove(employer.id)}
+                            className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 transition"
+                          >
+                            승인
+                          </button>
+                          <button
+                            onClick={() => setSelectedEmployerId(employer.id)}
+                            className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 transition"
+                          >
+                            거절
+                          </button>
+                        </>
+                      )}
 
-                    {/* 승인 완료 상태 */}
-                    {employer.approvalStatus === 'approved' && (
-                      <div className="flex flex-col space-y-2">
+                      {/* 승인 완료 상태 */}
+                      {employer.approvalStatus === 'approved' && (
                         <button
                           onClick={() => setSelectedCancelEmployerId(employer.id)}
                           className="px-4 py-2 bg-orange-600 text-white rounded hover:bg-orange-700 transition"
                         >
                           승인 취소
                         </button>
-                      </div>
-                    )}
+                      )}
 
-                    {/* 거절됨 상태 */}
-                    {employer.approvalStatus === 'rejected' && (
-                      <div className="flex flex-col space-y-2">
+                      {/* 거절됨 상태 */}
+                      {employer.approvalStatus === 'rejected' && (
                         <button
                           onClick={() => handleReapprove(employer.id)}
                           className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition"
                         >
                           재승인
                         </button>
-                      </div>
-                    )}
+                      )}
+                    </div>
                   </div>
                 </div>
                 
@@ -1537,17 +1636,45 @@ export default function AdminPage() {
                           </div>
                         )}
                         <div>
-                          <h4 className="font-semibold text-gray-900">{portfolio.name}</h4>
+                          <div className="flex items-center space-x-2">
+                            <h4 className="font-semibold text-gray-900">{portfolio.name}</h4>
+                            {/* 숨김 상태 표시 */}
+                            {portfolio.isHidden && (
+                              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                                <EyeSlashIcon className="w-3 h-3 mr-1" />
+                                숨김
+                              </span>
+                            )}
+                          </div>
                           <p className="text-sm text-gray-600">{portfolio.speciality}</p>
                         </div>
                       </div>
-                      <button
-                        onClick={() => openPortfolioModal(portfolio)}
-                        className="p-2 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
-                        title="포트폴리오 수정"
-                      >
-                        <PencilIcon className="w-5 h-5" />
-                      </button>
+                      <div className="flex space-x-2">
+                        {/* 숨김/표시 토글 버튼 */}
+                        <button
+                          onClick={() => handleTogglePortfolioVisibility(portfolio.id, portfolio.isHidden || false)}
+                          className={`p-2 rounded-lg transition-colors ${
+                            portfolio.isHidden 
+                              ? 'text-blue-600 hover:bg-blue-50' 
+                              : 'text-gray-400 hover:bg-gray-50'
+                          }`}
+                          title={portfolio.isHidden ? '포트폴리오 표시' : '포트폴리오 숨김'}
+                        >
+                          {portfolio.isHidden ? (
+                            <EyeIcon className="w-5 h-5" />
+                          ) : (
+                            <EyeSlashIcon className="w-5 h-5" />
+                          )}
+                        </button>
+                        {/* 수정 버튼 */}
+                        <button
+                          onClick={() => openPortfolioModal(portfolio)}
+                          className="p-2 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+                          title="포트폴리오 수정"
+                        >
+                          <PencilIcon className="w-5 h-5" />
+                        </button>
+                      </div>
                     </div>
 
                     <div className="space-y-2">

@@ -148,12 +148,51 @@ export default function ProfileEditPage() {
           if (!dateValue) return '';
           
           try {
-            const date = new Date(dateValue);
+            let date: Date;
+            
+            // Firebase Timestamp 객체인 경우
+            if (dateValue && typeof dateValue === 'object' && 'seconds' in dateValue) {
+              date = new Date(dateValue.seconds * 1000);
+            }
+            // Firebase Timestamp 객체 (toDate 메서드가 있는 경우)
+            else if (dateValue && typeof dateValue === 'object' && typeof dateValue.toDate === 'function') {
+              date = dateValue.toDate();
+            }
+            // JavaScript Date 객체인 경우
+            else if (dateValue instanceof Date) {
+              date = dateValue;
+            }
+            // 문자열인 경우
+            else if (typeof dateValue === 'string') {
+              if (dateValue.trim() === '') return '';
+              date = new Date(dateValue);
+            }
+            // 숫자(timestamp)인 경우
+            else if (typeof dateValue === 'number') {
+              date = new Date(dateValue);
+            }
+            else {
+              console.warn('Unknown date format:', dateValue);
+              return '';
+            }
+            
             if (isNaN(date.getTime())) return '';
             return date.toISOString().split('T')[0];
           } catch (error) {
             console.warn('Invalid date value:', dateValue);
             return '';
+          }
+        };
+
+        // 안전한 날짜 생성 함수
+        const createSafeDate = (dateString: string) => {
+          if (!dateString || dateString.trim() === '') return null;
+          try {
+            const date = new Date(dateString + 'T00:00:00.000Z'); // UTC 시간으로 명시적 설정
+            return isNaN(date.getTime()) ? null : date;
+          } catch (error) {
+            console.warn('Invalid date string:', dateString);
+            return null;
           }
         };
         
@@ -209,16 +248,41 @@ export default function ProfileEditPage() {
         name: formData.basicInfo.name
       });
 
+      // 날짜 처리 헬퍼 함수
+      const processDateForSave = (dateString: string) => {
+        if (!dateString || dateString.trim() === '') return null;
+        try {
+          const date = new Date(dateString + 'T00:00:00.000Z');
+          return isNaN(date.getTime()) ? null : date;
+        } catch (error) {
+          console.warn('Invalid date string:', dateString);
+          return null;
+        }
+      };
+
+      // experience와 education 배열의 날짜들도 처리
+      const processedExperience = formData.experience.map(exp => ({
+        ...exp,
+        startDate: exp.startDate instanceof Date ? exp.startDate : processDateForSave(String(exp.startDate || '')),
+        endDate: exp.endDate instanceof Date ? exp.endDate : processDateForSave(String(exp.endDate || ''))
+      }));
+
+      const processedEducation = formData.education.map(edu => ({
+        ...edu,
+        startDate: edu.startDate instanceof Date ? edu.startDate : processDateForSave(String(edu.startDate || '')),
+        endDate: edu.endDate instanceof Date ? edu.endDate : processDateForSave(String(edu.endDate || ''))
+      }));
+
       // Prepare profile data
       const profileData = {
         phone: formData.basicInfo.phone || '',
         address: formData.basicInfo.address || '',
-        dateOfBirth: formData.basicInfo.dateOfBirth ? new Date(formData.basicInfo.dateOfBirth) : null,
+        dateOfBirth: processDateForSave(formData.basicInfo.dateOfBirth || ''),
         speciality: formData.basicInfo.speciality || '',
         profileImage: formData.basicInfo.profileImage || '',
         currentCourse: formData.basicInfo.currentCourse || '',
-        experience: formData.experience,
-        education: formData.education,
+        experience: processedExperience,
+        education: processedEducation,
         skills: formData.skills.skills,
         languages: formData.skills.languages,
         certificates: formData.skills.certificates,
