@@ -29,7 +29,7 @@ export default function JobDetailPage() {
 
   useEffect(() => {
     const fetchJob = async () => {
-      if (!params.id) return;
+      if (!params?.id) return;
       
       try {
         const response = await fetch(`/api/job-postings/${params.id}`);
@@ -49,7 +49,7 @@ export default function JobDetailPage() {
     };
 
     fetchJob();
-  }, [params.id, router]);
+  }, [params?.id, router]);
 
   const getWorkTypeLabel = (workType: string) => {
     const labels: { [key: string]: string } = {

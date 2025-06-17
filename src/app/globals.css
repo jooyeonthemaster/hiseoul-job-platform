@@ -171,22 +171,38 @@ body {
   animation: no-animation 0s;
 }
 
-/* Minimal Scrollbar */
+/* Beautiful Pastel Blue Scrollbar */
 ::-webkit-scrollbar {
-  width: 1px;
-  height: 1px;
+  width: 12px;
+  height: 12px;
 }
 
 ::-webkit-scrollbar-track {
-  background: #ffffff;
+  background: #f8fafc;
+  border-radius: 6px;
+  border: 1px solid #e2e8f0;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #000000;
+  background: linear-gradient(135deg, #bfdbfe 0%, #93c5fd 50%, #60a5fa 100%);
+  border-radius: 6px;
+  border: 2px solid #f8fafc;
+  box-shadow: 0 2px 4px rgba(59, 130, 246, 0.1);
+  transition: all 0.3s ease;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #000000;
+  background: linear-gradient(135deg, #93c5fd 0%, #60a5fa 50%, #3b82f6 100%);
+  box-shadow: 0 4px 8px rgba(59, 130, 246, 0.2);
+  transform: scale(1.05);
+}
+
+::-webkit-scrollbar-thumb:active {
+  background: linear-gradient(135deg, #60a5fa 0%, #3b82f6 50%, #2563eb 100%);
+}
+
+::-webkit-scrollbar-corner {
+  background: #f8fafc;
 }
 
 /* Remove shimmer effects */

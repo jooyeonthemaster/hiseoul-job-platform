@@ -285,10 +285,14 @@ export default function PortfolioDetailPage() {
                         <BriefcaseIcon className="h-5 w-5 text-blue-600 mt-0.5" />
                       </div>
                       <div className="flex-grow">
-                        <div className="flex items-center space-x-2 mb-1">
-                          <h4 className="font-medium text-gray-900">{work.company}</h4>
-                          <span className="text-gray-400">•</span>
-                          <span className="text-sm text-gray-600">{work.position}</span>
+                        <div className="mb-1">
+                          <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                            <h4 className="font-medium text-gray-900 break-all overflow-hidden max-w-full" style={{wordBreak: 'break-all', overflowWrap: 'anywhere'}}>{work.company}</h4>
+                            <div className="flex items-center gap-x-2 flex-shrink-0">
+                              <span className="text-gray-400">•</span>
+                              <span className="text-sm text-gray-600">{work.position}</span>
+                            </div>
+                          </div>
                         </div>
                         <p className="text-sm text-gray-500 mb-1">{work.period}</p>
                         <p className="text-sm text-gray-700">{work.description}</p>

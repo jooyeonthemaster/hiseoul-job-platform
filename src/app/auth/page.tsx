@@ -12,7 +12,7 @@ type UserRole = 'jobseeker' | 'employer';
 
 function AuthContent() {
   const searchParams = useSearchParams();
-  const initialMode = (searchParams.get('mode') as AuthMode) || 'login';
+  const initialMode = (searchParams?.get('mode') as AuthMode) || 'login';
   
   const [mode, setMode] = useState<AuthMode>(initialMode);
   const [role, setRole] = useState<UserRole>('jobseeker');

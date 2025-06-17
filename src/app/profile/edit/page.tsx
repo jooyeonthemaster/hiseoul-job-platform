@@ -19,6 +19,7 @@ import {
   updateUserProfile,
   registerPortfolio
 } from '@/lib/auth';
+import { formatDateForInput, createSafeDate } from '@/lib/dateUtils';
 import type { ExperienceItem, EducationItem, CertificateItem, AwardItem, SelfIntroduction } from '@/types';
 
 const steps = [
@@ -139,62 +140,23 @@ export default function ProfileEditPage() {
     try {
       setLoading(true);
       const profileData = await getJobSeekerProfile(user.uid);
+      console.log('Loaded profile data from Firebase:', profileData); // 디버깅을 위한 로그
       
       if (profileData?.profile) {
         const profile = profileData.profile;
+        console.log('Profile content:', profile); // 프로필 내용 확인
         
-        // 안전한 날짜 처리 함수
-        const formatDateForInput = (dateValue: any) => {
-          if (!dateValue) return '';
-          
-          try {
-            let date: Date;
-            
-            // Firebase Timestamp 객체인 경우
-            if (dateValue && typeof dateValue === 'object' && 'seconds' in dateValue) {
-              date = new Date(dateValue.seconds * 1000);
-            }
-            // Firebase Timestamp 객체 (toDate 메서드가 있는 경우)
-            else if (dateValue && typeof dateValue === 'object' && typeof dateValue.toDate === 'function') {
-              date = dateValue.toDate();
-            }
-            // JavaScript Date 객체인 경우
-            else if (dateValue instanceof Date) {
-              date = dateValue;
-            }
-            // 문자열인 경우
-            else if (typeof dateValue === 'string') {
-              if (dateValue.trim() === '') return '';
-              date = new Date(dateValue);
-            }
-            // 숫자(timestamp)인 경우
-            else if (typeof dateValue === 'number') {
-              date = new Date(dateValue);
-            }
-            else {
-              console.warn('Unknown date format:', dateValue);
-              return '';
-            }
-            
-            if (isNaN(date.getTime())) return '';
-            return date.toISOString().split('T')[0];
-          } catch (error) {
-            console.warn('Invalid date value:', dateValue);
-            return '';
-          }
-        };
-
-        // 안전한 날짜 생성 함수
-        const createSafeDate = (dateString: string) => {
-          if (!dateString || dateString.trim() === '') return null;
-          try {
-            const date = new Date(dateString + 'T00:00:00.000Z'); // UTC 시간으로 명시적 설정
-            return isNaN(date.getTime()) ? null : date;
-          } catch (error) {
-            console.warn('Invalid date string:', dateString);
-            return null;
-          }
-        };
+        // experience 배열의 날짜 데이터 확인
+        if (profile.experience) {
+          console.log('Experience dates:', profile.experience.map((exp: any) => ({
+            startDate: exp.startDate,
+            endDate: exp.endDate,
+            startDateType: typeof exp.startDate,
+            endDateType: typeof exp.endDate
+          })));
+        }
+        
+        // 공통 유틸리티 함수 사용
         
         setFormData({
           basicInfo: {
@@ -207,13 +169,27 @@ export default function ProfileEditPage() {
             profileImage: profile.profileImage || '',
             currentCourse: profile.currentCourse || ''
           },
-          experience: profile.experience || [],
-          education: profile.education || [],
+          experience: (profile.experience || []).map((exp: any) => ({
+            ...exp,
+            startDate: exp.startDate || null,
+            endDate: exp.endDate || null
+          })),
+          education: (profile.education || []).map((edu: any) => ({
+            ...edu,
+            startDate: edu.startDate || null,
+            endDate: edu.endDate || null
+          })),
           skills: {
             skills: profile.skills || [],
             languages: profile.languages || [],
-            certificates: profile.certificates || [],
-            awards: profile.awards || []
+            certificates: (profile.certificates || []).map((cert: any) => ({
+              ...cert,
+              issueDate: cert.issueDate || null
+            })),
+            awards: (profile.awards || []).map((award: any) => ({
+              ...award,
+              date: award.date || null
+            }))
           },
           selfIntroduction: profile.selfIntroduction || {
             motivation: '',
@@ -248,41 +224,66 @@ export default function ProfileEditPage() {
         name: formData.basicInfo.name
       });
 
-      // 날짜 처리 헬퍼 함수
-      const processDateForSave = (dateString: string) => {
-        if (!dateString || dateString.trim() === '') return null;
-        try {
-          const date = new Date(dateString + 'T00:00:00.000Z');
-          return isNaN(date.getTime()) ? null : date;
-        } catch (error) {
-          console.warn('Invalid date string:', dateString);
-          return null;
+      // 날짜 처리 헬퍼 함수 - 문자열 그대로 저장
+      const processDateForSave = (dateValue: any) => {
+        console.log('Processing date for save:', dateValue, 'Type:', typeof dateValue);
+        
+        if (!dateValue) return '';
+        
+        // 문자열인 경우 그대로 반환
+        if (typeof dateValue === 'string') {
+          return dateValue;
         }
+        
+        // Date 객체인 경우 문자열로 변환
+        if (dateValue instanceof Date) {
+          return dateValue.toISOString().split('T')[0];
+        }
+        
+        // Firebase Timestamp인 경우
+        if (dateValue && typeof dateValue === 'object' && 'seconds' in dateValue) {
+          const date = new Date(dateValue.seconds * 1000);
+          return date.toISOString().split('T')[0];
+        }
+        
+        return String(dateValue);
       };
 
       // experience와 education 배열의 날짜들도 처리
-      const processedExperience = formData.experience.map(exp => ({
-        ...exp,
-        startDate: exp.startDate instanceof Date ? exp.startDate : processDateForSave(String(exp.startDate || '')),
-        endDate: exp.endDate instanceof Date ? exp.endDate : processDateForSave(String(exp.endDate || ''))
-      }));
+      const processedExperience = formData.experience.map(exp => {
+        console.log('Processing experience:', exp);
+        return {
+          ...exp,
+          startDate: processDateForSave(exp.startDate),
+          endDate: processDateForSave(exp.endDate)
+        };
+      });
 
-      const processedEducation = formData.education.map(edu => ({
-        ...edu,
-        startDate: edu.startDate instanceof Date ? edu.startDate : processDateForSave(String(edu.startDate || '')),
-        endDate: edu.endDate instanceof Date ? edu.endDate : processDateForSave(String(edu.endDate || ''))
-      }));
+      const processedEducation = formData.education.map(edu => {
+        console.log('Processing education:', edu);
+        return {
+          ...edu,
+          startDate: processDateForSave(edu.startDate),
+          endDate: processDateForSave(edu.endDate)
+        };
+      });
 
       // certificates와 awards 배열의 날짜들도 처리
-      const processedCertificates = formData.skills.certificates.map(cert => ({
-        ...cert,
-        issueDate: cert.issueDate instanceof Date ? cert.issueDate : processDateForSave(String(cert.issueDate || ''))
-      }));
+      const processedCertificates = formData.skills.certificates.map(cert => {
+        console.log('Processing certificate:', cert);
+        return {
+          ...cert,
+          issueDate: processDateForSave(cert.issueDate)
+        };
+      });
 
-      const processedAwards = formData.skills.awards.map(award => ({
-        ...award,
-        date: award.date instanceof Date ? award.date : processDateForSave(String(award.date || ''))
-      }));
+      const processedAwards = formData.skills.awards.map(award => {
+        console.log('Processing award:', award);
+        return {
+          ...award,
+          date: processDateForSave(award.date)
+        };
+      });
 
       // Prepare profile data
       const profileData = {

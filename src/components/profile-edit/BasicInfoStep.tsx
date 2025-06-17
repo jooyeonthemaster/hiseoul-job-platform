@@ -201,12 +201,14 @@ export default function BasicInfoStep({ data, onChange }: BasicInfoStepProps) {
           <div className="relative">
             <CalendarIcon className={iconClasses} />
             <input
-              type="date"
+              type="text"
               value={data.dateOfBirth || ''}
               onChange={(e) => handleChange('dateOfBirth', e.target.value)}
+              placeholder="YYYY-MM-DD 형식으로 입력 (예: 1995-08-15)"
               className={inputClasses}
             />
           </div>
+          <p className="text-xs text-gray-500 mt-1">YYYY-MM-DD 형식으로 입력해주세요</p>
         </div>
         
         <div className="md:col-span-2">

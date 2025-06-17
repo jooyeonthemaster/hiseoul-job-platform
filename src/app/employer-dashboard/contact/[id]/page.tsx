@@ -37,7 +37,7 @@ export default function ContactJobSeeker() {
   const router = useRouter();
   const params = useParams();
   const { user } = useAuth();
-  const portfolioId = params.id as string;
+  const portfolioId = params?.id as string;
 
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);

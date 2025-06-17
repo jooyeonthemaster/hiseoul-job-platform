@@ -76,7 +76,7 @@ export default function CompanyDetailPage() {
   useEffect(() => {
     const loadCompany = async () => {
       try {
-        if (!params.id || typeof params.id !== 'string') {
+        if (!params?.id || typeof params.id !== 'string') {
           setError('잘못된 기업 ID입니다.');
           return;
         }
@@ -108,7 +108,7 @@ export default function CompanyDetailPage() {
     };
 
     loadCompany();
-  }, [params.id, user]);
+  }, [params?.id, user]);
 
   const getAttractionFeatures = (attraction: any) => {
     const features = [];
@@ -139,7 +139,7 @@ export default function CompanyDetailPage() {
       return;
     }
 
-    if (!params.id || typeof params.id !== 'string') return;
+    if (!params?.id || typeof params.id !== 'string') return;
 
     setFavoriteLoading(true);
     try {

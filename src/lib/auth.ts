@@ -26,10 +26,64 @@ import {
   where,
   arrayUnion,
   arrayRemove,
-  deleteDoc
+  deleteDoc,
+  Timestamp
 } from 'firebase/firestore';
 import { auth, db } from './firebase';
 import { User, JobSeeker, Employer } from '@/types';
+
+// Firebase Timestamp를 Date로 변환하는 헬퍼 함수
+const convertTimestampsToDate = (data: any): any => {
+  if (!data) return data;
+  
+  // Firebase Timestamp 객체 체크 (toDate 메서드 있는 경우)
+  if (data && typeof data === 'object' && typeof data.toDate === 'function') {
+    return data.toDate();
+  }
+  
+  // Firebase Timestamp 객체 체크 (seconds 속성 있는 경우)
+  if (data && typeof data === 'object' && 'seconds' in data && 'nanoseconds' in data) {
+    return new Date(data.seconds * 1000);
+  }
+  
+  if (Array.isArray(data)) {
+    return data.map(item => convertTimestampsToDate(item));
+  }
+  
+  if (data && typeof data === 'object' && !(data instanceof Date)) {
+    const converted: any = {};
+    for (const [key, value] of Object.entries(data)) {
+      converted[key] = convertTimestampsToDate(value);
+    }
+    return converted;
+  }
+  
+  return data;
+};
+
+// Date를 Firebase Timestamp로 변환하는 헬퍼 함수
+const convertDatesToTimestamp = (data: any): any => {
+  if (!data) return data;
+  
+  if (data instanceof Date) {
+    console.log('Converting Date to Timestamp:', data);
+    return Timestamp.fromDate(data);
+  }
+  
+  if (Array.isArray(data)) {
+    return data.map(item => convertDatesToTimestamp(item));
+  }
+  
+  if (data && typeof data === 'object' && !(data instanceof Timestamp) && !(data instanceof Date)) {
+    const converted: any = {};
+    for (const [key, value] of Object.entries(data)) {
+      converted[key] = convertDatesToTimestamp(value);
+    }
+    return converted;
+  }
+  
+  return data;
+};
 
 // 이메일로 사용자 찾기
 const findUserByEmail = async (email: string): Promise<User | null> => {
@@ -238,11 +292,8 @@ export const getUserData = async (uid: string): Promise<User | null> => {
     const userDoc = await getDoc(doc(db, 'users', uid));
     if (userDoc.exists()) {
       const data = userDoc.data();
-      return {
-        ...data,
-        createdAt: data.createdAt?.toDate(),
-        updatedAt: data.updatedAt?.toDate()
-      } as User;
+      // Timestamp를 Date로 변환
+      return convertTimestampsToDate(data) as User;
     }
     return null;
   } catch (error) {
@@ -256,7 +307,9 @@ export const getJobSeekerProfile = async (uid: string) => {
   try {
     const profileDoc = await getDoc(doc(db, 'jobseekers', uid));
     if (profileDoc.exists()) {
-      return profileDoc.data();
+      const data = profileDoc.data();
+      // Timestamp를 Date로 변환
+      return convertTimestampsToDate(data);
     }
     return null;
   } catch (error) {
@@ -270,7 +323,9 @@ export const getEmployerInfo = async (uid: string) => {
   try {
     const employerDoc = await getDoc(doc(db, 'employers', uid));
     if (employerDoc.exists()) {
-      return employerDoc.data();
+      const data = employerDoc.data();
+      // Timestamp를 Date로 변환
+      return convertTimestampsToDate(data);
     }
     return null;
   } catch (error) {
@@ -295,6 +350,8 @@ export const updateUserProfile = async (uid: string, profileData: any) => {
 // 구직자 프로필 업데이트
 export const updateJobSeekerProfile = async (uid: string, profileData: any) => {
   try {
+    console.log('Updating profile with data:', profileData);
+    
     // undefined 값들을 필터링하는 함수
     const filterUndefined = (obj: any): any => {
       if (obj === null || obj === undefined) {
@@ -305,7 +362,7 @@ export const updateJobSeekerProfile = async (uid: string, profileData: any) => {
         return obj.map(filterUndefined);
       }
       
-      if (typeof obj === 'object') {
+      if (typeof obj === 'object' && !(obj instanceof Date)) {
         const filtered: any = {};
         for (const [key, value] of Object.entries(obj)) {
           if (value !== undefined) {
@@ -319,9 +376,13 @@ export const updateJobSeekerProfile = async (uid: string, profileData: any) => {
     };
 
     const cleanedProfileData = filterUndefined(profileData);
+    // Date 객체를 Timestamp로 변환
+    const timestampProfileData = convertDatesToTimestamp(cleanedProfileData);
+    
+    console.log('Saving to Firebase with timestamps:', timestampProfileData);
     
     await updateDoc(doc(db, 'jobseekers', uid), {
-      profile: cleanedProfileData,
+      profile: timestampProfileData,
       updatedAt: serverTimestamp()
     });
   } catch (error) {

@@ -24,7 +24,7 @@ export interface JobSeeker extends User {
 export interface JobSeekerProfile {
   phone?: string;
   address?: string;
-  dateOfBirth?: Date;
+  dateOfBirth?: string | Date | any;
   skills: string[];
   experience: ExperienceItem[];
   education: EducationItem[];
@@ -45,23 +45,23 @@ export interface JobSeekerProfile {
 export interface CertificateItem {
   name: string;
   issuer: string;
-  issueDate: Date;
-  expiryDate?: Date;
+  issueDate: string | Date | any;
+  expiryDate?: string | Date | any;
   certificateNumber?: string;
 }
 
 export interface AwardItem {
   title: string;
   organization: string;
-  date: Date;
+  date: string | Date | any;
   description?: string;
 }
 
 export interface ProjectItem {
   title: string;
   role: string;
-  startDate: Date;
-  endDate?: Date;
+  startDate: string | Date | any;
+  endDate?: string | Date | any;
   description: string;
   skills: string[];
   links?: string[];
@@ -123,8 +123,8 @@ export interface PortfolioLink {
 export interface ExperienceItem {
   company: string;
   position: string;
-  startDate: Date;
-  endDate?: Date;
+  startDate: string | Date | any;
+  endDate?: string | Date | any;
   isCurrent: boolean;
   description: string;
 }
@@ -133,8 +133,8 @@ export interface EducationItem {
   institution: string;
   degree: string;
   field: string;
-  startDate: Date;
-  endDate?: Date;
+  startDate: string | Date | any;
+  endDate?: string | Date | any;
   grade?: string;
 }
 

@@ -16,6 +16,8 @@ import {
   MediaStep
 } from '@/components/profile-edit';
 import type { ExperienceItem, EducationItem, CertificateItem, AwardItem, SelfIntroduction } from '@/types';
+import type { VideoLink } from '@/app/portfolios/[id]/types/portfolio.types';
+import ProfileImageManager from '@/components/admin/ProfileImageManager';
 
 interface PendingEmployer {
   id: string;
@@ -94,6 +96,7 @@ interface Portfolio {
   awards?: AwardItem[];
   selfIntroduction?: SelfIntroduction;
   introVideo?: string;
+  introVideos?: VideoLink[];
   mediaContent?: any[];
   portfolioPdfs?: Array<{
     url: string;
@@ -127,6 +130,7 @@ interface ProfileFormData {
   selfIntroduction: SelfIntroduction;
   media: {
     introVideo: string;
+    introVideos?: VideoLink[];
     mediaContent: any[];
     portfolioPdfs?: Array<{
       url: string;
@@ -638,6 +642,7 @@ export default function AdminPage() {
           },
           media: {
             introVideo: profile.introVideo || portfolio.introVideo || '',
+            introVideos: profile.introVideos || portfolio.introVideos || [],
             mediaContent: profile.mediaContent || portfolio.mediaContent || [],
             portfolioPdfs: profile.portfolioPdfs || portfolio.portfolioPdfs || []
           }
@@ -671,6 +676,7 @@ export default function AdminPage() {
           },
           media: {
             introVideo: portfolio.introVideo || '',
+            introVideos: portfolio.introVideos || [],
             mediaContent: portfolio.mediaContent || [],
             portfolioPdfs: portfolio.portfolioPdfs || []
           }
@@ -716,6 +722,7 @@ export default function AdminPage() {
       },
       media: {
         introVideo: '',
+        introVideos: [],
         mediaContent: [],
         portfolioPdfs: []
       }
@@ -822,6 +829,7 @@ export default function AdminPage() {
         awards: profileFormData.skills.awards,
         selfIntroduction: profileFormData.selfIntroduction,
         introVideo: profileFormData.media.introVideo,
+        introVideos: profileFormData.media.introVideos,
         mediaContent: profileFormData.media.mediaContent,
         portfolioPdfs: profileFormData.media.portfolioPdfs
       };
@@ -845,6 +853,7 @@ export default function AdminPage() {
         certificates: profileFormData.skills.certificates,
         awards: profileFormData.skills.awards,
         introVideo: profileFormData.media.introVideo,
+        introVideos: profileFormData.media.introVideos,
         selfIntroduction: {
           motivation: profileFormData.selfIntroduction.motivation || '',
           personality: profileFormData.selfIntroduction.personality || '',
@@ -1759,6 +1768,24 @@ export default function AdminPage() {
 
               {/* 스텝 콘텐츠 */}
               <div className="p-6 overflow-y-auto max-h-[60vh]">
+                {/* 프로필 이미지 관리 섹션 - 모든 스텝에서 표시 */}
+                <div className="mb-6">
+                  <ProfileImageManager
+                    currentImageUrl={profileFormData.basicInfo.profileImage}
+                    userId={selectedPortfolio?.userId || ''}
+                    userName={selectedPortfolio?.name || ''}
+                    onImageUpdate={(imageUrl) => {
+                      setProfileFormData(prev => ({
+                        ...prev,
+                        basicInfo: {
+                          ...prev.basicInfo,
+                          profileImage: imageUrl
+                        }
+                      }));
+                    }}
+                  />
+                </div>
+                
                 {renderProfileStepContent()}
               </div>
 

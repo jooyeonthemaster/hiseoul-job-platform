@@ -28,7 +28,7 @@ export default function JobInquiryDetailPage() {
   const router = useRouter();
   const params = useParams();
   const { user } = useAuth();
-  const inquiryId = params.id as string;
+  const inquiryId = params?.id as string;
 
   const [loading, setLoading] = useState(true);
   const [inquiry, setInquiry] = useState<any>(null);

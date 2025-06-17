@@ -51,63 +51,7 @@ const getAvatarBySpeciality = (speciality: string) => {
 
 const specialities = ['전체', 'SNS마케팅', '키워드광고', '브랜드마케팅', '퍼포먼스마케팅', '콘텐츠마케팅', '마케팅기획', '이커머스마케팅', '데이터마케팅', '웹개발', '앱개발', '디자인', '기타'];
 
-// 기본 샘플 데이터
-const samplePortfolios: Portfolio[] = [
-  {
-    id: 'sample-1',
-    userId: 'sample-user-1',
-    name: '김민수',
-    email: 'minsu.kim@example.com',
-    speciality: 'SNS마케팅',
-    phone: '010-1234-5678',
-    address: '서울시 강남구',
-    skills: ['Instagram', 'Facebook', 'TikTok', '브랜드마케팅', '콘텐츠기획'],
-    languages: ['한국어', '영어'],
-    description: '소셜미디어 플랫폼별 맞춤형 마케팅 전략 수립 및 실행 전문가입니다.',
-    rating: 4.9,
-    projects: 15,
-    verified: true,
-    isPublic: true,
-    createdAt: new Date('2024-01-01'),
-    updatedAt: new Date('2024-01-01')
-  },
-  {
-    id: 'sample-2',
-    userId: 'sample-user-2',
-    name: '박영희',
-    email: 'younghee.park@example.com',
-    speciality: '웹개발',
-    phone: '010-2345-6789',
-    address: '서울시 서초구',
-    skills: ['React', 'Next.js', 'TypeScript', 'Node.js', 'MongoDB'],
-    languages: ['한국어', '영어', '일본어'],
-    description: '현대적인 웹 애플리케이션 개발 전문가입니다.',
-    rating: 4.8,
-    projects: 22,
-    verified: true,
-    isPublic: true,
-    createdAt: new Date('2024-01-02'),
-    updatedAt: new Date('2024-01-02')
-  },
-  {
-    id: 'sample-3',
-    userId: 'sample-user-3',
-    name: '이준호',
-    email: 'junho.lee@example.com',
-    speciality: '디자인',
-    phone: '010-3456-7890',
-    address: '서울시 마포구',
-    skills: ['Figma', 'Adobe XD', 'Photoshop', 'Illustrator', 'UI/UX'],
-    languages: ['한국어', '영어'],
-    description: '사용자 경험을 중시하는 UI/UX 디자이너입니다.',
-    rating: 4.7,
-    projects: 18,
-    verified: true,
-    isPublic: true,
-    createdAt: new Date('2024-01-03'),
-    updatedAt: new Date('2024-01-03')
-  }
-];
+
 
 export default function PortfoliosPage() {
   const { user, userData } = useAuth();
@@ -173,14 +117,12 @@ export default function PortfoliosPage() {
       const data = await getAllPortfolios(false); // 일반 사용자는 숨겨진 포트폴리오 제외
       console.log('🎯 포트폴리오 목록 로드됨:', data);
       
-      // 실제 데이터와 샘플 데이터를 합침 (실제 데이터가 적을 경우 샘플 데이터로 보완)
-      const combinedData = [...(data as Portfolio[]), ...samplePortfolios];
-      console.log('🎯 최종 포트폴리오 데이터:', combinedData);
-      setPortfolios(combinedData);
+      // 실제 데이터만 사용
+      setPortfolios(data as Portfolio[]);
     } catch (error) {
       console.error('Error loading portfolios:', error);
-      // 에러 발생 시 최소한 샘플 데이터라도 보여줌
-      setPortfolios(samplePortfolios);
+      // 에러 발생 시 빈 배열로 설정
+      setPortfolios([]);
     } finally {
       setLoading(false);
     }
@@ -389,12 +331,12 @@ export default function PortfoliosPage() {
                 )}
 
                 {/* Profile Image Header - Gallery Style */}
-                <div className="relative h-48 bg-gradient-to-br from-blue-100 via-indigo-100 to-purple-100 overflow-hidden">
+                <div className="relative h-62 bg-gradient-to-br from-blue-100 via-indigo-100 to-purple-100 overflow-hidden">
                   {portfolio.profileImage ? (
                     <img 
                       src={portfolio.profileImage} 
                       alt={`${portfolio.name}의 프로필`}
-                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                      className="w-full h-full object-cover object-center group-hover:scale-110 transition-transform duration-500"
                     />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center">

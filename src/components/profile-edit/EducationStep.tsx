@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { PlusIcon, TrashIcon } from '@heroicons/react/24/outline';
 import { EducationItem } from '@/types';
+import { formatDateForInput, createSafeDate } from '@/lib/dateUtils';
 
 interface EducationStepProps {
   data: EducationItem[];
@@ -12,65 +13,12 @@ interface EducationStepProps {
 export default function EducationStep({ data, onChange }: EducationStepProps) {
   const [educations, setEducations] = useState<EducationItem[]>(data);
 
-  // 안전한 날짜 처리 함수
-  const formatDateForInput = (dateValue: any) => {
-    if (!dateValue) return '';
-    
-    try {
-      let date: Date;
-      
-      // Firebase Timestamp 객체인 경우
-      if (dateValue && typeof dateValue === 'object' && 'seconds' in dateValue) {
-        date = new Date(dateValue.seconds * 1000);
-      }
-      // Firebase Timestamp 객체 (toDate 메서드가 있는 경우)
-      else if (dateValue && typeof dateValue === 'object' && typeof dateValue.toDate === 'function') {
-        date = dateValue.toDate();
-      }
-      // JavaScript Date 객체인 경우
-      else if (dateValue instanceof Date) {
-        date = dateValue;
-      }
-      // 문자열인 경우
-      else if (typeof dateValue === 'string') {
-        if (dateValue.trim() === '') return '';
-        date = new Date(dateValue);
-      }
-      // 숫자(timestamp)인 경우
-      else if (typeof dateValue === 'number') {
-        date = new Date(dateValue);
-      }
-      else {
-        console.warn('Unknown date format:', dateValue);
-        return '';
-      }
-      
-      if (isNaN(date.getTime())) return '';
-      return date.toISOString().split('T')[0];
-    } catch (error) {
-      console.warn('Invalid date value:', dateValue);
-      return '';
-    }
-  };
-
-  // 안전한 날짜 생성 함수
-  const createSafeDate = (dateString: string) => {
-    if (!dateString || dateString.trim() === '') return null;
-    try {
-      const date = new Date(dateString + 'T00:00:00.000Z'); // UTC 시간으로 명시적 설정
-      return isNaN(date.getTime()) ? null : date;
-    } catch (error) {
-      console.warn('Invalid date string:', dateString);
-      return null;
-    }
-  };
-
   const addEducation = () => {
     const newEducation: EducationItem = {
       institution: '',
       degree: '',
       field: '',
-      startDate: new Date(),
+      startDate: '',
     };
     const updated = [...educations, newEducation];
     setEducations(updated);
@@ -79,14 +27,7 @@ export default function EducationStep({ data, onChange }: EducationStepProps) {
 
   const updateEducation = (index: number, field: keyof EducationItem, value: any) => {
     const updated = [...educations];
-    
-    // 날짜 필드인 경우 안전하게 처리
-    if (field === 'startDate' || field === 'endDate') {
-      updated[index] = { ...updated[index], [field]: createSafeDate(value) };
-    } else {
-      updated[index] = { ...updated[index], [field]: value };
-    }
-    
+    updated[index] = { ...updated[index], [field]: value };
     setEducations(updated);
     onChange(updated);
   };
@@ -202,9 +143,10 @@ export default function EducationStep({ data, onChange }: EducationStepProps) {
                     입학일
                   </label>
                   <input
-                    type="date"
-                    value={formatDateForInput(edu.startDate)}
+                    type="text"
+                    value={edu.startDate || ''}
                     onChange={(e) => updateEducation(index, 'startDate', e.target.value)}
+                    placeholder="YYYY-MM 형식으로 입력 (예: 2018-03)"
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500"
                   />
                 </div>
@@ -214,9 +156,10 @@ export default function EducationStep({ data, onChange }: EducationStepProps) {
                     졸업일
                   </label>
                   <input
-                    type="date"
-                    value={formatDateForInput(edu.endDate)}
+                    type="text"
+                    value={edu.endDate || ''}
                     onChange={(e) => updateEducation(index, 'endDate', e.target.value)}
+                    placeholder="YYYY-MM 형식으로 입력 (예: 2022-02)"
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500"
                   />
                 </div>
