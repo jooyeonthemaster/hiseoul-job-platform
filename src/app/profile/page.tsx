@@ -11,6 +11,7 @@ import {
   PortfolioStatusCard,
   RecommendedCompaniesCard
 } from '@/components/dashboard';
+import JobInquiryDetailModal from '@/components/JobInquiryDetailModal';
 import { calculateProfileCompletion as calculateProfileCompletionUtil } from '@/lib/profileCompletion';
 import {
   getJobSeekerProfile,
@@ -23,7 +24,7 @@ import {
   getAllEmployers,
   getEmployerById
 } from '@/lib/auth';
-import { collection, query, where, getDocs, orderBy } from 'firebase/firestore';
+import { collection, query, where, getDocs, orderBy, doc, updateDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 
 export default function ProfilePage() {
@@ -46,6 +47,10 @@ export default function ProfilePage() {
   });
   const [loadingDashboard, setLoadingDashboard] = useState(false);
   const [recommendedCompanies, setRecommendedCompanies] = useState<any[]>([]);
+  
+  // Modal states
+  const [showInquiryModal, setShowInquiryModal] = useState(false);
+  const [selectedInquiry, setSelectedInquiry] = useState<any>(null);
 
   // Redirect if not authenticated or not jobseeker
   useEffect(() => {
@@ -242,25 +247,70 @@ export default function ProfilePage() {
   };
 
   const getRecommendedCompanies = (companies: any[]) => {
-    if (!formData.skills) return companies.slice(0, 3);
-    
-    const userSkills = formData.skills.toLowerCase().split(',').map((s: string) => s.trim());
+    // 사용자의 스킬과 관련된 회사 추천 로직
+    const userSkills = formData.skills?.toLowerCase().split(',').map((s: string) => s.trim()) || [];
+    const userSpeciality = formData.speciality?.toLowerCase() || '';
     
     return companies
-      .filter(company => company.company?.name)
-      .sort((a, b) => {
-        const aSkillMatch = userSkills.some((skill: string) => 
-          a.company?.description?.toLowerCase().includes(skill) ||
-          a.company?.requirements?.toLowerCase().includes(skill)
-        );
-        const bSkillMatch = userSkills.some((skill: string) => 
-          b.company?.description?.toLowerCase().includes(skill) ||
-          b.company?.requirements?.toLowerCase().includes(skill)
-        );
+      .filter(company => {
+        const companyIndustry = company.company?.industry?.toLowerCase() || '';
+        const companyDescription = company.company?.description?.toLowerCase() || '';
         
-        return bSkillMatch ? 1 : aSkillMatch ? -1 : 0;
-      });
+        return userSkills.some((skill: string) => 
+          companyIndustry.includes(skill) || companyDescription.includes(skill)
+        ) || companyIndustry.includes(userSpeciality) || companyDescription.includes(userSpeciality);
+      })
+      .sort(() => Math.random() - 0.5); // 랜덤 정렬
   };
+
+  // 채용 제안 상태 업데이트 함수
+  const handleInquiryStatusUpdate = async (inquiryId: string, newStatus: string) => {
+    try {
+      const inquiryRef = doc(db, 'jobInquiries', inquiryId);
+      await updateDoc(inquiryRef, {
+        status: newStatus,
+        respondedAt: new Date()
+      });
+
+      // 로컬 상태 업데이트
+      setJobInquiries(prev => 
+        prev.map(inquiry => 
+          inquiry.id === inquiryId 
+            ? { ...inquiry, status: newStatus, respondedAt: new Date() }
+            : inquiry
+        )
+      );
+
+      // 수락/거절일 때만 모달 닫기
+      if (newStatus === 'accepted' || newStatus === 'rejected') {
+        setShowInquiryModal(false);
+        setSelectedInquiry(null);
+        alert(newStatus === 'accepted' ? '채용 제안을 수락했습니다!' : '채용 제안을 거절했습니다.');
+      }
+      // 'read' 상태는 조용히 처리 (alert 없음)
+    } catch (error) {
+      console.error('Error updating inquiry status:', error);
+      alert('상태 업데이트 중 오류가 발생했습니다.');
+    }
+  };
+
+  // 모달 열기 함수
+  const openInquiryModal = (inquiry: any) => {
+    setSelectedInquiry(inquiry);
+    setShowInquiryModal(true);
+    
+    // 읽음 상태로 업데이트 (sent 상태인 경우에만)
+    if (inquiry.status === 'sent') {
+      handleInquiryStatusUpdate(inquiry.id, 'read');
+    }
+  };
+
+  // 모달 닫기 함수
+  const closeInquiryModal = () => {
+    setShowInquiryModal(false);
+    setSelectedInquiry(null);
+  };
+
   const handleSaveProfile = async (data: any) => {
     if (!user || !userData) return;
 
@@ -485,9 +535,7 @@ export default function ProfilePage() {
               inquiries={jobInquiries}
               loading={loadingInquiries}
               onRefresh={loadJobInquiries}
-              onDetailClick={(inquiry) => {
-                alert('상세보기 기능은 추후 구현 예정입니다.');
-              }}
+              onDetailClick={openInquiryModal}
             />
           </div>
           {/* Sidebar - Right Column */}
@@ -508,6 +556,15 @@ export default function ProfilePage() {
           </div>
         </div>
       </div>
+      {/* Job Inquiry Detail Modal */}
+      {showInquiryModal && selectedInquiry && (
+        <JobInquiryDetailModal
+          isOpen={showInquiryModal}
+          inquiry={selectedInquiry}
+          onStatusUpdate={handleInquiryStatusUpdate}
+          onClose={closeInquiryModal}
+        />
+      )}
     </div>
   );
 }

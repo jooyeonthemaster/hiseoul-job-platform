@@ -1,11 +1,11 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { collection, query, where, getDocs, updateDoc, doc, serverTimestamp } from 'firebase/firestore';
+import { collection, query, where, getDocs, updateDoc, doc, serverTimestamp, orderBy } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { motion } from 'framer-motion';
-import { CheckCircleIcon, XCircleIcon, ClockIcon, BuildingOfficeIcon, LockClosedIcon, EyeIcon, EyeSlashIcon, EnvelopeIcon, UserGroupIcon, UserIcon, BriefcaseIcon, MagnifyingGlassIcon, FunnelIcon, CalendarDaysIcon, PencilIcon, ArrowLeftIcon, ArrowRightIcon } from '@heroicons/react/24/outline';
-import { getAllPortfolios, updateJobSeekerProfile, getJobSeekerProfile, updateUserProfile, registerPortfolio, togglePortfolioVisibility, toggleEmployerVisibility, getAllEmployers } from '@/lib/auth';
+import { CheckCircleIcon, XCircleIcon, ClockIcon, BuildingOfficeIcon, LockClosedIcon, EyeIcon, EyeSlashIcon, EnvelopeIcon, UserGroupIcon, UserIcon, BriefcaseIcon, MagnifyingGlassIcon, FunnelIcon, CalendarDaysIcon, PencilIcon, ArrowLeftIcon, ArrowRightIcon, XMarkIcon, ArrowPathIcon } from '@heroicons/react/24/outline';
+import { getAllPortfolios, updateJobSeekerProfile, getJobSeekerProfile, updateUserProfile, registerPortfolio, togglePortfolioVisibility, toggleEmployerVisibility, getAllEmployers, getAllPendingEmployers, approveEmployer, rejectEmployer, cancelEmployerApproval, reapproveEmployer, updatePortfolioVisibility, updateEmployerVisibility } from '@/lib/auth';
 import {
   StepNavigation,
   BasicInfoStep,
@@ -18,6 +18,9 @@ import {
 import type { ExperienceItem, EducationItem, CertificateItem, AwardItem, SelfIntroduction } from '@/types';
 import type { VideoLink } from '@/app/portfolios/[id]/types/portfolio.types';
 import ProfileImageManager from '@/components/admin/ProfileImageManager';
+import JobInquiryDetailModal from '@/components/JobInquiryDetailModal';
+import { useAuth } from '@/contexts/AuthContext';
+import { useRouter } from 'next/navigation';
 
 interface PendingEmployer {
   id: string;
@@ -156,6 +159,7 @@ export default function AdminPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [authError, setAuthError] = useState('');
   const [isAuthenticating, setIsAuthenticating] = useState(false);
+  const [isInitializing, setIsInitializing] = useState(true);
 
   // 기존 상태들
   const [pendingEmployers, setPendingEmployers] = useState<PendingEmployer[]>([]);
@@ -225,11 +229,34 @@ export default function AdminPage() {
     setDateRange({ start: '', end: '' });
   };
 
-  // 보안 강화: 매번 인증 필요 (페이지 새로고침/재방문 시 재인증)
+  // 페이지 로드시 인증 상태 확인
   useEffect(() => {
-    // 항상 인증되지 않은 상태로 시작
-    setIsAuthenticated(false);
-    setLoading(false);
+    const checkAuthStatus = () => {
+      try {
+        const isAuth = sessionStorage.getItem('admin_authenticated');
+        const authTime = sessionStorage.getItem('admin_auth_time');
+        
+        if (isAuth === 'true' && authTime) {
+          // 인증 시간이 24시간 이내인 경우만 유효
+          const timeDiff = Date.now() - parseInt(authTime);
+          const isWithin24Hours = timeDiff < 24 * 60 * 60 * 1000; // 24시간
+          
+          if (isWithin24Hours) {
+            setIsAuthenticated(true);
+          } else {
+            // 24시간 초과시 인증 해제
+            sessionStorage.removeItem('admin_authenticated');
+            sessionStorage.removeItem('admin_auth_time');
+          }
+        }
+      } catch (error) {
+        console.error('인증 상태 확인 중 오류:', error);
+      } finally {
+        setIsInitializing(false);
+      }
+    };
+
+    checkAuthStatus();
   }, []);
 
   // 비밀번호 인증 처리
@@ -242,7 +269,9 @@ export default function AdminPage() {
       const adminPassword = process.env.NEXT_PUBLIC_ADMIN_PASSWORD;
       
       if (password === adminPassword) {
-        // localStorage 사용하지 않고 상태만으로 관리 (보안 강화)
+        // sessionStorage에 인증 상태 저장 (탭 세션 동안 유지)
+        sessionStorage.setItem('admin_authenticated', 'true');
+        sessionStorage.setItem('admin_auth_time', Date.now().toString());
         setIsAuthenticated(true);
         setPassword('');
       } else {
@@ -258,6 +287,8 @@ export default function AdminPage() {
 
   // 로그아웃 처리
   const handleLogout = () => {
+    sessionStorage.removeItem('admin_authenticated');
+    sessionStorage.removeItem('admin_auth_time');
     setIsAuthenticated(false);
     setPassword('');
   };
@@ -958,6 +989,18 @@ export default function AdminPage() {
       </span>
     );
   };
+
+  // 초기화 중일 때 로딩 화면 표시
+  if (isInitializing) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">인증 상태 확인 중...</p>
+        </div>
+      </div>
+    );
+  }
 
   // 인증되지 않은 경우 로그인 화면 표시
   if (!isAuthenticated) {
@@ -1848,168 +1891,12 @@ export default function AdminPage() {
 
         {/* 채용 제안서 상세 모달 */}
         {showInquiryModal && selectedInquiry && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-lg max-w-7xl w-full max-h-[95vh] overflow-y-auto">
-              <div className="p-8">
-                <div className="flex items-center justify-between mb-8">
-                  <h2 className="text-3xl font-bold text-gray-900">채용 제안서 상세</h2>
-                  <button
-                    onClick={closeInquiryModal}
-                    className="text-gray-400 hover:text-gray-600 p-2"
-                  >
-                    <XCircleIcon className="w-8 h-8" />
-                  </button>
-                </div>
-
-                <div className="space-y-8">
-                  {/* 기본 정보 - 상단 헤더 */}
-                  <div className="border-b pb-6">
-                    <div className="flex items-center justify-between mb-6">
-                      <div className="flex items-center space-x-4">
-                        <div className="bg-blue-100 p-3 rounded-lg">
-                          <BuildingOfficeIcon className="w-8 h-8 text-blue-600" />
-                        </div>
-                        <div>
-                          <h3 className="text-2xl font-bold text-gray-900">
-                            {selectedInquiry.companyInfo?.name}
-                          </h3>
-                          <p className="text-lg text-gray-600">
-                            {selectedInquiry.jobSeekerName}님에게 채용 제안
-                          </p>
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <StatusBadge status={selectedInquiry.status} />
-                        <p className="text-sm text-gray-500 mt-2">
-                          발송일: {formatDate(selectedInquiry.sentAt)}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* 메인 콘텐츠 - 2단 레이아웃 */}
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                    {/* 왼쪽 컬럼 */}
-                    <div className="space-y-6">
-                      {/* 회사 정보 */}
-                      <div className="bg-gray-50 p-6 rounded-lg">
-                        <h4 className="text-xl font-semibold text-gray-900 mb-4 flex items-center">
-                          <BuildingOfficeIcon className="w-6 h-6 mr-2 text-blue-600" />
-                          회사 정보
-                        </h4>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
-                          <div className="space-y-2">
-                            <p><span className="font-medium text-gray-700">회사명:</span> <span className="text-gray-900">{selectedInquiry.companyInfo?.name}</span></p>
-                            <p><span className="font-medium text-gray-700">대표자:</span> <span className="text-gray-900">{selectedInquiry.companyInfo?.ceoName}</span></p>
-                            <p><span className="font-medium text-gray-700">업종:</span> <span className="text-gray-900">{selectedInquiry.companyInfo?.industry}</span></p>
-                          </div>
-                          <div className="space-y-2">
-                            <p><span className="font-medium text-gray-700">사업 형태:</span> <span className="text-gray-900">{selectedInquiry.companyInfo?.businessType}</span></p>
-                            <p><span className="font-medium text-gray-700">위치:</span> <span className="text-gray-900">{selectedInquiry.companyInfo?.location}</span></p>
-                          </div>
-                        </div>
-                        {selectedInquiry.companyInfo?.description && (
-                          <div className="mt-4">
-                            <p className="font-medium text-gray-700 mb-2">회사 소개:</p>
-                            <p className="text-gray-900 bg-white p-3 rounded border">{selectedInquiry.companyInfo.description}</p>
-                          </div>
-                        )}
-                      </div>
-
-                      {/* 담당자 정보 */}
-                      <div className="bg-blue-50 p-6 rounded-lg">
-                        <h4 className="text-xl font-semibold text-gray-900 mb-4 flex items-center">
-                          <UserIcon className="w-6 h-6 mr-2 text-blue-600" />
-                          채용 담당자 정보
-                        </h4>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
-                          <div className="space-y-2">
-                            <p><span className="font-medium text-gray-700">담당자명:</span> <span className="text-gray-900">{selectedInquiry.recruiterInfo?.name}</span></p>
-                            <p><span className="font-medium text-gray-700">직위/직책:</span> <span className="text-gray-900">{selectedInquiry.recruiterInfo?.position}</span></p>
-                          </div>
-                          <div className="space-y-2">
-                            <p><span className="font-medium text-gray-700">연락처:</span> <span className="text-gray-900">{selectedInquiry.recruiterInfo?.phone}</span></p>
-                            <p><span className="font-medium text-gray-700">이메일:</span> <span className="text-gray-900">{selectedInquiry.recruiterInfo?.email}</span></p>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* 오른쪽 컬럼 */}
-                    <div className="space-y-6">
-                      {/* 채용 정보 */}
-                      <div className="bg-green-50 p-6 rounded-lg">
-                        <h4 className="text-xl font-semibold text-gray-900 mb-4 flex items-center">
-                          <BriefcaseIcon className="w-6 h-6 mr-2 text-green-600" />
-                          채용 정보
-                        </h4>
-                        <div className="space-y-3">
-                          <div className="bg-white p-4 rounded border">
-                            <p className="font-medium text-gray-700 mb-1">제안 직무</p>
-                            <p className="text-lg text-gray-900 font-semibold">{selectedInquiry.proposedPosition}</p>
-                          </div>
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                            <div className="bg-white p-3 rounded border">
-                              <p className="font-medium text-gray-700 text-sm">직무 카테고리</p>
-                              <p className="text-gray-900">{selectedInquiry.jobCategory}</p>
-                            </div>
-                            <div className="bg-white p-3 rounded border">
-                              <p className="font-medium text-gray-700 text-sm">근무 형태</p>
-                              <p className="text-gray-900">{selectedInquiry.workType}</p>
-                            </div>
-                          </div>
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                            <div className="bg-white p-3 rounded border">
-                              <p className="font-medium text-gray-700 text-sm">제안 급여</p>
-                              <p className="text-gray-900 font-semibold">{selectedInquiry.proposedSalary}</p>
-                            </div>
-                            <div className="bg-white p-3 rounded border">
-                              <p className="font-medium text-gray-700 text-sm">근무 시간</p>
-                              <p className="text-gray-900">{selectedInquiry.workingHours}</p>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* 복리후생 */}
-                      {selectedInquiry.benefits && selectedInquiry.benefits.length > 0 && (
-                        <div className="bg-purple-50 p-6 rounded-lg">
-                          <h4 className="text-xl font-semibold text-gray-900 mb-4">복리후생</h4>
-                          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                            {selectedInquiry.benefits.map((benefit, index) => (
-                              <div key={index} className="bg-white p-3 rounded border text-center">
-                                <span className="text-sm font-medium text-purple-800">{benefit}</span>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* 채용 제안 메시지 - 전체 폭 */}
-                  <div className="bg-yellow-50 p-6 rounded-lg">
-                    <h4 className="text-xl font-semibold text-gray-900 mb-4 flex items-center">
-                      <EnvelopeIcon className="w-6 h-6 mr-2 text-yellow-600" />
-                      채용 제안 메시지
-                    </h4>
-                    <div className="bg-white p-6 rounded-lg border shadow-sm">
-                      <p className="text-gray-900 whitespace-pre-wrap leading-relaxed">{selectedInquiry.message}</p>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="mt-8 flex justify-end space-x-4">
-                  <button
-                    onClick={closeInquiryModal}
-                    className="px-6 py-3 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition font-medium"
-                  >
-                    닫기
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
+          <JobInquiryDetailModal
+            isOpen={showInquiryModal}
+            inquiry={selectedInquiry}
+            onClose={closeInquiryModal}
+            showJobSeekerName={true}
+          />
         )}
       </div>
     </div>
