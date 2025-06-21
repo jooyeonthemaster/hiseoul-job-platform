@@ -5,7 +5,7 @@ import { collection, query, where, getDocs, updateDoc, doc, serverTimestamp, ord
 import { db } from '@/lib/firebase';
 import { motion } from 'framer-motion';
 import { CheckCircleIcon, XCircleIcon, ClockIcon, BuildingOfficeIcon, LockClosedIcon, EyeIcon, EyeSlashIcon, EnvelopeIcon, UserGroupIcon, UserIcon, BriefcaseIcon, MagnifyingGlassIcon, FunnelIcon, CalendarDaysIcon, PencilIcon, ArrowLeftIcon, ArrowRightIcon, XMarkIcon, ArrowPathIcon } from '@heroicons/react/24/outline';
-import { getAllPortfolios, updateJobSeekerProfile, getJobSeekerProfile, updateUserProfile, registerPortfolio, togglePortfolioVisibility, toggleEmployerVisibility, getAllEmployers, getAllPendingEmployers, approveEmployer, rejectEmployer, cancelEmployerApproval, reapproveEmployer, updatePortfolioVisibility, updateEmployerVisibility } from '@/lib/auth';
+import { getAllPortfolios, updateJobSeekerProfile, getJobSeekerProfile, updateUserProfile, registerPortfolio, togglePortfolioVisibility, toggleEmployerVisibility, getAllEmployers } from '@/lib/auth';
 import {
   StepNavigation,
   BasicInfoStep,
