@@ -803,6 +803,10 @@ export const getAllEmployers = async (includeHidden: boolean = false) => {
           location: data.company?.location || '',
           website: data.company?.website || '',
           description: data.company?.description || '',
+          // 담당자 정보 추가
+          contactName: data.company?.contactName || '',
+          contactPosition: data.company?.contactPosition || '',
+          contactPhone: data.company?.contactPhone || '',
           companyAttraction: {
             workingHours: data.company?.companyAttraction?.workingHours || '',
             remoteWork: data.company?.companyAttraction?.remoteWork || false,
@@ -851,6 +855,10 @@ export const getEmployerById = async (employerId: string) => {
           location: data.company?.location || '',
           website: data.company?.website || '',
           description: data.company?.description || '',
+          // 담당자 정보 추가
+          contactName: data.company?.contactName || '',
+          contactPosition: data.company?.contactPosition || '',
+          contactPhone: data.company?.contactPhone || '',
           companyAttraction: {
             workingHours: data.company?.companyAttraction?.workingHours || '',
             remoteWork: data.company?.companyAttraction?.remoteWork || false,

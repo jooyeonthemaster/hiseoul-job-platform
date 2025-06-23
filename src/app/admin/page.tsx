@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { collection, query, where, getDocs, updateDoc, doc, serverTimestamp, orderBy } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { motion } from 'framer-motion';
-import { CheckCircleIcon, XCircleIcon, ClockIcon, BuildingOfficeIcon, LockClosedIcon, EyeIcon, EyeSlashIcon, EnvelopeIcon, UserGroupIcon, UserIcon, BriefcaseIcon, MagnifyingGlassIcon, FunnelIcon, CalendarDaysIcon, PencilIcon, ArrowLeftIcon, ArrowRightIcon, XMarkIcon, ArrowPathIcon } from '@heroicons/react/24/outline';
+import { CheckCircleIcon, XCircleIcon, ClockIcon, BuildingOfficeIcon, LockClosedIcon, EyeIcon, EyeSlashIcon, EnvelopeIcon, UserGroupIcon, UserIcon, BriefcaseIcon, MagnifyingGlassIcon, FunnelIcon, CalendarDaysIcon, PencilIcon, ArrowLeftIcon, ArrowRightIcon, XMarkIcon, ArrowPathIcon, ChevronUpIcon, ChevronDownIcon } from '@heroicons/react/24/outline';
 import { getAllPortfolios, updateJobSeekerProfile, getJobSeekerProfile, updateUserProfile, registerPortfolio, togglePortfolioVisibility, toggleEmployerVisibility, getAllEmployers } from '@/lib/auth';
 import {
   StepNavigation,
@@ -34,6 +34,22 @@ interface PendingEmployer {
     location: string;
     website?: string;
     description: string;
+    // 담당자 상세 정보 추가
+    contactName?: string;
+    contactPosition?: string;
+    contactPhone?: string;
+    // 기업 매력도 정보 추가
+    companyAttraction?: {
+      workingHours?: string;
+      remoteWork?: boolean;
+      averageSalary?: string;
+      benefits?: string[];
+      growthOpportunity?: boolean;
+      stockOptions?: boolean;
+      trainingSupport?: boolean;
+      familyFriendly?: boolean;
+      etc?: string;
+    };
   };
   approvalStatus: 'pending' | 'approved' | 'rejected';
   createdAt: any;
@@ -171,6 +187,20 @@ export default function AdminPage() {
   const [cancelReason, setCancelReason] = useState('');
   const [selectedEmployerId, setSelectedEmployerId] = useState<string | null>(null);
   const [selectedCancelEmployerId, setSelectedCancelEmployerId] = useState<string | null>(null);
+  const [expandedEmployers, setExpandedEmployers] = useState<Set<string>>(new Set());
+
+  // 기업 상세 정보 펼치기/접기 토글
+  const toggleEmployerDetails = (employerId: string) => {
+    setExpandedEmployers(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(employerId)) {
+        newSet.delete(employerId);
+      } else {
+        newSet.add(employerId);
+      }
+      return newSet;
+    });
+  };
 
   // 채용 제안서 관련 상태
   const [jobInquiries, setJobInquiries] = useState<JobInquiry[]>([]);
@@ -327,7 +357,15 @@ export default function AdminPage() {
           const employerWithUserInfo: PendingEmployer = {
             id: employer.id,
             userId: employer.userId,
-            company: employer.company || {},
+            company: {
+              ...(employer.company || {}),
+              // 담당자 정보 포함
+              contactName: (employer.company as any)?.contactName || userInfo?.name || '',
+              contactPosition: (employer.company as any)?.contactPosition || (userInfo as any)?.position || '',
+              contactPhone: (employer.company as any)?.contactPhone || '',
+              // 기업 매력도 정보 포함
+              companyAttraction: (employer.company as any)?.companyAttraction || {}
+            },
             approvalStatus: employer.approvalStatus || 'pending',
             createdAt: employer.createdAt,
             userEmail: userInfo.email,
@@ -1408,29 +1446,49 @@ export default function AdminPage() {
               >
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
-                    <div className="flex items-center mb-4">
-                      <BuildingOfficeIcon className="w-6 h-6 text-gray-400 mr-3" />
-                      <h3 className="text-lg font-semibold text-gray-900">
-                        {employer.company.name || '회사명 미입력'}
-                      </h3>
-                      {/* 상태 배지 추가 */}
-                      <span className={`ml-3 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                        employer.approvalStatus === 'approved' 
-                          ? 'bg-green-100 text-green-800'
-                          : employer.approvalStatus === 'rejected'
-                          ? 'bg-red-100 text-red-800'
-                          : 'bg-yellow-100 text-yellow-800'
-                      }`}>
-                        {employer.approvalStatus === 'approved' ? '승인됨' : 
-                         employer.approvalStatus === 'rejected' ? '거절됨' : '대기중'}
-                      </span>
-                      {/* 숨김 상태 표시 */}
-                      {employer.isHidden && (
-                        <span className="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
-                          <EyeSlashIcon className="w-3 h-3 mr-1" />
-                          숨김
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center">
+                        <BuildingOfficeIcon className="w-6 h-6 text-gray-400 mr-3" />
+                        <h3 className="text-lg font-semibold text-gray-900">
+                          {employer.company.name || '회사명 미입력'}
+                        </h3>
+                        {/* 상태 배지 추가 */}
+                        <span className={`ml-3 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                          employer.approvalStatus === 'approved' 
+                            ? 'bg-green-100 text-green-800'
+                            : employer.approvalStatus === 'rejected'
+                            ? 'bg-red-100 text-red-800'
+                            : 'bg-yellow-100 text-yellow-800'
+                        }`}>
+                          {employer.approvalStatus === 'approved' ? '승인됨' : 
+                           employer.approvalStatus === 'rejected' ? '거절됨' : '대기중'}
                         </span>
-                      )}
+                        {/* 숨김 상태 표시 */}
+                        {employer.isHidden && (
+                          <span className="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                            <EyeSlashIcon className="w-3 h-3 mr-1" />
+                            숨김
+                          </span>
+                        )}
+                      </div>
+                      
+                      {/* 상세 정보 펼치기/접기 버튼 */}
+                      <button
+                        onClick={() => toggleEmployerDetails(employer.id)}
+                        className="text-sm text-blue-600 hover:text-blue-800 flex items-center"
+                      >
+                        {expandedEmployers.has(employer.id) ? (
+                          <>
+                            <span>간단히 보기</span>
+                            <ChevronUpIcon className="w-4 h-4 ml-1" />
+                          </>
+                        ) : (
+                          <>
+                            <span>상세 보기</span>
+                            <ChevronDownIcon className="w-4 h-4 ml-1" />
+                          </>
+                        )}
+                      </button>
                     </div>
                     
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
@@ -1470,6 +1528,113 @@ export default function AdminPage() {
                         <p className="text-sm font-medium text-gray-700 mb-1">회사 소개</p>
                         <p className="text-sm text-gray-600">{employer.company.description}</p>
                       </div>
+                    )}
+                    
+                    {/* 상세 정보 영역 - 펼쳐졌을 때만 표시 */}
+                    {expandedEmployers.has(employer.id) && (
+                      <motion.div
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: 'auto' }}
+                        exit={{ opacity: 0, height: 0 }}
+                        className="mt-6 border-t pt-4"
+                      >
+                        <h4 className="text-md font-semibold text-gray-800 mb-4">상세 정보</h4>
+                        
+                        {/* 담당자 상세 정보 */}
+                        <div className="mb-6">
+                          <h5 className="text-sm font-medium text-gray-700 mb-2">담당자 정보</h5>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm bg-gray-50 p-3 rounded">
+                            <div>
+                              <p className="text-gray-600">
+                                <span className="font-medium">담당자명:</span> {employer.company.contactName || employer.userName || '-'}
+                              </p>
+                              <p className="text-gray-600">
+                                <span className="font-medium">직위:</span> {employer.company.contactPosition || '-'}
+                              </p>
+                            </div>
+                            <div>
+                              <p className="text-gray-600">
+                                <span className="font-medium">연락처:</span> {employer.company.contactPhone || '-'}
+                              </p>
+                              <p className="text-gray-600">
+                                <span className="font-medium">이메일:</span> {employer.userEmail || '-'}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* 기업 매력도 정보 */}
+                        {employer.company.companyAttraction && Object.keys(employer.company.companyAttraction).length > 0 && (
+                          <div className="mb-6">
+                            <h5 className="text-sm font-medium text-gray-700 mb-2">기업 매력도 정보</h5>
+                            <div className="bg-blue-50 p-4 rounded">
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                                <div className="space-y-2">
+                                  {employer.company.companyAttraction.workingHours && (
+                                    <p className="text-gray-600">
+                                      <span className="font-medium">근무시간:</span> {employer.company.companyAttraction.workingHours}
+                                    </p>
+                                  )}
+                                  {employer.company.companyAttraction.remoteWork !== undefined && (
+                                    <p className="text-gray-600">
+                                      <span className="font-medium">재택근무:</span> {employer.company.companyAttraction.remoteWork ? '가능' : '불가능'}
+                                    </p>
+                                  )}
+                                  {employer.company.companyAttraction.averageSalary && (
+                                    <p className="text-gray-600">
+                                      <span className="font-medium">평균 연봉:</span> {employer.company.companyAttraction.averageSalary}
+                                    </p>
+                                  )}
+                                  {employer.company.companyAttraction.growthOpportunity !== undefined && (
+                                    <p className="text-gray-600">
+                                      <span className="font-medium">성장 기회:</span> {employer.company.companyAttraction.growthOpportunity ? '우수' : '보통'}
+                                    </p>
+                                  )}
+                                </div>
+                                <div className="space-y-2">
+                                  {employer.company.companyAttraction.stockOptions !== undefined && (
+                                    <p className="text-gray-600">
+                                      <span className="font-medium">스톡옵션:</span> {employer.company.companyAttraction.stockOptions ? '제공' : '미제공'}
+                                    </p>
+                                  )}
+                                  {employer.company.companyAttraction.trainingSupport !== undefined && (
+                                    <p className="text-gray-600">
+                                      <span className="font-medium">교육 지원:</span> {employer.company.companyAttraction.trainingSupport ? '지원' : '미지원'}
+                                    </p>
+                                  )}
+                                  {employer.company.companyAttraction.familyFriendly !== undefined && (
+                                    <p className="text-gray-600">
+                                      <span className="font-medium">가족친화 기업:</span> {employer.company.companyAttraction.familyFriendly ? '해당' : '해당 없음'}
+                                    </p>
+                                  )}
+                                </div>
+                              </div>
+                              
+                              {/* 복리후생 */}
+                              {employer.company.companyAttraction.benefits && employer.company.companyAttraction.benefits.length > 0 && (
+                                <div className="mt-3">
+                                  <p className="text-sm font-medium text-gray-700 mb-1">복리후생</p>
+                                  <div className="flex flex-wrap gap-1">
+                                    {employer.company.companyAttraction.benefits.map((benefit, index) => (
+                                      <span key={index} className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-200 text-blue-800">
+                                        {benefit}
+                                      </span>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+                              
+                              {/* 기타 사항 */}
+                              {employer.company.companyAttraction.etc && (
+                                <div className="mt-3">
+                                  <p className="text-sm font-medium text-gray-700 mb-1">기타 사항</p>
+                                  <p className="text-sm text-gray-600">{employer.company.companyAttraction.etc}</p>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                      </motion.div>
                     )}
                     
                     {/* 승인 정보 표시 */}
