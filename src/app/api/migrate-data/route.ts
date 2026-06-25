@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { db } from '@/lib/firebase';
-import { collection, getDocs, doc, updateDoc, query, where, limit as firestoreLimit } from 'firebase/firestore';
+import { getAdminDb } from '@/lib/firebaseAdmin';
 import { analyzeJobPostingWithGemini } from '@/lib/gemini';
 import { RawJobData } from '@/lib/crawler';
 
@@ -11,11 +10,9 @@ export async function POST(request: NextRequest) {
     
     console.log(`🔄 데이터 마이그레이션 시작 (배치 크기: ${batchSize}, 드라이 런: ${dryRun})`);
     
-    // 파이어베이스에서 모든 크롤링된 데이터 조회
-    const crawledJobsRef = collection(db, 'crawled-jobs');
-    const q = query(crawledJobsRef); // 제한 없이 모든 데이터 조회
-    
-    const querySnapshot = await getDocs(q);
+    // 파이어베이스에서 모든 크롤링된 데이터 조회 (Admin SDK)
+    const crawledJobsRef = getAdminDb().collection('crawled-jobs');
+    const querySnapshot = await crawledJobsRef.get();
     
     if (querySnapshot.empty) {
       return NextResponse.json({
@@ -87,7 +84,7 @@ export async function POST(request: NextRequest) {
             migratedAt: new Date(),
           };
           
-          await updateDoc(doc(db, 'crawled-jobs', docId), updateData);
+          await getAdminDb().collection('crawled-jobs').doc(docId).update(updateData);
           console.log(`✅ 업데이트 완료: ${docId}`);
         }
         
@@ -158,12 +155,11 @@ export async function GET(request: NextRequest) {
     const action = searchParams.get('action');
     
     if (action === 'status') {
-      // 마이그레이션 상태 확인
-      const crawledJobsRef = collection(db, 'crawled-jobs');
-      
+      // 마이그레이션 상태 확인 (Admin SDK)
+      const crawledJobsRef = getAdminDb().collection('crawled-jobs');
+
       // 모든 데이터 조회
-      const totalQuery = query(crawledJobsRef);
-      const totalSnapshot = await getDocs(totalQuery);
+      const totalSnapshot = await crawledJobsRef.get();
       const totalCount = totalSnapshot.size;
       
       // 분석 완료/미완료 수 계산

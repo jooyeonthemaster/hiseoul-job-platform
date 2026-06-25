@@ -696,12 +696,19 @@ export const getPortfolio = async (uid: string, includeHidden: boolean = false) 
 // 모든 포트폴리오 조회
 export const getAllPortfolios = async (includeHidden: boolean = false) => {
   try {
+    console.log('🔍 getAllPortfolios 시작 - includeHidden:', includeHidden);
+    console.log('🔥 Firebase DB 상태:', db);
+    
     // 모든 경우에 isPublic == true 조건만 사용 (인덱스 불필요)
     const portfoliosQuery = query(
       collection(db, 'portfolios'),
       where('isPublic', '==', true)
     );
+    console.log('📊 생성된 쿼리:', portfoliosQuery);
+    
     const querySnapshot = await getDocs(portfoliosQuery);
+    console.log('📁 쿼리 결과:', querySnapshot);
+    console.log('📊 문서 개수:', querySnapshot.docs.length);
     
     // 각 포트폴리오에 대해 사용자 프로필 이미지를 가져오기
     const portfolios = await Promise.all(
@@ -762,8 +769,37 @@ export const getAllPortfolios = async (includeHidden: boolean = false) => {
     
     return portfolios;
   } catch (error) {
-    console.error('Error fetching portfolios:', error);
+    console.error('❌ getAllPortfolios 에러:', error);
+    console.error('❌ 에러 타입:', typeof error);
+    console.error('❌ 에러 메시지:', error instanceof Error ? error.message : String(error));
     return [];
+  }
+};
+
+// Firebase 연결 테스트 함수 추가
+export const testFirebaseConnection = async () => {
+  try {
+    console.log('🔧 Firebase 연결 테스트 시작...');
+    
+    // 1. Database 연결 테스트
+    const testCollection = collection(db, 'test');
+    console.log('✅ Firestore 컬렉션 생성 성공');
+    
+    // 2. 실제 데이터 읽기 테스트 (공개 portfolios만 — 보안 규칙상 무제약 list는 비관리자에게 거부됨)
+    const portfoliosRef = query(collection(db, 'portfolios'), where('isPublic', '==', true));
+    const snapshot = await getDocs(portfoliosRef);
+    console.log(`📊 Portfolios 컬렉션 총 문서 수: ${snapshot.docs.length}`);
+    
+    // 3. 각 문서의 기본 정보 출력
+    snapshot.docs.forEach((doc, index) => {
+      const data = doc.data();
+      console.log(`📄 문서 ${index + 1}: ID=${doc.id}, 이름=${data.name}, 공개여부=${data.isPublic}`);
+    });
+    
+    return { success: true, totalDocs: snapshot.docs.length };
+  } catch (error) {
+    console.error('❌ Firebase 연결 테스트 실패:', error);
+    return { success: false, error };
   }
 };
 
@@ -783,8 +819,14 @@ export const deletePortfolio = async (uid: string) => {
 // 모든 기업 정보 조회
 export const getAllEmployers = async (includeHidden: boolean = false) => {
   try {
-    // 모든 기업 정보 조회 (인덱스 불필요)
-    const employersQuery = collection(db, 'employers');
+    // 보안 규칙(employers: 승인된 기업만 읽기 가능)과 쿼리를 일치시킨다.
+    // - 공개 호출(includeHidden=false): approvalStatus == 'approved' 만 조회해야 규칙을 통과한다.
+    //   (조건 없는 전체 조회는 pending/rejected까지 포함하므로 Firestore가 쿼리 전체를 거부함)
+    // - 관리자 호출(includeHidden=true): admin catch-all 규칙으로 전체 조회 허용.
+    const employersRef = collection(db, 'employers');
+    const employersQuery = includeHidden
+      ? employersRef
+      : query(employersRef, where('approvalStatus', '==', 'approved'));
     const querySnapshot = await getDocs(employersQuery);
     
     const employers = querySnapshot.docs.map(doc => {

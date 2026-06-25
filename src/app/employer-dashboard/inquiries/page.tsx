@@ -8,7 +8,7 @@ import { getUserData } from '@/lib/auth';
 import { collection, query, where, getDocs, orderBy } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { motion } from 'framer-motion';
-import { 
+import {
   EnvelopeIcon,
   ClockIcon,
   CheckCircleIcon,
@@ -20,6 +20,11 @@ import {
   CalendarIcon,
   DocumentTextIcon
 } from '@heroicons/react/24/outline';
+import { GlassButton } from '@/components/ui/GlassButton';
+import { GlassCard } from '@/components/ui/GlassCard';
+import { Badge } from '@/components/ui/Badge';
+import { AuroraBackground } from '@/components/ui/AuroraBackground';
+import { ScrollReveal, ScrollRevealStagger, ScrollRevealItem } from '@/components/ui/ScrollReveal';
 
 interface JobInquiry {
   id: string;
@@ -65,23 +70,27 @@ export default function InquiriesPage() {
           where('employerId', '==', user.uid),
           orderBy('sentAt', 'desc')
         );
-        
+
         const querySnapshot = await getDocs(inquiriesQuery);
         const inquiriesData: JobInquiry[] = [];
-        
+
         for (const doc of querySnapshot.docs) {
           const data = doc.data();
-          
-          // 구직자 정보 가져오기
+
+          // 구직자 정보 가져오기 (공개 포트폴리오만 — 보안 규칙상 비공개분은 본인만 읽기 가능)
           const jobSeekerDoc = await getDocs(
-            query(collection(db, 'portfolios'), where('userId', '==', data.jobSeekerId))
+            query(
+              collection(db, 'portfolios'),
+              where('userId', '==', data.jobSeekerId),
+              where('isPublic', '==', true)
+            )
           );
-          
+
           let jobSeekerName = '알 수 없음';
           if (!jobSeekerDoc.empty) {
             jobSeekerName = jobSeekerDoc.docs[0].data().name || '알 수 없음';
           }
-          
+
           inquiriesData.push({
             id: doc.id,
             ...data,
@@ -89,7 +98,7 @@ export default function InquiriesPage() {
             sentAt: data.sentAt
           } as JobInquiry);
         }
-        
+
         setInquiries(inquiriesData);
       } catch (error) {
         console.error('Error loading inquiries:', error);
@@ -101,205 +110,230 @@ export default function InquiriesPage() {
     loadInquiries();
   }, [user, router]);
 
-  const filteredInquiries = filter === 'all' 
-    ? inquiries 
+  const filteredInquiries = filter === 'all'
+    ? inquiries
     : inquiries.filter(inquiry => inquiry.status === filter);
 
   const getStatusBadge = (status: string) => {
     const badges = {
-      sent: { color: 'bg-blue-100 text-blue-800', icon: EnvelopeIcon, text: '발송됨' },
-      read: { color: 'bg-yellow-100 text-yellow-800', icon: EyeIcon, text: '읽음' },
-      responded: { color: 'bg-purple-100 text-purple-800', icon: DocumentTextIcon, text: '응답함' },
-      accepted: { color: 'bg-green-100 text-green-800', icon: CheckCircleIcon, text: '수락' },
-      rejected: { color: 'bg-red-100 text-red-800', icon: XCircleIcon, text: '거절' }
+      sent: { tone: 'azure' as const, icon: EnvelopeIcon, text: '발송됨' },
+      read: { tone: 'honey' as const, icon: EyeIcon, text: '읽음' },
+      responded: { tone: 'azure' as const, icon: DocumentTextIcon, text: '응답함' },
+      accepted: { tone: 'mint' as const, icon: CheckCircleIcon, text: '수락' },
+      rejected: { tone: 'coral' as const, icon: XCircleIcon, text: '거절' }
     };
-    
+
     const badge = badges[status as keyof typeof badges];
     return (
-      <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${badge.color}`}>
-        <badge.icon className="w-4 h-4 mr-1" />
+      <Badge tone={badge.tone} icon={<badge.icon className="w-4 h-4" />}>
         {badge.text}
-      </span>
+      </Badge>
     );
   };
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      <div className="relative min-h-screen flex items-center justify-center overflow-hidden">
+        <AuroraBackground />
+        <div className="relative glass-strong rounded-4xl shadow-glass-lg px-10 py-12 flex flex-col items-center gap-5">
+          <div className="animate-spin rounded-full h-12 w-12 border-2 border-azure-100 border-t-azure-500"></div>
+          <p className="text-ink-500 font-medium">불러오는 중...</p>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div className="relative min-h-screen overflow-hidden py-12 md:py-16">
+      <AuroraBackground />
+
+      <div className="relative z-10 container-wide">
         {/* Header */}
-        <div className="mb-8">
-          <Link 
-            href="/employer-dashboard"
-            className="inline-flex items-center text-gray-600 hover:text-gray-900 mb-4"
-          >
-            <ArrowLeftIcon className="w-5 h-5 mr-2" />
-            대시보드로 돌아가기
-          </Link>
-          
-          <h1 className="text-3xl font-bold text-gray-900">채용 문의 관리</h1>
-          <p className="text-gray-600 mt-2">발송한 채용 제안의 상태를 확인하고 관리하세요.</p>
-        </div>
+        <ScrollReveal>
+          <div className="mb-10">
+            <Link
+              href="/employer-dashboard"
+              className="inline-flex items-center gap-2 text-ink-500 hover:text-azure-700 transition-colors mb-6 font-medium"
+            >
+              <ArrowLeftIcon className="w-5 h-5" />
+              대시보드로 돌아가기
+            </Link>
+
+            <span className="inline-flex items-center gap-2 rounded-full px-4 py-1.5 mb-5 text-xs font-semibold tracking-wide bg-white/60 backdrop-blur-md border border-white/70 text-azure-700 shadow-glass-sm">
+              <span className="w-1.5 h-1.5 rounded-full bg-azure-500 animate-pulse" />
+              받은 문의 관리
+            </span>
+
+            <h1 className="font-display text-3xl md:text-4xl lg:text-5xl font-bold tracking-tight text-ink-900 leading-[1.1]">채용 문의 관리</h1>
+            <p className="text-ink-500 mt-4 text-base md:text-lg leading-relaxed">발송한 채용 제안의 상태를 확인하고 관리하세요.</p>
+          </div>
+        </ScrollReveal>
 
         {/* Filter Tabs */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 mb-6">
-          <nav className="flex space-x-1 p-1">
-            {[
-              { key: 'all', label: '전체', count: inquiries.length },
-              { key: 'sent', label: '발송됨', count: inquiries.filter(i => i.status === 'sent').length },
-              { key: 'read', label: '읽음', count: inquiries.filter(i => i.status === 'read').length },
-              { key: 'responded', label: '응답함', count: inquiries.filter(i => i.status === 'responded').length },
-              { key: 'accepted', label: '수락', count: inquiries.filter(i => i.status === 'accepted').length },
-              { key: 'rejected', label: '거절', count: inquiries.filter(i => i.status === 'rejected').length }
-            ].map((tab) => (
-              <button
-                key={tab.key}
-                onClick={() => setFilter(tab.key as any)}
-                className={`flex-1 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                  filter === tab.key
-                    ? 'bg-blue-600 text-white'
-                    : 'text-gray-700 hover:bg-gray-100'
-                }`}
-              >
-                {tab.label}
-                <span className="ml-2">({tab.count})</span>
-              </button>
-            ))}
-          </nav>
-        </div>
+        <ScrollReveal delay={0.06}>
+          <div className="glass-strong rounded-3xl shadow-glass p-2 mb-8">
+            <nav className="flex flex-wrap gap-1.5">
+              {[
+                { key: 'all', label: '전체', count: inquiries.length },
+                { key: 'sent', label: '발송됨', count: inquiries.filter(i => i.status === 'sent').length },
+                { key: 'read', label: '읽음', count: inquiries.filter(i => i.status === 'read').length },
+                { key: 'responded', label: '응답함', count: inquiries.filter(i => i.status === 'responded').length },
+                { key: 'accepted', label: '수락', count: inquiries.filter(i => i.status === 'accepted').length },
+                { key: 'rejected', label: '거절', count: inquiries.filter(i => i.status === 'rejected').length }
+              ].map((tab) => (
+                <button
+                  key={tab.key}
+                  onClick={() => setFilter(tab.key as any)}
+                  className={`relative flex-1 min-w-[5.5rem] px-4 py-2.5 rounded-2xl text-sm font-semibold transition-colors duration-300 ${
+                    filter === tab.key
+                      ? 'text-white'
+                      : 'text-ink-500 hover:text-ink-800 hover:bg-azure-50/60'
+                  }`}
+                >
+                  {filter === tab.key && (
+                    <motion.span
+                      layoutId="inquiryFilterPill"
+                      className="absolute inset-0 rounded-2xl bg-gradient-to-r from-azure-500 to-azure-600 shadow-glow"
+                      transition={{ type: 'spring', stiffness: 400, damping: 32 }}
+                    />
+                  )}
+                  <span className="relative">
+                    {tab.label}
+                    <span className="ml-2 opacity-90">({tab.count})</span>
+                  </span>
+                </button>
+              ))}
+            </nav>
+          </div>
+        </ScrollReveal>
 
         {/* Inquiries List */}
         {filteredInquiries.length === 0 ? (
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-12 text-center">
-            <EnvelopeIcon className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">채용 문의가 없습니다</h3>
-            <p className="text-gray-600 mb-6">
-              {filter === 'all' 
-                ? '아직 발송한 채용 제안이 없습니다.'
-                : `${filter} 상태의 채용 제안이 없습니다.`}
-            </p>
-            <Link
-              href="/employer-dashboard"
-              className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-            >
-              인재 검색하러 가기
-            </Link>
-          </div>
+          <ScrollReveal delay={0.1}>
+            <GlassCard strong className="p-14 text-center">
+              <div className="w-20 h-20 mx-auto mb-6 rounded-3xl bg-azure-50 border border-azure-100 flex items-center justify-center text-azure-500 shadow-glass-sm">
+                <EnvelopeIcon className="w-10 h-10" />
+              </div>
+              <h3 className="text-xl md:text-2xl font-semibold text-ink-900 mb-3">채용 문의가 없습니다</h3>
+              <p className="text-ink-500 mb-8 leading-relaxed">
+                {filter === 'all'
+                  ? '아직 발송한 채용 제안이 없습니다.'
+                  : `${filter} 상태의 채용 제안이 없습니다.`}
+              </p>
+              <GlassButton href="/employer-dashboard" size="md">
+                인재 검색하러 가기
+              </GlassButton>
+            </GlassCard>
+          </ScrollReveal>
         ) : (
-          <div className="space-y-4">
+          <ScrollRevealStagger className="space-y-5">
             {filteredInquiries.map((inquiry) => (
-              <motion.div
-                key={inquiry.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow"
-              >
-                <div className="flex justify-between items-start mb-4">
-                  <div className="flex items-start space-x-4">
-                    <div className="w-12 h-12 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-xl flex items-center justify-center text-white font-bold">
-                      {inquiry.jobSeekerName?.charAt(0) || '?'}
+              <ScrollRevealItem key={inquiry.id}>
+                <GlassCard hover className="p-7 md:p-8">
+                  <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4 mb-6">
+                    <div className="flex items-start gap-4">
+                      <div className="w-14 h-14 shrink-0 bg-gradient-to-br from-azure-400 to-azure-600 rounded-2xl flex items-center justify-center text-white font-display font-bold text-lg shadow-glow">
+                        {inquiry.jobSeekerName?.charAt(0) || '?'}
+                      </div>
+                      <div>
+                        <h3 className="text-lg md:text-xl font-semibold text-ink-900 flex items-center gap-2">
+                          <UserIcon className="w-5 h-5 text-azure-500" />
+                          {inquiry.jobSeekerName}
+                        </h3>
+                        <p className="text-sm text-ink-500 mt-1">
+                          {inquiry.proposedPosition}
+                        </p>
+                      </div>
                     </div>
-                    <div>
-                      <h3 className="text-lg font-semibold text-gray-900 flex items-center">
-                        <UserIcon className="w-5 h-5 mr-2 text-gray-400" />
-                        {inquiry.jobSeekerName}
-                      </h3>
-                      <p className="text-sm text-gray-600">
-                        {inquiry.proposedPosition}
-                      </p>
+                    {getStatusBadge(inquiry.status)}
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-6 text-sm">
+                    <div className="flex items-center gap-2 rounded-2xl bg-azure-50/50 border border-azure-100/70 px-4 py-3 text-ink-600">
+                      <CurrencyDollarIcon className="w-4 h-4 text-azure-500 shrink-0" />
+                      <span>제안 급여: {inquiry.proposedSalary}</span>
+                    </div>
+                    <div className="flex items-center gap-2 rounded-2xl bg-azure-50/50 border border-azure-100/70 px-4 py-3 text-ink-600">
+                      <CalendarIcon className="w-4 h-4 text-azure-500 shrink-0" />
+                      <span>발송일: {inquiry.sentAt?.toDate?.()?.toLocaleDateString('ko-KR') || '알 수 없음'}</span>
+                    </div>
+                    <div className="flex items-center gap-2 rounded-2xl bg-azure-50/50 border border-azure-100/70 px-4 py-3 text-ink-600">
+                      <UserIcon className="w-4 h-4 text-azure-500 shrink-0" />
+                      <span>담당자: {inquiry.recruiterInfo.name}</span>
                     </div>
                   </div>
-                  {getStatusBadge(inquiry.status)}
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4 text-sm">
-                  <div className="flex items-center text-gray-600">
-                    <CurrencyDollarIcon className="w-4 h-4 mr-2" />
-                    <span>제안 급여: {inquiry.proposedSalary}</span>
-                  </div>
-                  <div className="flex items-center text-gray-600">
-                    <CalendarIcon className="w-4 h-4 mr-2" />
-                    <span>발송일: {inquiry.sentAt?.toDate?.()?.toLocaleDateString('ko-KR') || '알 수 없음'}</span>
-                  </div>
-                  <div className="flex items-center text-gray-600">
-                    <UserIcon className="w-4 h-4 mr-2" />
-                    <span>담당자: {inquiry.recruiterInfo.name}</span>
-                  </div>
-                </div>
 
-                <div className="bg-gray-50 rounded-lg p-4 mb-4">
-                  <h4 className="text-sm font-medium text-gray-700 mb-2">발송 메시지</h4>
-                  <p className="text-sm text-gray-600 whitespace-pre-wrap">
-                    {inquiry.message.length > 150 
-                      ? inquiry.message.substring(0, 150) + '...' 
-                      : inquiry.message}
-                  </p>
-                </div>
+                  <div className="glass rounded-2xl p-5 mb-6">
+                    <h4 className="text-sm font-medium text-ink-700 mb-2">발송 메시지</h4>
+                    <p className="text-sm text-ink-500 whitespace-pre-wrap leading-relaxed">
+                      {inquiry.message.length > 150
+                        ? inquiry.message.substring(0, 150) + '...'
+                        : inquiry.message}
+                    </p>
+                  </div>
 
-                <div className="flex justify-between items-center">
-                  <div className="text-sm text-gray-500">
-                    담당자 연락처: {inquiry.recruiterInfo.phone} • {inquiry.recruiterInfo.email}
+                  <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 pt-1">
+                    <div className="text-sm text-ink-400">
+                      담당자 연락처: {inquiry.recruiterInfo.phone} • {inquiry.recruiterInfo.email}
+                    </div>
+                    <div className="flex gap-2.5 shrink-0">
+                      <GlassButton
+                        href={`/portfolios/${inquiry.jobSeekerId}`}
+                        variant="secondary"
+                        size="sm"
+                      >
+                        포트폴리오 보기
+                      </GlassButton>
+                      {inquiry.status === 'responded' && (
+                        <GlassButton type="button" size="sm">
+                          응답 확인
+                        </GlassButton>
+                      )}
+                    </div>
                   </div>
-                  <div className="flex space-x-2">
-                    <Link
-                      href={`/portfolios/${inquiry.jobSeekerId}`}
-                      className="px-4 py-2 text-sm border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
-                    >
-                      포트폴리오 보기
-                    </Link>
-                    {inquiry.status === 'responded' && (
-                      <button className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
-                        응답 확인
-                      </button>
-                    )}
-                  </div>
-                </div>
-              </motion.div>
+                </GlassCard>
+              </ScrollRevealItem>
             ))}
-          </div>
+          </ScrollRevealStagger>
         )}
 
         {/* Stats Summary */}
-        <div className="mt-12 bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">채용 문의 통계</h3>
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-            <div className="text-center">
-              <div className="text-2xl font-bold text-gray-900">{inquiries.length}</div>
-              <div className="text-sm text-gray-600">전체 제안</div>
-            </div>
-            <div className="text-center">
-              <div className="text-2xl font-bold text-blue-600">
-                {inquiries.filter(i => i.status === 'sent').length}
+        <ScrollReveal delay={0.08}>
+          <GlassCard strong className="mt-12 p-7 md:p-8">
+            <h3 className="text-lg md:text-xl font-semibold text-ink-900 mb-6">채용 문의 통계</h3>
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+              <div className="rounded-2xl bg-azure-50/40 border border-azure-100/60 px-4 py-5 text-center">
+                <div className="font-display text-2xl md:text-3xl font-bold text-ink-900">{inquiries.length}</div>
+                <div className="text-sm text-ink-500 mt-1">전체 제안</div>
               </div>
-              <div className="text-sm text-gray-600">발송됨</div>
-            </div>
-            <div className="text-center">
-              <div className="text-2xl font-bold text-yellow-600">
-                {inquiries.filter(i => i.status === 'read').length}
+              <div className="rounded-2xl bg-azure-50/40 border border-azure-100/60 px-4 py-5 text-center">
+                <div className="font-display text-2xl md:text-3xl font-bold text-azure-600">
+                  {inquiries.filter(i => i.status === 'sent').length}
+                </div>
+                <div className="text-sm text-ink-500 mt-1">발송됨</div>
               </div>
-              <div className="text-sm text-gray-600">읽음</div>
-            </div>
-            <div className="text-center">
-              <div className="text-2xl font-bold text-green-600">
-                {inquiries.filter(i => i.status === 'accepted').length}
+              <div className="rounded-2xl bg-azure-50/40 border border-azure-100/60 px-4 py-5 text-center">
+                <div className="font-display text-2xl md:text-3xl font-bold text-honey-600">
+                  {inquiries.filter(i => i.status === 'read').length}
+                </div>
+                <div className="text-sm text-ink-500 mt-1">읽음</div>
               </div>
-              <div className="text-sm text-gray-600">수락</div>
-            </div>
-            <div className="text-center">
-              <div className="text-2xl font-bold text-gray-900">
-                {inquiries.length > 0 
-                  ? Math.round((inquiries.filter(i => i.status === 'accepted').length / inquiries.length) * 100)
-                  : 0}%
+              <div className="rounded-2xl bg-azure-50/40 border border-azure-100/60 px-4 py-5 text-center">
+                <div className="font-display text-2xl md:text-3xl font-bold text-mint-600">
+                  {inquiries.filter(i => i.status === 'accepted').length}
+                </div>
+                <div className="text-sm text-ink-500 mt-1">수락</div>
               </div>
-              <div className="text-sm text-gray-600">수락률</div>
+              <div className="rounded-2xl bg-azure-50/40 border border-azure-100/60 px-4 py-5 text-center">
+                <div className="font-display text-2xl md:text-3xl font-bold text-gradient-azure">
+                  {inquiries.length > 0
+                    ? Math.round((inquiries.filter(i => i.status === 'accepted').length / inquiries.length) * 100)
+                    : 0}%
+                </div>
+                <div className="text-sm text-ink-500 mt-1">수락률</div>
+              </div>
             </div>
-          </div>
-        </div>
+          </GlassCard>
+        </ScrollReveal>
       </div>
     </div>
   );

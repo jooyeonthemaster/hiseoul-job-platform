@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { db } from '@/lib/firebase';
-import { doc, getDoc, updateDoc } from 'firebase/firestore';
+import { getAdminDb } from '@/lib/firebaseAdmin';
 import { JobPosting } from '@/types';
 
 // GET - 특정 채용공고 조회
@@ -11,18 +10,18 @@ export async function GET(
   try {
     const { id: jobId } = await params;
 
-    // Firestore에서 실제 크롤링된 데이터 조회
-    const jobDoc = await getDoc(doc(db, 'crawled-jobs', jobId));
-    
-    if (!jobDoc.exists()) {
+    // Firestore에서 실제 크롤링된 데이터 조회 (Admin SDK)
+    const jobDoc = await getAdminDb().collection('crawled-jobs').doc(jobId).get();
+
+    if (!jobDoc.exists) {
       return NextResponse.json({
         success: false,
         message: '채용공고를 찾을 수 없습니다.'
       }, { status: 404 });
     }
 
-    const data = jobDoc.data();
-    
+    const data = jobDoc.data()!;
+
     // JobPosting 형태로 변환
     const jobPosting: JobPosting = {
       id: jobDoc.id,
@@ -84,10 +83,11 @@ export async function PUT(
     const { id: jobId } = await params;
     const body = await request.json();
     
-    // Firestore에서 문서 확인
-    const jobDoc = await getDoc(doc(db, 'crawled-jobs', jobId));
-    
-    if (!jobDoc.exists()) {
+    // Firestore에서 문서 확인 (Admin SDK)
+    const jobRef = getAdminDb().collection('crawled-jobs').doc(jobId);
+    const jobDoc = await jobRef.get();
+
+    if (!jobDoc.exists) {
       return NextResponse.json({
         success: false,
         message: '채용공고를 찾을 수 없습니다.'
@@ -99,8 +99,8 @@ export async function PUT(
       ...body,
       updatedAt: new Date()
     };
-    
-    await updateDoc(doc(db, 'crawled-jobs', jobId), updateData);
+
+    await jobRef.update(updateData);
 
     return NextResponse.json({
       success: true,
@@ -124,10 +124,11 @@ export async function DELETE(
   try {
     const { id: jobId } = await params;
     
-    // Firestore에서 문서 확인
-    const jobDoc = await getDoc(doc(db, 'crawled-jobs', jobId));
-    
-    if (!jobDoc.exists()) {
+    // Firestore에서 문서 확인 (Admin SDK)
+    const jobRef = getAdminDb().collection('crawled-jobs').doc(jobId);
+    const jobDoc = await jobRef.get();
+
+    if (!jobDoc.exists) {
       return NextResponse.json({
         success: false,
         message: '채용공고를 찾을 수 없습니다.'
@@ -135,7 +136,7 @@ export async function DELETE(
     }
 
     // 채용공고 비활성화 (실제로 삭제하지 않고 isActive를 false로 설정)
-    await updateDoc(doc(db, 'crawled-jobs', jobId), {
+    await jobRef.update({
       isActive: false,
       updatedAt: new Date()
     });

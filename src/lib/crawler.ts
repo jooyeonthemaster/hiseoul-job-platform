@@ -165,12 +165,14 @@ export async function saveCrawledData(data: RawJobData[]): Promise<void> {
     const enhancedJobs = await analyzeJobPostingsBatch(data, 3); // 배치 크기 3개씩
     console.log(`✅ Gemini 분석 완료: ${enhancedJobs.length}개 채용공고 분석`);
     
-    const { db } = await import('@/lib/firebase');
-    const { collection, addDoc, serverTimestamp } = await import('firebase/firestore');
-    
+    // 서버 전용 경로: 보안 규칙(crawled-jobs write: admin)을 우회하려면 Admin SDK 사용
+    const { getAdminDb } = await import('@/lib/firebaseAdmin');
+    const { FieldValue } = await import('firebase-admin/firestore');
+    const adminDb = getAdminDb();
+
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-    
-    console.log('🔥 파이어베이스 DB 연결 성공');
+
+    console.log('🔥 파이어베이스 DB 연결 성공 (Admin SDK)');
     
     // 2단계: 분석된 데이터를 파이어베이스에 저장
     const promises = enhancedJobs.map(async (enhancedJob, index) => {
@@ -206,15 +208,15 @@ export async function saveCrawledData(data: RawJobData[]): Promise<void> {
           externalUrl: originalData.url,
           
           // 파이어베이스 메타데이터
-          crawledAt: serverTimestamp(),
-          createdAt: serverTimestamp(),
-          updatedAt: serverTimestamp(),
+          crawledAt: FieldValue.serverTimestamp(),
+          createdAt: FieldValue.serverTimestamp(),
+          updatedAt: FieldValue.serverTimestamp(),
           isActive: true,
           isCrawled: true,
         };
         
         console.log(`💾 파이어베이스에 저장 중: ${enhancedJob.company} - ${enhancedJob.title} (${enhancedJob.category})`);
-        const result = await addDoc(collection(db, 'crawled-jobs'), docData);
+        const result = await adminDb.collection('crawled-jobs').add(docData);
         console.log(`✅ 저장 완료: ${result.id}`);
         
         return result;
