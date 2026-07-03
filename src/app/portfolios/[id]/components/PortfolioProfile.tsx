@@ -1,31 +1,21 @@
 'use client';
-import Link from 'next/link';
-import { 
-  CheckBadgeIcon, 
-  BriefcaseIcon, 
+import {
+  CheckBadgeIcon,
   MapPinIcon,
   EnvelopeIcon,
-  PhoneIcon,
-  HeartIcon
+  PhoneIcon
 } from '@heroicons/react/24/outline';
-import { HeartIcon as HeartSolidIcon } from '@heroicons/react/24/solid';
 import { Portfolio } from '../types/portfolio.types';
+import { Badge } from '@/components/ui/Badge';
 import { useAuth } from '@/contexts/AuthContext';
 
 interface PortfolioProfileProps {
   portfolio: Portfolio;
-  isFavorite: boolean;
-  favoriteLoading: boolean;
-  onFavoriteToggle: () => void;
 }
 
-export default function PortfolioProfile({ 
-  portfolio, 
-  isFavorite, 
-  favoriteLoading, 
-  onFavoriteToggle 
-}: PortfolioProfileProps) {
+export default function PortfolioProfile({ portfolio }: PortfolioProfileProps) {
   const { userData } = useAuth();
+  const hasAdminAccess = userData?.role === 'admin' || userData?.isAdmin === true;
 
   return (
     <div className="bg-white/80 backdrop-blur-lg rounded-2xl p-8 shadow-xl border border-white/20 mb-8">
@@ -69,7 +59,7 @@ export default function PortfolioProfile({
                 <span>{portfolio.location}</span>
               </div>
               {/* 관리자와 구직자에게만 이메일과 전화번호 표시 (기업 회원에게는 완전 숨김) */}
-              {(userData?.role === 'admin' || userData?.role === 'jobseeker') && (
+              {(hasAdminAccess || userData?.role === 'jobseeker') && (
                 <>
                   <div className="flex items-center space-x-1">
                     <EnvelopeIcon className="h-4 w-4" />
@@ -85,28 +75,8 @@ export default function PortfolioProfile({
           </div>
         </div>
 
-        {/* 관심 인재 버튼 */}
+        {/* 프로젝트 수 (관리자 중개형: 상대 선택을 시사하는 관심 인재 버튼은 표시하지 않음) */}
         <div className="flex flex-col items-end space-y-4">
-          <button
-            onClick={onFavoriteToggle}
-            disabled={favoriteLoading}
-            className={`flex items-center space-x-2 px-6 py-3 rounded-full font-medium transition-all duration-200 ${
-              isFavorite
-                ? 'bg-red-500 text-white hover:bg-red-600'
-                : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
-            } ${favoriteLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
-          >
-            {favoriteLoading ? (
-              <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-current"></div>
-            ) : isFavorite ? (
-              <HeartSolidIcon className="h-5 w-5" />
-            ) : (
-              <HeartIcon className="h-5 w-5" />
-            )}
-            <span>{isFavorite ? '관심 인재 해제' : '관심 인재 등록'}</span>
-          </button>
-
-          {/* 프로젝트 수 */}
           <div className="text-center">
             <div className="text-2xl font-bold text-blue-600">{portfolio.projects}</div>
             <div className="text-sm text-gray-600">완료 프로젝트</div>
@@ -119,14 +89,23 @@ export default function PortfolioProfile({
         <p className="text-gray-700 leading-relaxed">{portfolio.introduction}</p>
       </div>
 
-      {/* 현재 수강 과정 */}
-      {portfolio.currentCourse && (
+      {/* 현재 수강 과정 + 내국인/외국인 과정 구분 */}
+      {(portfolio.currentCourse || portfolio.courseType) && (
         <div className="mt-4 p-4 bg-blue-50 rounded-lg">
-          <div className="flex items-center space-x-2">
-            <div className="w-2 h-2 bg-blue-600 rounded-full"></div>
-            <span className="text-sm font-medium text-blue-800">현재 수강 중</span>
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="flex items-center space-x-2">
+              <div className="w-2 h-2 bg-blue-600 rounded-full"></div>
+              <span className="text-sm font-medium text-blue-800">수행 중인 과정</span>
+            </div>
+            {portfolio.courseType && (
+              <Badge tone={portfolio.courseType === 'foreign' ? 'coral' : 'azure'}>
+                {portfolio.courseType === 'foreign' ? '외국인' : '내국인'}
+              </Badge>
+            )}
           </div>
-          <p className="text-blue-700 mt-1">{portfolio.currentCourse}</p>
+          {portfolio.currentCourse && (
+            <p className="text-blue-700 mt-1">{portfolio.currentCourse}</p>
+          )}
         </div>
       )}
     </div>

@@ -2,6 +2,16 @@
 
 import React, { useState } from 'react';
 import Image from 'next/image';
+import { motion } from 'framer-motion';
+import {
+  PhotoIcon,
+  ArrowUpTrayIcon,
+  TrashIcon,
+  CheckBadgeIcon,
+} from '@heroicons/react/24/outline';
+import { ScrollReveal } from '@/components/ui/ScrollReveal';
+import { GlassButton } from '@/components/ui/GlassButton';
+import { Badge } from '@/components/ui/Badge';
 
 interface ProfileImageManagerProps {
   currentImageUrl?: string;
@@ -10,11 +20,11 @@ interface ProfileImageManagerProps {
   userName: string;
 }
 
-export default function ProfileImageManager({ 
-  currentImageUrl, 
-  userId, 
-  onImageUpdate, 
-  userName 
+export default function ProfileImageManager({
+  currentImageUrl,
+  userId,
+  onImageUpdate,
+  userName
 }: ProfileImageManagerProps) {
   const [uploading, setUploading] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -37,7 +47,7 @@ export default function ProfileImageManager({
     }
 
     setUploading(true);
-    
+
     try {
       // 미리보기 설정
       const reader = new FileReader();
@@ -57,7 +67,7 @@ export default function ProfileImageManager({
       });
 
       const result = await response.json();
-      
+
       if (result.success) {
         onImageUpdate(result.imageUrl);
         alert(`${userName}님의 프로필 이미지가 성공적으로 업데이트되었습니다!`);
@@ -90,92 +100,123 @@ export default function ProfileImageManager({
   };
 
   return (
-    <div className="bg-white p-6 rounded-lg border border-gray-200">
-      <h3 className="text-lg font-semibold text-gray-900 mb-4">
-        프로필 이미지 관리 - {userName}
-      </h3>
-      
-      <div className="space-y-4">
-        {/* 현재 이미지 표시 */}
-        <div className="flex items-center space-x-4">
-          <div className="w-20 h-20 rounded-full overflow-hidden bg-gray-100 flex items-center justify-center">
-            {currentImageUrl || previewUrl ? (
-              <Image
-                src={previewUrl || currentImageUrl || ''}
-                alt={`${userName} 프로필`}
-                width={80}
-                height={80}
-                className="w-full h-full object-cover"
-              />
-            ) : (
-              <div className="text-gray-400 text-sm text-center">
-                이미지<br />없음
-              </div>
-            )}
-          </div>
-          
-          <div className="flex-1">
-            <p className="text-sm text-gray-600">
-              {currentImageUrl ? '현재 프로필 이미지' : '프로필 이미지가 설정되지 않았습니다'}
+    <ScrollReveal>
+      <div className="relative overflow-hidden glass-strong rounded-4xl shadow-glass p-7 sm:p-8">
+        {/* 은은한 azure 글로우 */}
+        <div
+          aria-hidden
+          className="pointer-events-none absolute -top-24 -right-16 h-56 w-56 rounded-full bg-azure-300/20 blur-3xl"
+        />
+
+        {/* 헤더 */}
+        <div className="relative flex items-center gap-3 mb-6">
+          <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-azure-500 to-azure-600 text-white shadow-glow">
+            <PhotoIcon className="h-6 w-6" />
+          </span>
+          <div className="min-w-0">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-azure-600">
+              Profile Image
             </p>
-            {previewUrl && (
-              <p className="text-sm text-blue-600 mt-1">
-                새 이미지 미리보기 (업로드 중...)
-              </p>
-            )}
+            <h3 className="font-display font-semibold text-xl text-ink-900 tracking-tight truncate">
+              프로필 이미지 관리 · {userName}
+            </h3>
           </div>
         </div>
 
-        {/* 업로드 버튼들 */}
-        <div className="flex space-x-3">
-          <label className="cursor-pointer inline-flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed">
-            <input
-              type="file"
-              accept="image/jpeg,image/jpg,image/png,image/webp"
-              onChange={handleImageUpload}
-              disabled={uploading}
-              className="hidden"
-            />
-            {uploading ? (
-              <>
-                <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-                업로드 중...
-              </>
-            ) : (
-              <>
-                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-                </svg>
-                {currentImageUrl ? '이미지 변경' : '이미지 업로드'}
-              </>
-            )}
-          </label>
+        <div className="relative space-y-6">
+          {/* 현재 이미지 표시 */}
+          <div className="flex items-center gap-5">
+            <div className="relative w-24 h-24 rounded-3xl overflow-hidden bg-azure-50/70 border border-white/70 shadow-glass-sm flex items-center justify-center shrink-0">
+              {currentImageUrl || previewUrl ? (
+                <Image
+                  src={previewUrl || currentImageUrl || ''}
+                  alt={`${userName} 프로필`}
+                  width={80}
+                  height={80}
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <div className="text-ink-400 text-xs font-medium text-center leading-snug">
+                  이미지<br />없음
+                </div>
+              )}
+            </div>
 
-          {currentImageUrl && (
-            <button
-              onClick={handleRemoveImage}
-              disabled={uploading}
-              className="inline-flex items-center px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                {currentImageUrl ? (
+                  <Badge tone="mint" icon={<CheckBadgeIcon className="h-3.5 w-3.5" />}>
+                    설정됨
+                  </Badge>
+                ) : (
+                  <Badge tone="neutral">미설정</Badge>
+                )}
+              </div>
+              <p className="text-sm text-ink-500 mt-2 leading-relaxed">
+                {currentImageUrl ? '현재 프로필 이미지' : '프로필 이미지가 설정되지 않았습니다'}
+              </p>
+              {previewUrl && (
+                <p className="text-sm text-azure-600 font-medium mt-1">
+                  새 이미지 미리보기 (업로드 중...)
+                </p>
+              )}
+            </div>
+          </div>
+
+          {/* 업로드 버튼들 */}
+          <div className="flex flex-wrap gap-3">
+            <motion.label
+              whileHover={uploading ? undefined : { y: -2 }}
+              whileTap={uploading ? undefined : { scale: 0.96 }}
+              transition={{ type: 'spring', stiffness: 420, damping: 26 }}
+              className="cursor-pointer inline-flex items-center gap-2 rounded-2xl bg-gradient-to-r from-azure-500 to-azure-600 px-6 py-3 text-sm font-semibold text-white shadow-glow transition-colors duration-300 hover:from-azure-400 hover:to-azure-500 hover:shadow-glow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-azure-400/60 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-              </svg>
-              이미지 제거
-            </button>
-          )}
-        </div>
+              <input
+                type="file"
+                accept="image/jpeg,image/jpg,image/png,image/webp"
+                onChange={handleImageUpload}
+                disabled={uploading}
+                className="hidden"
+              />
+              {uploading ? (
+                <>
+                  <svg className="animate-spin -ml-0.5 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  업로드 중...
+                </>
+              ) : (
+                <>
+                  <ArrowUpTrayIcon className="h-4 w-4" />
+                  {currentImageUrl ? '이미지 변경' : '이미지 업로드'}
+                </>
+              )}
+            </motion.label>
 
-        {/* 안내 메시지 */}
-        <div className="text-xs text-gray-500 bg-gray-50 p-3 rounded">
-          <p>• 지원 형식: JPG, PNG, WebP</p>
-          <p>• 최대 크기: 5MB</p>
-          <p>• 권장 크기: 400x400 픽셀 (정사각형)</p>
-          <p>• 업로드된 이미지는 자동으로 400x400으로 리사이즈됩니다</p>
+            {currentImageUrl && (
+              <GlassButton
+                variant="outline"
+                size="md"
+                onClick={handleRemoveImage}
+                disabled={uploading}
+                className="!border-coral-400/50 !text-coral-600 hover:!bg-coral-100/50 hover:!border-coral-400"
+              >
+                <TrashIcon className="h-4 w-4" />
+                이미지 제거
+              </GlassButton>
+            )}
+          </div>
+
+          {/* 안내 메시지 */}
+          <div className="rounded-3xl border border-white/60 bg-azure-50/50 px-5 py-4 text-xs text-ink-500 space-y-1.5 leading-relaxed">
+            <p>• 지원 형식: JPG, PNG, WebP</p>
+            <p>• 최대 크기: 5MB</p>
+            <p>• 권장 크기: 400x400 픽셀 (정사각형)</p>
+            <p>• 업로드된 이미지는 자동으로 400x400으로 리사이즈됩니다</p>
+          </div>
         </div>
       </div>
-    </div>
+    </ScrollReveal>
   );
 }

@@ -1,140 +1,196 @@
+/* Pretendard (Korean-first variable font) */
+@import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.min.css');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* Minimalist Black & White Theme */
+/* ============================================================
+   Serene Azure Glass — design tokens
+   ============================================================ */
 :root {
-  --background: #ffffff;
-  --foreground: #000000;
-  --border: #000000;
-  --gray: #f5f5f5;
+  --background: #eef4fc;
+  --foreground: #0e1f38;
+  --azure-400: #5ea8fb;
+  --azure-500: #3b8af0;
+  --azure-600: #2570d4;
+  --ink-500: #5a6b85;
+  --ink-900: #0e1f38;
+  --glass-border: rgba(255, 255, 255, 0.6);
 }
 
-/* Override dark mode - keep it minimal */
+/* keep light scheme even if OS prefers dark */
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #ffffff;
-    --foreground: #000000;
-    --border: #000000;
-    --gray: #f5f5f5;
+    --background: #eef4fc;
+    --foreground: #0e1f38;
   }
-}
-
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: 'Helvetica Neue', Arial, sans-serif;
-  font-weight: 300;
-  letter-spacing: 0.02em;
 }
 
 @layer base {
   html {
     @apply scroll-smooth;
+    -webkit-tap-highlight-color: transparent;
   }
-  
+
   body {
-    @apply text-black bg-white antialiased;
+    @apply text-ink-700 antialiased font-sans;
+    background-color: #eef4fc;
+    background-image: radial-gradient(1200px 600px at 12% -5%, rgba(94, 168, 251, 0.16), transparent 55%),
+      radial-gradient(1000px 560px at 105% 8%, rgba(63, 174, 224, 0.14), transparent 52%),
+      radial-gradient(900px 700px at 50% 115%, rgba(147, 198, 255, 0.14), transparent 60%),
+      linear-gradient(180deg, #f4f9ff 0%, #edf4fc 45%, #e8f1fb 100%);
+    background-attachment: fixed;
+    font-feature-settings: 'ss01', 'cv01';
+    letter-spacing: -0.005em;
+    /* 한글 문장이 단어 중간에서 끊기지 않도록 — 띄어쓰기 단위로만 줄바꿈 */
+    word-break: keep-all;
+    overflow-wrap: break-word;
   }
-  
-  /* Typography - Minimal and Sharp */
+
   h1, h2, h3, h4, h5, h6 {
-    @apply font-light tracking-wide uppercase;
+    @apply font-display font-bold text-ink-900;
+    letter-spacing: -0.02em;
+    text-wrap: balance;
+    word-break: keep-all;
   }
-  
-  h1 {
-    @apply text-5xl lg:text-6xl tracking-widest;
-  }
-  
-  h2 {
-    @apply text-3xl lg:text-4xl tracking-wider;
-  }
-  
-  h3 {
-    @apply text-xl lg:text-2xl;
-  }
-  
-  h4 {
-    @apply text-lg lg:text-xl;
-  }
-  
-  h5 {
-    @apply text-base lg:text-lg;
-  }
-  
-  h6 {
-    @apply text-sm lg:text-base;
-  }
-  
+
   p {
-    @apply text-sm leading-relaxed;
+    @apply leading-relaxed;
+    text-wrap: pretty;
+  }
+
+  ::selection {
+    background: rgba(59, 138, 240, 0.22);
+    color: #0e1f38;
+  }
+
+  :focus-visible {
+    outline: 2px solid rgba(59, 138, 240, 0.6);
+    outline-offset: 2px;
   }
 }
 
+/* ============================================================
+   Glass system
+   ============================================================ */
 @layer components {
-  /* Minimalist Buttons */
+  .glass {
+    @apply bg-white/55 backdrop-blur-xl border border-white/60 shadow-glass;
+  }
+  .glass-strong {
+    @apply bg-white/75 backdrop-blur-xl border border-white/70 shadow-glass;
+  }
+  .glass-faint {
+    @apply bg-white/35 backdrop-blur-lg border border-white/45 shadow-glass-sm;
+  }
+  .glass-card {
+    @apply bg-white/55 backdrop-blur-xl border border-white/60 shadow-glass rounded-4xl;
+    position: relative;
+  }
+  .glass-card::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.65);
+    pointer-events: none;
+  }
+  .glass-nav {
+    @apply bg-white/70 backdrop-blur-2xl border-b border-white/60;
+    box-shadow: 0 8px 30px -12px rgba(27, 74, 137, 0.18);
+  }
+  .rim {
+    @apply border border-white/60;
+    box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.6);
+  }
+
+  /* Glass form fields */
+  .glass-input {
+    @apply w-full px-4 py-3 rounded-2xl bg-white/65 backdrop-blur-md border border-white/70
+      text-ink-800 placeholder-ink-400 shadow-glass-sm transition-all duration-200
+      focus:outline-none focus:ring-2 focus:ring-azure-400/50 focus:border-azure-300 focus:bg-white/85;
+  }
+
+  /* Wide editorial container */
+  .container-wide {
+    @apply max-w-[1400px] mx-auto px-5 sm:px-8 lg:px-12 xl:px-20;
+  }
+
+  /* Text gradient (azure family only) */
+  .text-gradient-azure {
+    @apply bg-gradient-to-r from-azure-600 via-azure-500 to-sky-cool-500 bg-clip-text text-transparent;
+  }
+
+  /* Hover lift utility for cards */
+  .hover-lift {
+    @apply transition-all duration-300 ease-out hover:-translate-y-1.5 hover:shadow-glass-lg;
+  }
+
+  /* ----- Buttons (also usable without the React primitive) ----- */
   .btn-primary {
-    @apply bg-black text-white font-light py-3 px-8 border border-black transition-all duration-200 hover:bg-white hover:text-black uppercase tracking-widest text-xs;
+    @apply inline-flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-azure-500 to-azure-600
+      text-white font-semibold px-6 py-3 shadow-glow transition-all duration-300
+      hover:from-azure-400 hover:to-azure-500 hover:shadow-glow-lg hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98];
   }
-  
   .btn-secondary {
-    @apply bg-white text-black font-light py-3 px-8 border border-black transition-all duration-200 hover:bg-black hover:text-white uppercase tracking-widest text-xs;
+    @apply inline-flex items-center justify-center gap-2 rounded-2xl bg-white/70 backdrop-blur-md border border-white/70
+      text-azure-700 font-semibold px-6 py-3 shadow-glass transition-all duration-300
+      hover:bg-white/90 hover:-translate-y-0.5 active:scale-[0.98];
   }
-  
   .btn-outline {
-    @apply border border-black text-black hover:bg-black hover:text-white font-light py-3 px-8 transition-all duration-200 uppercase tracking-widest text-xs;
+    @apply inline-flex items-center justify-center gap-2 rounded-2xl border border-azure-300
+      text-azure-700 font-semibold px-6 py-3 transition-all duration-300
+      hover:bg-azure-50 hover:border-azure-400 active:scale-[0.98];
   }
-  
-  /* Minimal Cards */
-  .card {
-    @apply bg-white border border-black;
+  .btn-glass,
+  .btn-gradient-hover {
+    @apply btn-primary;
   }
-  
-  .card-premium {
-    @apply bg-white border-2 border-black;
-  }
-  
-  /* Brutalist Input Fields */
-  .input-field {
-    @apply w-full px-4 py-3 border border-black bg-white text-black placeholder-gray-500 focus:outline-none focus:border-2 transition-all duration-200 text-sm;
-  }
-  
-  /* No glassmorphism - pure minimal */
+
+  /* ----- Legacy class compatibility (restyled to azure glass) ----- */
   .glassmorphism {
-    @apply bg-white border border-black;
+    @apply glass rounded-3xl;
   }
-  
-  /* Text styles */
+  .card {
+    @apply glass-card;
+  }
+  .card-premium {
+    @apply glass-strong rounded-4xl;
+  }
+  .input-field {
+    @apply glass-input;
+  }
   .gradient-text {
-    @apply text-black;
+    @apply text-gradient-azure;
   }
-  
   .gradient-bg {
-    @apply bg-white;
+    @apply bg-azure-mist;
   }
-  
-  /* Dividers */
-  .section-divider {
-    @apply border-t border-black;
+  .hero-gradient,
+  .hero-background {
+    @apply bg-azure-aurora;
   }
-  
-  /* Remove all gradient backgrounds */
-  .hero-gradient {
-    @apply bg-white;
-  }
-  
-  /* Remove floating animations */
-  .floating-element {
-    @apply transform-none;
-  }
-  
-  /* Minimal shadows */
   .premium-shadow {
-    @apply shadow-none border border-black;
+    @apply shadow-glass;
   }
-  
   .premium-hover {
-    @apply hover:border-2 transition-all duration-200;
+    @apply hover-lift;
+  }
+  .focus-premium:focus {
+    @apply outline-none ring-2 ring-azure-400/50;
+  }
+  .section-divider {
+    @apply border-t border-ink-100;
+  }
+  .section-padding {
+    @apply py-20 md:py-28 lg:py-36 px-5 sm:px-8 lg:px-12 xl:px-20;
+  }
+  .section-padding-sm {
+    @apply py-10 md:py-14 px-5 sm:px-8 lg:px-12;
+  }
+  .container-premium {
+    @apply container-wide;
   }
 }
 
@@ -142,173 +198,69 @@ body {
   .text-balance {
     text-wrap: balance;
   }
-  
-  /* Remove animation delays */
-  .animation-delay-200,
-  .animation-delay-400,
-  .animation-delay-600 {
-    animation-delay: 0ms;
+  .tracking-extreme {
+    letter-spacing: 0.04em;
   }
-  
-  /* Remove enhanced shadows */
-  .shadow-enhanced,
-  .shadow-4xl {
-    @apply shadow-none;
+  .border-thin {
+    border-width: 1px;
   }
+  /* Skeleton shimmer */
+  .shimmer {
+    background: linear-gradient(90deg, rgba(255, 255, 255, 0) 0%, rgba(255, 255, 255, 0.55) 50%, rgba(255, 255, 255, 0) 100%),
+      rgba(147, 198, 255, 0.18);
+    background-size: 200% 100%;
+    @apply animate-shimmer;
+  }
+  /* Hide scrollbar where needed */
+  .no-scrollbar::-webkit-scrollbar { display: none; }
+  .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 }
 
-/* Remove all animations for pure minimal look */
-@keyframes no-animation {
-  0%, 100% {
-    transform: none;
-  }
-}
-
-.animate-float,
-.animate-fadeInUp,
-.animate-slideInRight,
-.animate-pulse-glow {
-  animation: no-animation 0s;
-}
-
-/* Beautiful Pastel Blue Scrollbar */
+/* ============================================================
+   Pretty azure scrollbar
+   ============================================================ */
 ::-webkit-scrollbar {
   width: 12px;
   height: 12px;
 }
-
 ::-webkit-scrollbar-track {
-  background: #f8fafc;
-  border-radius: 6px;
-  border: 1px solid #e2e8f0;
+  background: rgba(237, 244, 252, 0.6);
+  border-radius: 8px;
 }
-
 ::-webkit-scrollbar-thumb {
-  background: linear-gradient(135deg, #bfdbfe 0%, #93c5fd 50%, #60a5fa 100%);
-  border-radius: 6px;
-  border: 2px solid #f8fafc;
-  box-shadow: 0 2px 4px rgba(59, 130, 246, 0.1);
+  background: linear-gradient(135deg, #bfdbfe 0%, #93c6ff 50%, #5ea8fb 100%);
+  border-radius: 8px;
+  border: 2px solid rgba(237, 244, 252, 0.8);
   transition: all 0.3s ease;
 }
-
 ::-webkit-scrollbar-thumb:hover {
-  background: linear-gradient(135deg, #93c5fd 0%, #60a5fa 50%, #3b82f6 100%);
-  box-shadow: 0 4px 8px rgba(59, 130, 246, 0.2);
-  transform: scale(1.05);
+  background: linear-gradient(135deg, #93c6ff 0%, #5ea8fb 50%, #2570d4 100%);
 }
 
-::-webkit-scrollbar-thumb:active {
-  background: linear-gradient(135deg, #60a5fa 0%, #3b82f6 50%, #2563eb 100%);
-}
-
-::-webkit-scrollbar-corner {
-  background: #f8fafc;
-}
-
-/* Remove shimmer effects */
-.shimmer-premium {
-  animation: none;
-  background: none;
-}
-
-/* Remove backdrop blur */
-.backdrop-blur-3xl {
-  backdrop-filter: none;
-}
-
-/* Minimal focus styles */
-.focus-premium:focus {
-  outline: 1px solid black;
-  outline-offset: 2px;
-  box-shadow: none;
-}
-
-/* Mobile responsive - keep it minimal */
-@media (max-width: 640px) {
-  h1 {
-    @apply text-3xl;
-  }
-  
-  h2 {
-    @apply text-2xl;
-  }
-  
-  h3 {
-    @apply text-lg;
-  }
-  
-  .btn-primary,
-  .btn-secondary,
-  .btn-outline {
-    @apply py-2 px-6 text-xs;
-  }
-}
-
-/* Enhanced button styles - minimalist */
-.btn-gradient-hover {
-  @apply bg-black text-white hover:bg-white hover:text-black border border-black;
-}
-
-.btn-glass {
-  @apply bg-white border border-black text-black hover:bg-black hover:text-white;
-}
-
-/* Section utilities */
-.section-padding {
-  @apply py-20 px-8 lg:px-16;
-}
-
-.section-padding-sm {
-  @apply py-10 px-8 lg:px-16;
-}
-
-/* Container utilities */
-.container-premium {
-  @apply max-w-7xl mx-auto;
-}
-
-/* Hero background - pure white */
-.hero-background {
-  @apply bg-white;
-}
-
-/* Remove blob animation */
-.animate-blob {
-  animation: none;
-}
-
-.animation-delay-2000,
-.animation-delay-4000 {
-  animation-delay: 0s;
-}
-
-/* Minimal React PDF Styles */
+/* ============================================================
+   React-PDF (glass styled)
+   ============================================================ */
 .react-pdf__Page {
-  @apply border border-black overflow-hidden;
+  @apply rounded-2xl overflow-hidden shadow-glass;
 }
-
 .react-pdf__Page__canvas {
   @apply w-full h-auto;
 }
-
 .react-pdf__Document {
   @apply flex justify-center;
 }
-
 .react-pdf__message {
-  @apply text-black text-center p-4 text-sm uppercase tracking-wider;
+  @apply text-ink-500 text-center p-4 text-sm;
 }
 
-/* Custom minimal utilities */
-.border-thin {
-  border-width: 0.5px;
-}
-
-.tracking-extreme {
-  letter-spacing: 0.3em;
-}
-
-/* Hover states - minimal */
-*:hover {
-  transition: all 0.2s ease;
+/* Respect reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
 }

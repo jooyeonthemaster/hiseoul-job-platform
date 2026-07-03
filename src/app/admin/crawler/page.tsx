@@ -1,7 +1,14 @@
 'use client';
 
 import { useState } from 'react';
-import { PlayIcon, DocumentTextIcon, ClockIcon, CheckCircleIcon, XCircleIcon } from '@heroicons/react/24/outline';
+import { PlayIcon, DocumentTextIcon, ClockIcon, CheckCircleIcon, XCircleIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline';
+import { GlassButton } from '@/components/ui/GlassButton';
+import { GlassCard } from '@/components/ui/GlassCard';
+import { SectionHeading } from '@/components/ui/SectionHeading';
+import { AuroraBackground } from '@/components/ui/AuroraBackground';
+import { Badge } from '@/components/ui/Badge';
+import { GlassInput, Field } from '@/components/ui/GlassField';
+import { ScrollReveal } from '@/components/ui/ScrollReveal';
 
 interface CrawlResult {
   success: boolean;
@@ -85,248 +92,264 @@ export default function CrawlerAdminPage() {
   };
 
   return (
-    <div className="min-h-screen gradient-bg py-12">
-      <div className="container-premium section-padding">
+    <div className="relative min-h-screen overflow-hidden py-16 md:py-20">
+      <AuroraBackground />
+
+      <div className="relative z-10 container-wide">
         {/* Header */}
-        <div className="text-center mb-12">
-          <h1 className="text-4xl font-bold gradient-text mb-4">
-            채용공고 크롤링 관리
-          </h1>
-          <p className="text-xl text-slate-600 max-w-3xl mx-auto">
-            잡코리아와 잡플래닛에서 최신 채용공고를 수집합니다
-          </p>
-        </div>
+        <SectionHeading
+          eyebrow="크롤러 도구"
+          title="채용공고 크롤링 관리"
+          subtitle="잡코리아와 잡플래닛에서 최신 채용공고를 수집합니다"
+        />
 
         {/* Controls */}
-        <div className="card p-8 mb-8">
-          <h2 className="text-2xl font-bold text-slate-900 mb-6">크롤링 설정</h2>
-          
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">
-                검색 키워드
-              </label>
-              <input
-                type="text"
-                value={keywords}
-                onChange={(e) => setKeywords(e.target.value)}
-                className="input-field"
-                placeholder="예: 개발, 디자인, 마케팅"
-              />
+        <ScrollReveal className="mt-14">
+          <GlassCard strong className="p-8 md:p-10">
+            <h2 className="font-display text-2xl font-bold tracking-tight text-ink-900 mb-7">크롤링 설정</h2>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <Field label="검색 키워드" htmlFor="crawler-keywords">
+                <GlassInput
+                  id="crawler-keywords"
+                  type="text"
+                  value={keywords}
+                  onChange={(e) => setKeywords(e.target.value)}
+                  placeholder="예: 개발, 디자인, 마케팅"
+                />
+              </Field>
+
+              <Field label="최대 페이지 수" htmlFor="crawler-maxpages">
+                <GlassInput
+                  id="crawler-maxpages"
+                  type="number"
+                  value={maxPages}
+                  onChange={(e) => setMaxPages(Number(e.target.value))}
+                  min="1"
+                  max="10"
+                />
+              </Field>
+
+              <div className="flex items-end">
+                <GlassButton
+                  onClick={handleCrawlAll}
+                  disabled={isJobKoreaCrawling || isJobPlanetCrawling}
+                  className="w-full"
+                >
+                  <PlayIcon className="w-5 h-5" />
+                  전체 크롤링 시작
+                </GlassButton>
+              </div>
             </div>
-            
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">
-                최대 페이지 수
-              </label>
-              <input
-                type="number"
-                value={maxPages}
-                onChange={(e) => setMaxPages(Number(e.target.value))}
-                min="1"
-                max="10"
-                className="input-field"
-              />
-            </div>
-            
-            <div className="flex items-end">
-              <button
-                onClick={handleCrawlAll}
-                disabled={isJobKoreaCrawling || isJobPlanetCrawling}
-                className="btn-primary w-full"
-              >
-                <PlayIcon className="w-5 h-5 mr-2" />
-                전체 크롤링 시작
-              </button>
-            </div>
-          </div>
-        </div>
+          </GlassCard>
+        </ScrollReveal>
 
         {/* Crawling Sources */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8 mt-8">
           {/* 잡코리아 */}
-          <div className="card p-8">
-            <div className="flex items-center justify-between mb-6">
-              <div className="flex items-center">
-                <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center mr-4">
-                  <DocumentTextIcon className="w-6 h-6 text-blue-600" />
+          <ScrollReveal>
+            <GlassCard hover className="h-full p-8">
+              <div className="flex items-center justify-between mb-6 gap-4">
+                <div className="flex items-center min-w-0">
+                  <div className="w-12 h-12 rounded-2xl bg-azure-50 border border-azure-100 flex items-center justify-center mr-4 shadow-glass-sm shrink-0">
+                    <DocumentTextIcon className="w-6 h-6 text-azure-600" />
+                  </div>
+                  <div className="min-w-0">
+                    <h3 className="text-xl font-bold text-ink-900">잡코리아</h3>
+                    <p className="text-sm text-ink-500 truncate">www.jobkorea.co.kr</p>
+                  </div>
                 </div>
-                <div>
-                  <h3 className="text-xl font-bold text-slate-900">잡코리아</h3>
-                  <p className="text-sm text-slate-600">www.jobkorea.co.kr</p>
-                </div>
-              </div>
-              <button
-                onClick={handleJobKoreaCrawl}
-                disabled={isJobKoreaCrawling}
-                className="btn-outline px-6 py-2 text-sm"
-              >
-                {isJobKoreaCrawling ? (
-                  <>
-                    <ClockIcon className="w-4 h-4 mr-2 animate-spin" />
-                    크롤링 중...
-                  </>
-                ) : (
-                  <>
-                    <PlayIcon className="w-4 h-4 mr-2" />
-                    크롤링 시작
-                  </>
-                )}
-              </button>
-            </div>
-
-            {/* 결과 표시 */}
-            {jobKoreaResult && (
-              <div className={`p-4 rounded-lg border ${
-                jobKoreaResult.success 
-                  ? 'bg-green-50 border-green-200' 
-                  : 'bg-red-50 border-red-200'
-              }`}>
-                <div className="flex items-center mb-2">
-                  {jobKoreaResult.success ? (
-                    <CheckCircleIcon className="w-5 h-5 text-green-600 mr-2" />
+                <GlassButton
+                  variant="outline"
+                  size="sm"
+                  onClick={handleJobKoreaCrawl}
+                  disabled={isJobKoreaCrawling}
+                  className="shrink-0"
+                >
+                  {isJobKoreaCrawling ? (
+                    <>
+                      <ClockIcon className="w-4 h-4 animate-spin" />
+                      크롤링 중...
+                    </>
                   ) : (
-                    <XCircleIcon className="w-5 h-5 text-red-600 mr-2" />
+                    <>
+                      <PlayIcon className="w-4 h-4" />
+                      크롤링 시작
+                    </>
                   )}
-                  <span className={`font-medium ${
-                    jobKoreaResult.success ? 'text-green-800' : 'text-red-800'
-                  }`}>
-                    {jobKoreaResult.message}
-                  </span>
-                </div>
-                
-                {jobKoreaResult.success && jobKoreaResult.data && (
-                  <div className="text-sm text-green-700">
-                    총 {jobKoreaResult.data.totalJobs}개의 채용공고를 수집했습니다.
-                  </div>
-                )}
-                
-                {jobKoreaResult.error && (
-                  <div className="text-sm text-red-700 mt-2">
-                    오류: {jobKoreaResult.error}
-                  </div>
-                )}
+                </GlassButton>
               </div>
-            )}
-          </div>
+
+              {/* 결과 표시 */}
+              {jobKoreaResult && (
+                <div className={`p-4 rounded-2xl border ${
+                  jobKoreaResult.success
+                    ? 'bg-mint-100/60 border-mint-400/40'
+                    : 'bg-coral-100/60 border-coral-400/40'
+                }`}>
+                  <div className="flex items-center mb-2 gap-2">
+                    {jobKoreaResult.success ? (
+                      <CheckCircleIcon className="w-5 h-5 text-mint-600 shrink-0" />
+                    ) : (
+                      <XCircleIcon className="w-5 h-5 text-coral-600 shrink-0" />
+                    )}
+                    <span className={`font-medium ${
+                      jobKoreaResult.success ? 'text-mint-600' : 'text-coral-600'
+                    }`}>
+                      {jobKoreaResult.message}
+                    </span>
+                  </div>
+
+                  {jobKoreaResult.success && jobKoreaResult.data && (
+                    <div className="text-sm text-ink-600">
+                      총 {jobKoreaResult.data.totalJobs}개의 채용공고를 수집했습니다.
+                    </div>
+                  )}
+
+                  {jobKoreaResult.error && (
+                    <div className="text-sm text-coral-600 mt-2">
+                      오류: {jobKoreaResult.error}
+                    </div>
+                  )}
+                </div>
+              )}
+            </GlassCard>
+          </ScrollReveal>
 
           {/* 잡플래닛 */}
-          <div className="card p-8">
-            <div className="flex items-center justify-between mb-6">
-              <div className="flex items-center">
-                <div className="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center mr-4">
-                  <DocumentTextIcon className="w-6 h-6 text-purple-600" />
+          <ScrollReveal delay={0.08}>
+            <GlassCard hover className="h-full p-8">
+              <div className="flex items-center justify-between mb-6 gap-4">
+                <div className="flex items-center min-w-0">
+                  <div className="w-12 h-12 rounded-2xl bg-azure-50 border border-azure-100 flex items-center justify-center mr-4 shadow-glass-sm shrink-0">
+                    <DocumentTextIcon className="w-6 h-6 text-azure-600" />
+                  </div>
+                  <div className="min-w-0">
+                    <h3 className="text-xl font-bold text-ink-900">잡플래닛</h3>
+                    <p className="text-sm text-ink-500 truncate">www.jobplanet.co.kr</p>
+                  </div>
                 </div>
-                <div>
-                  <h3 className="text-xl font-bold text-slate-900">잡플래닛</h3>
-                  <p className="text-sm text-slate-600">www.jobplanet.co.kr</p>
-                </div>
-              </div>
-              <button
-                onClick={handleJobPlanetCrawl}
-                disabled={isJobPlanetCrawling}
-                className="btn-outline px-6 py-2 text-sm"
-              >
-                {isJobPlanetCrawling ? (
-                  <>
-                    <ClockIcon className="w-4 h-4 mr-2 animate-spin" />
-                    크롤링 중...
-                  </>
-                ) : (
-                  <>
-                    <PlayIcon className="w-4 h-4 mr-2" />
-                    크롤링 시작
-                  </>
-                )}
-              </button>
-            </div>
-
-            {/* 결과 표시 */}
-            {jobPlanetResult && (
-              <div className={`p-4 rounded-lg border ${
-                jobPlanetResult.success 
-                  ? 'bg-green-50 border-green-200' 
-                  : 'bg-red-50 border-red-200'
-              }`}>
-                <div className="flex items-center mb-2">
-                  {jobPlanetResult.success ? (
-                    <CheckCircleIcon className="w-5 h-5 text-green-600 mr-2" />
+                <GlassButton
+                  variant="outline"
+                  size="sm"
+                  onClick={handleJobPlanetCrawl}
+                  disabled={isJobPlanetCrawling}
+                  className="shrink-0"
+                >
+                  {isJobPlanetCrawling ? (
+                    <>
+                      <ClockIcon className="w-4 h-4 animate-spin" />
+                      크롤링 중...
+                    </>
                   ) : (
-                    <XCircleIcon className="w-5 h-5 text-red-600 mr-2" />
+                    <>
+                      <PlayIcon className="w-4 h-4" />
+                      크롤링 시작
+                    </>
                   )}
-                  <span className={`font-medium ${
-                    jobPlanetResult.success ? 'text-green-800' : 'text-red-800'
-                  }`}>
-                    {jobPlanetResult.message}
-                  </span>
-                </div>
-                
-                {jobPlanetResult.success && jobPlanetResult.data && (
-                  <div className="text-sm text-green-700">
-                    총 {jobPlanetResult.data.totalJobs}개의 채용공고를 수집했습니다.
-                  </div>
-                )}
-                
-                {jobPlanetResult.error && (
-                  <div className="text-sm text-red-700 mt-2">
-                    오류: {jobPlanetResult.error}
-                  </div>
-                )}
+                </GlassButton>
               </div>
-            )}
-          </div>
+
+              {/* 결과 표시 */}
+              {jobPlanetResult && (
+                <div className={`p-4 rounded-2xl border ${
+                  jobPlanetResult.success
+                    ? 'bg-mint-100/60 border-mint-400/40'
+                    : 'bg-coral-100/60 border-coral-400/40'
+                }`}>
+                  <div className="flex items-center mb-2 gap-2">
+                    {jobPlanetResult.success ? (
+                      <CheckCircleIcon className="w-5 h-5 text-mint-600 shrink-0" />
+                    ) : (
+                      <XCircleIcon className="w-5 h-5 text-coral-600 shrink-0" />
+                    )}
+                    <span className={`font-medium ${
+                      jobPlanetResult.success ? 'text-mint-600' : 'text-coral-600'
+                    }`}>
+                      {jobPlanetResult.message}
+                    </span>
+                  </div>
+
+                  {jobPlanetResult.success && jobPlanetResult.data && (
+                    <div className="text-sm text-ink-600">
+                      총 {jobPlanetResult.data.totalJobs}개의 채용공고를 수집했습니다.
+                    </div>
+                  )}
+
+                  {jobPlanetResult.error && (
+                    <div className="text-sm text-coral-600 mt-2">
+                      오류: {jobPlanetResult.error}
+                    </div>
+                  )}
+                </div>
+              )}
+            </GlassCard>
+          </ScrollReveal>
         </div>
 
         {/* 크롤링된 데이터 미리보기 */}
         {(jobKoreaResult?.success || jobPlanetResult?.success) && (
-          <div className="card p-8 mt-8">
-            <h3 className="text-xl font-bold text-slate-900 mb-6">크롤링 결과 미리보기</h3>
-            
-            <div className="space-y-6">
-              {jobKoreaResult?.success && jobKoreaResult.data && (
-                <div>
-                  <h4 className="font-semibold text-blue-600 mb-3">잡코리아 ({jobKoreaResult.data.totalJobs}개)</h4>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {jobKoreaResult.data.jobs.slice(0, 4).map((job, index) => (
-                      <div key={index} className="p-4 bg-blue-50 rounded-lg border border-blue-200">
-                        <h5 className="font-semibold text-slate-900 mb-1">{job.title}</h5>
-                        <p className="text-sm text-slate-600 mb-1">{job.company}</p>
-                        <p className="text-xs text-slate-500">{job.location}</p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
+          <ScrollReveal className="mt-8">
+            <GlassCard strong className="p-8 md:p-10">
+              <h3 className="font-display text-xl font-bold tracking-tight text-ink-900 mb-6">크롤링 결과 미리보기</h3>
 
-              {jobPlanetResult?.success && jobPlanetResult.data && (
-                <div>
-                  <h4 className="font-semibold text-purple-600 mb-3">잡플래닛 ({jobPlanetResult.data.totalJobs}개)</h4>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {jobPlanetResult.data.jobs.slice(0, 4).map((job, index) => (
-                      <div key={index} className="p-4 bg-purple-50 rounded-lg border border-purple-200">
-                        <h5 className="font-semibold text-slate-900 mb-1">{job.title}</h5>
-                        <p className="text-sm text-slate-600 mb-1">{job.company}</p>
-                        <p className="text-xs text-slate-500">{job.location}</p>
-                      </div>
-                    ))}
+              <div className="space-y-8">
+                {jobKoreaResult?.success && jobKoreaResult.data && (
+                  <div>
+                    <h4 className="font-semibold text-azure-700 mb-3 flex items-center gap-2">
+                      잡코리아
+                      <Badge tone="azure">{jobKoreaResult.data.totalJobs}개</Badge>
+                    </h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {jobKoreaResult.data.jobs.slice(0, 4).map((job, index) => (
+                        <div key={index} className="glass rounded-2xl p-4">
+                          <h5 className="font-semibold text-ink-900 mb-1">{job.title}</h5>
+                          <p className="text-sm text-ink-500 mb-1">{job.company}</p>
+                          <p className="text-xs text-ink-400">{job.location}</p>
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                </div>
-              )}
-            </div>
-          </div>
+                )}
+
+                {jobPlanetResult?.success && jobPlanetResult.data && (
+                  <div>
+                    <h4 className="font-semibold text-azure-700 mb-3 flex items-center gap-2">
+                      잡플래닛
+                      <Badge tone="azure">{jobPlanetResult.data.totalJobs}개</Badge>
+                    </h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {jobPlanetResult.data.jobs.slice(0, 4).map((job, index) => (
+                        <div key={index} className="glass rounded-2xl p-4">
+                          <h5 className="font-semibold text-ink-900 mb-1">{job.title}</h5>
+                          <p className="text-sm text-ink-500 mb-1">{job.company}</p>
+                          <p className="text-xs text-ink-400">{job.location}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </GlassCard>
+          </ScrollReveal>
         )}
 
         {/* 주의사항 */}
-        <div className="card p-6 mt-8 bg-yellow-50 border-yellow-200">
-          <h3 className="text-lg font-semibold text-yellow-800 mb-3">⚠️ 크롤링 관련 주의사항</h3>
-          <ul className="text-sm text-yellow-700 space-y-1">
-            <li>• 현재는 시뮬레이션 데이터를 생성합니다 (실제 웹사이트 크롤링 제한)</li>
-            <li>• 실제 크롤링을 위해서는 각 사이트의 robots.txt와 이용약관을 확인해야 합니다</li>
-            <li>• 서버 사이드에서 크롤링을 수행하여 CORS 문제를 해결할 수 있습니다</li>
-            <li>• 크롤링 빈도를 조절하여 서버에 부하를 주지 않도록 주의하세요</li>
-          </ul>
-        </div>
+        <ScrollReveal className="mt-8">
+          <GlassCard className="p-6 md:p-8 bg-honey-100/50 border-honey-400/40">
+            <h3 className="text-lg font-semibold text-honey-600 mb-3 flex items-center gap-2">
+              <ExclamationTriangleIcon className="w-5 h-5 shrink-0" />
+              크롤링 관련 주의사항
+            </h3>
+            <ul className="text-sm text-ink-600 space-y-1.5">
+              <li>• 현재는 시뮬레이션 데이터를 생성합니다 (실제 웹사이트 크롤링 제한)</li>
+              <li>• 실제 크롤링을 위해서는 각 사이트의 robots.txt와 이용약관을 확인해야 합니다</li>
+              <li>• 서버 사이드에서 크롤링을 수행하여 CORS 문제를 해결할 수 있습니다</li>
+              <li>• 크롤링 빈도를 조절하여 서버에 부하를 주지 않도록 주의하세요</li>
+            </ul>
+          </GlassCard>
+        </ScrollReveal>
       </div>
     </div>
   );
-} 
+}

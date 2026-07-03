@@ -6,7 +6,8 @@ import { useEffect, useState } from 'react';
 import { checkEmployerApprovalStatus } from '@/lib/auth';
 import { signOut } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
-import { 
+import { AnimatePresence, motion } from 'framer-motion';
+import {
   UserIcon,
   Cog6ToothIcon,
   BuildingOfficeIcon,
@@ -17,8 +18,10 @@ import {
   BuildingOffice2Icon,
   ChevronDownIcon,
   ArrowRightOnRectangleIcon,
-  UserPlusIcon
+  UserPlusIcon,
+  ArrowLeftOnRectangleIcon,
 } from '@heroicons/react/24/outline';
+import { Badge } from '@/components/ui/Badge';
 
 export default function Navigation() {
   const { user, userData, loading: authLoading } = useAuth();
@@ -26,6 +29,7 @@ export default function Navigation() {
   const [loading, setLoading] = useState(true);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  const hasAdminAccess = userData?.role === 'admin' || userData?.isAdmin === true;
 
   useEffect(() => {
     const loadApprovalStatus = async () => {
@@ -33,10 +37,10 @@ export default function Navigation() {
       console.log('📋 Navigation - user:', !!user);
       console.log('📋 Navigation - userData:', userData);
       console.log('📋 Navigation - authLoading:', authLoading);
-      
+
       if (!authLoading && userData) {
         console.log('👤 Navigation - userRole:', userData.role);
-        
+
         // 기업 사용자인 경우 승인 상태도 로드
         if (userData.role === 'employer') {
           console.log('🏢 Navigation - 기업 사용자 감지, 승인 상태 확인 중');
@@ -55,7 +59,7 @@ export default function Navigation() {
         console.log('🚫 Navigation - 사용자 데이터 없음 또는 로딩 중');
         setApprovalStatus(null);
       }
-      
+
       setLoading(false);
       console.log('✅ Navigation - loadApprovalStatus 완료');
     };
@@ -68,6 +72,7 @@ export default function Navigation() {
     user: !!user,
     userData,
     userRole: userData?.role,
+    hasAdminAccess,
     approvalStatus,
     authLoading,
     loading
@@ -95,207 +100,180 @@ export default function Navigation() {
     setIsUserMenuOpen(!isUserMenuOpen);
   };
 
+  const navLinkClass =
+    'flex items-center gap-2 px-4 py-2 rounded-xl text-ink-600 hover:text-azure-700 hover:bg-azure-50/70 transition-all duration-200 font-medium group';
+  const menuItemClass =
+    'flex items-center gap-3 px-4 py-3 text-ink-600 hover:bg-azure-50/70 hover:text-azure-700 transition-colors';
+
   return (
-    <header className="fixed top-0 w-full bg-white/90 backdrop-blur-lg border-b border-gray-200/50 z-50 shadow-lg">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <header className="fixed top-0 w-full glass-nav z-50">
+      <div className="container-wide">
         <div className="flex justify-between items-center h-16">
           {/* 로고 */}
-          <Link href="/" className="flex items-center group">
-            <img 
-              src="/images/logo.png" 
-              alt="테크벤처 잡 매칭 Logo" 
-              className="h-10 w-auto group-hover:scale-105 transition-all duration-300"
+          <Link href="/" className="flex min-w-0 items-center group">
+            <img
+              src="/images/logo.png"
+              alt="면접심사 매칭 플랫폼 Logo"
+              className="h-8 w-auto max-w-[10.75rem] object-contain group-hover:scale-105 transition-all duration-300 sm:h-10 sm:max-w-none"
             />
           </Link>
-          
+
           {/* 데스크톱 메인 네비게이션 */}
-          <nav className="hidden md:flex items-center space-x-1">
-            <Link 
-              href="/portfolios" 
-              className="flex items-center space-x-2 px-4 py-2 rounded-lg text-gray-700 hover:text-blue-600 hover:bg-blue-50 transition-all duration-200 font-medium group"
-            >
+          <nav className="hidden md:flex items-center gap-1">
+            <Link href="/portfolios" className={navLinkClass}>
               <DocumentTextIcon className="w-5 h-5 group-hover:scale-110 transition-transform duration-200" />
               <span>포트폴리오</span>
             </Link>
-            <Link 
-              href="/companies" 
-              className="flex items-center space-x-2 px-4 py-2 rounded-lg text-gray-700 hover:text-blue-600 hover:bg-blue-50 transition-all duration-200 font-medium group"
-            >
+            <Link href="/companies" className={navLinkClass}>
               <BuildingOffice2Icon className="w-5 h-5 group-hover:scale-110 transition-transform duration-200" />
               <span>기업정보</span>
             </Link>
           </nav>
-          
+
           {/* 사용자 메뉴 */}
-          <div className="flex items-center space-x-4">
+          <div className="flex items-center gap-3">
             {user ? (
               <div className="relative">
                 <button
                   onClick={toggleUserMenu}
-                  className="flex items-center space-x-2 px-4 py-2 rounded-lg bg-gray-50 hover:bg-gray-100 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="flex items-center gap-2 px-3 sm:px-4 py-2 rounded-xl bg-white/60 backdrop-blur-md border border-white/70 hover:bg-white/90 transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-azure-400/60 shadow-glass-sm"
                 >
-                  <div className="w-8 h-8 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-full flex items-center justify-center">
+                  <div className="w-8 h-8 bg-gradient-to-br from-azure-500 to-azure-600 rounded-full flex items-center justify-center shadow-glow">
                     <span className="text-white font-medium text-sm">
                       {userData?.name?.charAt(0) || user?.displayName?.charAt(0) || '사'}
                     </span>
                   </div>
-                  <span className="text-gray-700 font-medium hidden sm:block">
+                  <span className="text-ink-700 font-medium hidden sm:block">
                     {userData?.name || user?.displayName || '사용자'}
                   </span>
-                  <ChevronDownIcon className={`w-4 h-4 text-gray-500 transition-transform duration-200 ${isUserMenuOpen ? 'rotate-180' : ''}`} />
+                  <ChevronDownIcon className={`w-4 h-4 text-ink-400 transition-transform duration-200 ${isUserMenuOpen ? 'rotate-180' : ''}`} />
                 </button>
 
                 {/* 사용자 드롭다운 메뉴 */}
-                {isUserMenuOpen && (
-                  <div className="absolute right-0 mt-2 w-64 bg-white rounded-xl shadow-lg border border-gray-200 py-2 z-[70]">
-                    {(userData?.role === 'jobseeker' || (!userData && user && !loading)) && (
-                      <>
-                        <Link 
-                          href={`/portfolios/${user.uid}`}
-                          className="flex items-center space-x-3 px-4 py-3 text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition-colors"
-                          onClick={() => setIsUserMenuOpen(false)}
-                        >
-                          <BriefcaseIcon className="w-5 h-5" />
-                          <span>내 포트폴리오</span>
-                        </Link>
-                        <Link 
-                          href="/profile"
-                          className="flex items-center space-x-3 px-4 py-3 text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition-colors"
-                          onClick={() => setIsUserMenuOpen(false)}
-                        >
-                          <UserIcon className="w-5 h-5" />
-                          <span>마이페이지</span>
-                        </Link>
-                      </>
-                    )}
-                    
-                    {userData?.role === 'employer' && (
-                      <>
-                        <Link 
-                          href="/employer-dashboard"
-                          className="flex items-center space-x-3 px-4 py-3 text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition-colors"
-                          onClick={() => setIsUserMenuOpen(false)}
-                        >
-                          <Cog6ToothIcon className="w-5 h-5" />
-                          <span>대시보드</span>
-                        </Link>
-                        <Link 
-                          href="/employer-dashboard/company"
-                          className="flex items-center space-x-3 px-4 py-3 text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition-colors"
-                          onClick={() => setIsUserMenuOpen(false)}
-                        >
-                          <BuildingOfficeIcon className="w-5 h-5" />
-                          <span>기업정보 관리</span>
-                        </Link>
-                        <div className="px-4 py-2">
-                          {approvalStatus === 'pending' && (
-                            <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-yellow-100 text-yellow-800">
-                              🕐 승인 심사중
-                            </span>
-                          )}
-                          {approvalStatus === 'approved' && (
-                            <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800">
-                              ✅ 승인 완료
-                            </span>
-                          )}
-                          {approvalStatus === 'rejected' && (
-                            <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-red-100 text-red-800">
-                              ❌ 승인 거절됨
-                            </span>
-                          )}
-                          {!approvalStatus && (
-                            <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-gray-100 text-gray-800">
-                              ⏳ 상태 확인중
-                            </span>
-                          )}
-                        </div>
-                      </>
-                    )}
-                    
-                    {userData?.role === 'admin' && (
-                      <Link 
-                        href="/admin"
-                        className="flex items-center space-x-3 px-4 py-3 text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition-colors"
-                        onClick={() => setIsUserMenuOpen(false)}
-                      >
-                        <Cog6ToothIcon className="w-5 h-5" />
-                        <span>관리자 페이지</span>
-                      </Link>
-                    )}
-                    
-                    <hr className="my-2 border-gray-200" />
-                    <button
-                      onClick={() => {
-                        handleLogout();
-                        setIsUserMenuOpen(false);
-                      }}
-                      className="w-full text-left flex items-center space-x-3 px-4 py-3 text-red-600 hover:bg-red-50 transition-colors"
+                <AnimatePresence>
+                  {isUserMenuOpen && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -8, scale: 0.98 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: -8, scale: 0.98 }}
+                      transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
+                      className="absolute right-0 mt-2 w-64 glass-strong rounded-2xl py-2 z-[70] overflow-hidden"
                     >
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                      </svg>
-                      <span>로그아웃</span>
-                    </button>
-                  </div>
-                )}
+                      {(userData?.role === 'jobseeker' || (!userData && user && !loading)) && (
+                        <>
+                          <Link href={`/portfolios/${user.uid}`} className={menuItemClass} onClick={() => setIsUserMenuOpen(false)}>
+                            <BriefcaseIcon className="w-5 h-5" />
+                            <span>내 포트폴리오</span>
+                          </Link>
+                          <Link href="/profile" className={menuItemClass} onClick={() => setIsUserMenuOpen(false)}>
+                            <UserIcon className="w-5 h-5" />
+                            <span>마이페이지</span>
+                          </Link>
+                        </>
+                      )}
+
+                      {userData?.role === 'employer' && (
+                        <>
+                          <Link href="/employer-dashboard" className={menuItemClass} onClick={() => setIsUserMenuOpen(false)}>
+                            <Cog6ToothIcon className="w-5 h-5" />
+                            <span>대시보드</span>
+                          </Link>
+                          <Link href="/employer-dashboard/company" className={menuItemClass} onClick={() => setIsUserMenuOpen(false)}>
+                            <BuildingOfficeIcon className="w-5 h-5" />
+                            <span>기업정보 관리</span>
+                          </Link>
+                          <div className="px-4 py-2">
+                            {approvalStatus === 'pending' && <Badge tone="honey">🕐 승인 심사중</Badge>}
+                            {approvalStatus === 'approved' && <Badge tone="mint">✅ 승인 완료</Badge>}
+                            {approvalStatus === 'rejected' && <Badge tone="coral">❌ 승인 거절됨</Badge>}
+                            {!approvalStatus && <Badge tone="neutral">⏳ 상태 확인중</Badge>}
+                          </div>
+                        </>
+                      )}
+
+                      {hasAdminAccess && (
+                        <Link href="/admin" className={menuItemClass} onClick={() => setIsUserMenuOpen(false)}>
+                          <Cog6ToothIcon className="w-5 h-5" />
+                          <span>관리자 페이지</span>
+                        </Link>
+                      )}
+
+                      <hr className="my-2 border-ink-100" />
+                      <button
+                        onClick={() => {
+                          handleLogout();
+                          setIsUserMenuOpen(false);
+                        }}
+                        className="w-full text-left flex items-center gap-3 px-4 py-3 text-coral-600 hover:bg-coral-100/60 transition-colors"
+                      >
+                        <ArrowLeftOnRectangleIcon className="w-5 h-5" />
+                        <span>로그아웃</span>
+                      </button>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </div>
             ) : (
-              <div className="flex items-center space-x-1 sm:space-x-2 md:space-x-3">
-                <Link 
-                  href="/auth" 
-                  className="text-gray-700 hover:text-blue-600 transition-colors font-medium px-2 py-2 sm:px-3 sm:py-2 md:px-4 md:py-2 rounded-md sm:rounded-lg hover:bg-blue-50 flex items-center space-x-1 sm:space-x-2"
+              <div className="flex items-center gap-1 sm:gap-2">
+                <Link
+                  href="/auth"
+                  className="text-ink-600 hover:text-azure-700 transition-colors font-medium px-2 py-2 sm:px-3 sm:py-2 rounded-xl hover:bg-azure-50/70 flex items-center gap-1 sm:gap-2"
                   title="로그인"
                 >
                   <ArrowRightOnRectangleIcon className="w-5 h-5" />
                   <span className="hidden sm:inline text-sm sm:text-base">로그인</span>
                 </Link>
-                <Link 
-                  href="/auth?mode=signup" 
-                  className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold px-2 py-2 sm:px-4 sm:py-2 md:px-6 md:py-2 rounded-md sm:rounded-lg transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105 flex items-center space-x-1 sm:space-x-2"
+                <Link
+                  href="/auth?mode=signup"
+                  className="btn-primary !px-3 !py-2 sm:!px-5 text-sm sm:text-base"
                   title="회원가입"
                 >
                   <UserPlusIcon className="w-5 h-5" />
-                  <span className="hidden sm:inline text-sm sm:text-base">회원가입</span>
+                  <span className="hidden sm:inline">회원가입</span>
                 </Link>
               </div>
             )}
-            
+
             {/* 모바일 메뉴 버튼 */}
             <button
               onClick={toggleMobileMenu}
-              className="md:hidden p-2 rounded-lg text-gray-700 hover:text-blue-600 hover:bg-blue-50 transition-colors"
+              className="md:hidden p-2 rounded-xl text-ink-600 hover:text-azure-700 hover:bg-azure-50/70 transition-colors"
             >
-              {isMobileMenuOpen ? (
-                <XMarkIcon className="w-6 h-6" />
-              ) : (
-                <Bars3Icon className="w-6 h-6" />
-              )}
+              {isMobileMenuOpen ? <XMarkIcon className="w-6 h-6" /> : <Bars3Icon className="w-6 h-6" />}
             </button>
           </div>
         </div>
-        
+
         {/* 모바일 메뉴 */}
-        {isMobileMenuOpen && (
-          <div className="md:hidden border-t border-gray-200 mt-2 pt-4 pb-4 space-y-2">
-            <Link 
-              href="/portfolios"
-              className="flex items-center space-x-3 px-4 py-3 text-gray-700 hover:bg-blue-50 hover:text-blue-600 rounded-lg transition-colors"
-              onClick={() => setIsMobileMenuOpen(false)}
+        <AnimatePresence>
+          {isMobileMenuOpen && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+              className="md:hidden overflow-hidden border-t border-white/50 mt-2 space-y-2 pb-4 pt-3"
             >
-              <DocumentTextIcon className="w-5 h-5" />
-              <span>포트폴리오</span>
-            </Link>
-            <Link 
-              href="/companies"
-              className="flex items-center space-x-3 px-4 py-3 text-gray-700 hover:bg-blue-50 hover:text-blue-600 rounded-lg transition-colors"
-              onClick={() => setIsMobileMenuOpen(false)}
-            >
-              <BuildingOffice2Icon className="w-5 h-5" />
-              <span>기업정보</span>
-            </Link>
-          </div>
-        )}
+              <Link
+                href="/portfolios"
+                className="flex items-center gap-3 px-4 py-3 text-ink-600 hover:bg-azure-50/70 hover:text-azure-700 rounded-xl transition-colors"
+                onClick={() => setIsMobileMenuOpen(false)}
+              >
+                <DocumentTextIcon className="w-5 h-5" />
+                <span>포트폴리오</span>
+              </Link>
+              <Link
+                href="/companies"
+                className="flex items-center gap-3 px-4 py-3 text-ink-600 hover:bg-azure-50/70 hover:text-azure-700 rounded-xl transition-colors"
+                onClick={() => setIsMobileMenuOpen(false)}
+              >
+                <BuildingOffice2Icon className="w-5 h-5" />
+                <span>기업정보</span>
+              </Link>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     </header>
   );
-} 
+}

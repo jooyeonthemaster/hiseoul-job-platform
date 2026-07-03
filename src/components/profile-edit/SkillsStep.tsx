@@ -1,9 +1,21 @@
 'use client';
 
 import { useState } from 'react';
-import { PlusIcon, XMarkIcon } from '@heroicons/react/24/outline';
+import {
+  PlusIcon,
+  XMarkIcon,
+  TrashIcon,
+  SparklesIcon,
+  LanguageIcon,
+  AcademicCapIcon,
+  TrophyIcon,
+} from '@heroicons/react/24/outline';
 import { CertificateItem, AwardItem } from '@/types';
-import { formatDateForInput, createSafeDate } from '@/lib/dateUtils';
+import { GlassButton } from '@/components/ui/GlassButton';
+import { GlassCard } from '@/components/ui/GlassCard';
+import { Badge } from '@/components/ui/Badge';
+import { Field, GlassInput } from '@/components/ui/GlassField';
+import { ScrollReveal } from '@/components/ui/ScrollReveal';
 
 interface SkillsStepProps {
   data: {
@@ -86,203 +98,330 @@ export default function SkillsStep({ data, onChange }: SkillsStepProps) {
     onChange({ ...data, awards: updated });
   };
   return (
-    <div className="space-y-8">
+    <div className="grid grid-cols-1 gap-5 xl:grid-cols-2">
       {/* Skills Section */}
-      <div>
-        <h3 className="text-lg font-medium text-gray-900 mb-4">보유 스킬</h3>
-        <div className="space-y-4">
-          <div className="flex gap-2">
-            <input
-              type="text"
-              value={newSkill}
-              onChange={(e) => setNewSkill(e.target.value)}
-              onKeyPress={(e) => e.key === 'Enter' && handleAddSkill()}
-              placeholder="예: JavaScript, React, Node.js"
-              className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500"
-            />
-            <button
-              type="button"
-              onClick={handleAddSkill}
-              className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
-            >
-              추가
-            </button>
+      <ScrollReveal>
+        <section className="space-y-4">
+          <div className="space-y-2">
+            <span className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-azure-600">
+              <SparklesIcon className="h-4 w-4" />
+              Skills
+            </span>
+            <h3 className="font-display text-2xl font-bold tracking-tight text-ink-900">
+              보유 스킬
+            </h3>
+            <p className="text-sm leading-relaxed text-ink-500">
+              직무와 관련된 기술 스택을 추가해주세요.
+            </p>
           </div>
-          <div className="flex flex-wrap gap-2">
-            {data.skills.map((skill, index) => (
-              <span
-                key={index}
-                className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-indigo-100 text-indigo-800"
-              >
-                {skill}
-                <button
+
+          <GlassCard strong className="overflow-hidden">
+            <div className="space-y-4 p-5 md:p-6">
+              <div className="flex flex-col gap-3 sm:flex-row">
+                <GlassInput
+                  type="text"
+                  value={newSkill}
+                  onChange={(e) => setNewSkill(e.target.value)}
+                  onKeyPress={(e) => e.key === 'Enter' && handleAddSkill()}
+                  placeholder="예: JavaScript, React, Node.js"
+                  className="flex-1"
+                />
+                <GlassButton
                   type="button"
-                  onClick={() => handleRemoveSkill(index)}
-                  className="ml-2 text-indigo-600 hover:text-indigo-800"
+                  onClick={handleAddSkill}
+                  variant="primary"
+                  size="md"
                 >
-                  <XMarkIcon className="h-4 w-4" />
-                </button>
-              </span>
-            ))}
-          </div>
-        </div>
-      </div>
+                  <PlusIcon className="h-4 w-4" />
+                  추가
+                </GlassButton>
+              </div>
+
+              {data.skills.length === 0 ? (
+                <p className="text-sm text-ink-400">아직 추가된 스킬이 없습니다.</p>
+              ) : (
+                <div className="flex flex-wrap gap-2.5">
+                  {data.skills.map((skill, index) => (
+                    <span
+                      key={index}
+                      className="inline-flex items-center gap-2 rounded-full border border-azure-200 bg-azure-50 px-3.5 py-1.5 text-sm font-semibold text-azure-700 shadow-glass-sm backdrop-blur-md"
+                    >
+                      {skill}
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveSkill(index)}
+                        aria-label="스킬 삭제"
+                        className="inline-flex h-5 w-5 items-center justify-center rounded-full text-azure-500 transition-colors duration-200 hover:bg-azure-100 hover:text-azure-700"
+                      >
+                        <XMarkIcon className="h-4 w-4" />
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+          </GlassCard>
+        </section>
+      </ScrollReveal>
+
       {/* Languages Section */}
-      <div>
-        <h3 className="text-lg font-medium text-gray-900 mb-4">사용 가능 언어</h3>
-        <div className="space-y-4">
-          <div className="flex gap-2">
-            <input
-              type="text"
-              value={newLanguage}
-              onChange={(e) => setNewLanguage(e.target.value)}
-              onKeyPress={(e) => e.key === 'Enter' && handleAddLanguage()}
-              placeholder="예: 한국어, 영어, 일본어"
-              className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500"
-            />
-            <button
-              type="button"
-              onClick={handleAddLanguage}
-              className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
-            >
-              추가
-            </button>
+      <ScrollReveal>
+        <section className="space-y-4">
+          <div className="space-y-2">
+            <span className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-azure-600">
+              <LanguageIcon className="h-4 w-4" />
+              Languages
+            </span>
+            <h3 className="font-display text-2xl font-bold tracking-tight text-ink-900">
+              사용 가능 언어
+            </h3>
+            <p className="text-sm leading-relaxed text-ink-500">
+              구사 가능한 언어를 추가해주세요.
+            </p>
           </div>
-          <div className="flex flex-wrap gap-2">
-            {data.languages.map((language, index) => (
-              <span
-                key={index}
-                className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800"
-              >
-                {language}
-                <button
+
+          <GlassCard strong className="overflow-hidden">
+            <div className="space-y-4 p-5 md:p-6">
+              <div className="flex flex-col gap-3 sm:flex-row">
+                <GlassInput
+                  type="text"
+                  value={newLanguage}
+                  onChange={(e) => setNewLanguage(e.target.value)}
+                  onKeyPress={(e) => e.key === 'Enter' && handleAddLanguage()}
+                  placeholder="예: 한국어, 영어, 일본어"
+                  className="flex-1"
+                />
+                <GlassButton
                   type="button"
-                  onClick={() => handleRemoveLanguage(index)}
-                  className="ml-2 text-green-600 hover:text-green-800"
+                  onClick={handleAddLanguage}
+                  variant="primary"
+                  size="md"
                 >
-                  <XMarkIcon className="h-4 w-4" />
-                </button>
-              </span>
-            ))}
-          </div>
-        </div>
-      </div>
+                  <PlusIcon className="h-4 w-4" />
+                  추가
+                </GlassButton>
+              </div>
+
+              {data.languages.length === 0 ? (
+                <p className="text-sm text-ink-400">아직 추가된 언어가 없습니다.</p>
+              ) : (
+                <div className="flex flex-wrap gap-2.5">
+                  {data.languages.map((language, index) => (
+                    <span
+                      key={index}
+                      className="inline-flex items-center gap-2 rounded-full border border-mint-400/40 bg-mint-100 px-3.5 py-1.5 text-sm font-semibold text-mint-600 shadow-glass-sm backdrop-blur-md"
+                    >
+                      {language}
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveLanguage(index)}
+                        aria-label="언어 삭제"
+                        className="inline-flex h-5 w-5 items-center justify-center rounded-full text-mint-500 transition-colors duration-200 hover:bg-mint-100 hover:text-mint-600"
+                      >
+                        <XMarkIcon className="h-4 w-4" />
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+          </GlassCard>
+        </section>
+      </ScrollReveal>
+
       {/* Certificates Section */}
-      <div>
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-medium text-gray-900">자격증</h3>
-          <button
-            type="button"
-            onClick={addCertificate}
-            className="inline-flex items-center px-3 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700"
-          >
-            <PlusIcon className="h-4 w-4 mr-1" />
-            자격증 추가
-          </button>
-        </div>
-        {data.certificates?.length === 0 ? (
-          <div className="text-center py-8 bg-gray-50 rounded-lg">
-            <p className="text-gray-500">등록된 자격증이 없습니다.</p>
+      <ScrollReveal>
+        <section className="space-y-4">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+            <div className="space-y-2">
+              <span className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-azure-600">
+                <AcademicCapIcon className="h-4 w-4" />
+                Certificates
+              </span>
+              <h3 className="font-display text-2xl font-bold tracking-tight text-ink-900">
+                자격증
+              </h3>
+              <p className="text-sm leading-relaxed text-ink-500">
+                취득한 자격증을 추가해주세요.
+              </p>
+            </div>
+            <GlassButton
+              type="button"
+              onClick={addCertificate}
+              variant="primary"
+              size="sm"
+            >
+              <PlusIcon className="h-4 w-4" />
+              자격증 추가
+            </GlassButton>
           </div>
-        ) : (
-          <div className="space-y-4">
-            {data.certificates?.map((cert, index) => (
-              <div key={index} className="bg-gray-50 rounded-lg p-4">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                  <input
-                    type="text"
-                    value={cert.name}
-                    onChange={(e) => updateCertificate(index, 'name', e.target.value)}
-                    placeholder="자격증명"
-                    className="px-3 py-2 border border-gray-300 rounded-lg"
-                  />
-                  <input
-                    type="text"
-                    value={cert.issuer}
-                    onChange={(e) => updateCertificate(index, 'issuer', e.target.value)}
-                    placeholder="발급기관"
-                    className="px-3 py-2 border border-gray-300 rounded-lg"
-                  />
-                  <div className="flex gap-2">
-                    <input
-                      type="text"
-                      value={cert.issueDate || ''}
-                      onChange={(e) => updateCertificate(index, 'issueDate', e.target.value)}
-                      placeholder="YYYY-MM 형식으로 입력 (예: 2023-05)"
-                      className="flex-1 px-3 py-2 border border-gray-300 rounded-lg"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => removeCertificate(index)}
-                      className="text-red-600 hover:text-red-700 px-2"
-                    >
-                      삭제
-                    </button>
-                  </div>
-                </div>
+
+          {data.certificates?.length === 0 ? (
+            <div className="glass-card flex flex-col items-center justify-center gap-4 rounded-3xl px-6 py-10 text-center">
+              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-azure-400 to-azure-600 text-white shadow-glow">
+                <AcademicCapIcon className="h-7 w-7" />
               </div>
-            ))}
-          </div>
-        )}
-      </div>
+              <p className="text-ink-500">등록된 자격증이 없습니다.</p>
+              <GlassButton
+                type="button"
+                onClick={addCertificate}
+                variant="secondary"
+                size="sm"
+              >
+                <PlusIcon className="h-4 w-4" />
+                첫 자격증 추가하기
+              </GlassButton>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {data.certificates?.map((cert, index) => (
+                <ScrollReveal key={index} delay={index * 0.05}>
+                  <GlassCard strong hover className="overflow-hidden">
+                    <div className="p-5 md:p-6">
+                      <div className="mb-4 flex items-start justify-between gap-4">
+                        <Badge tone="azure">자격증 {index + 1}</Badge>
+                        <button
+                          type="button"
+                          onClick={() => removeCertificate(index)}
+                          aria-label="자격증 삭제"
+                          className="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-white/60 bg-white/60 text-coral-500 shadow-glass-sm backdrop-blur-md transition-all duration-300 hover:-translate-y-0.5 hover:bg-coral-100 hover:text-coral-600 hover:shadow-glass"
+                        >
+                          <TrashIcon className="h-5 w-5" />
+                        </button>
+                      </div>
+                      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+                        <Field label="자격증명">
+                          <GlassInput
+                            type="text"
+                            value={cert.name}
+                            onChange={(e) => updateCertificate(index, 'name', e.target.value)}
+                            placeholder="자격증명"
+                          />
+                        </Field>
+
+                        <Field label="발급기관">
+                          <GlassInput
+                            type="text"
+                            value={cert.issuer}
+                            onChange={(e) => updateCertificate(index, 'issuer', e.target.value)}
+                            placeholder="발급기관"
+                          />
+                        </Field>
+
+                        <Field label="발급일">
+                          <GlassInput
+                            type="text"
+                            value={cert.issueDate || ''}
+                            onChange={(e) => updateCertificate(index, 'issueDate', e.target.value)}
+                            placeholder="YYYY-MM 형식으로 입력 (예: 2023-05)"
+                          />
+                        </Field>
+                      </div>
+                    </div>
+                  </GlassCard>
+                </ScrollReveal>
+              ))}
+            </div>
+          )}
+        </section>
+      </ScrollReveal>
+
       {/* Awards Section */}
-      <div>
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-medium text-gray-900">수상 경력</h3>
-          <button
-            type="button"
-            onClick={addAward}
-            className="inline-flex items-center px-3 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700"
-          >
-            <PlusIcon className="h-4 w-4 mr-1" />
-            수상 경력 추가
-          </button>
-        </div>
-        {data.awards?.length === 0 ? (
-          <div className="text-center py-8 bg-gray-50 rounded-lg">
-            <p className="text-gray-500">등록된 수상 경력이 없습니다.</p>
+      <ScrollReveal>
+        <section className="space-y-4">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+            <div className="space-y-2">
+              <span className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-azure-600">
+                <TrophyIcon className="h-4 w-4" />
+                Awards
+              </span>
+              <h3 className="font-display text-2xl font-bold tracking-tight text-ink-900">
+                수상 경력
+              </h3>
+              <p className="text-sm leading-relaxed text-ink-500">
+                수상 이력을 추가해주세요.
+              </p>
+            </div>
+            <GlassButton
+              type="button"
+              onClick={addAward}
+              variant="primary"
+              size="sm"
+            >
+              <PlusIcon className="h-4 w-4" />
+              수상 경력 추가
+            </GlassButton>
           </div>
-        ) : (
-          <div className="space-y-4">
-            {data.awards?.map((award, index) => (
-              <div key={index} className="bg-gray-50 rounded-lg p-4">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                  <input
-                    type="text"
-                    value={award.title}
-                    onChange={(e) => updateAward(index, 'title', e.target.value)}
-                    placeholder="수상명"
-                    className="px-3 py-2 border border-gray-300 rounded-lg"
-                  />
-                  <input
-                    type="text"
-                    value={award.organization}
-                    onChange={(e) => updateAward(index, 'organization', e.target.value)}
-                    placeholder="수여기관"
-                    className="px-3 py-2 border border-gray-300 rounded-lg"
-                  />
-                  <div className="flex gap-2">
-                    <input
-                      type="text"
-                      value={award.date || ''}
-                      onChange={(e) => updateAward(index, 'date', e.target.value)}
-                      placeholder="YYYY-MM 형식으로 입력 (예: 2023-05)"
-                      className="flex-1 px-3 py-2 border border-gray-300 rounded-lg"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => removeAward(index)}
-                      className="text-red-600 hover:text-red-700 px-2"
-                    >
-                      삭제
-                    </button>
-                  </div>
-                </div>
+
+          {data.awards?.length === 0 ? (
+            <div className="glass-card flex flex-col items-center justify-center gap-4 rounded-3xl px-6 py-10 text-center">
+              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-azure-400 to-azure-600 text-white shadow-glow">
+                <TrophyIcon className="h-7 w-7" />
               </div>
-            ))}
-          </div>
-        )}
-      </div>
+              <p className="text-ink-500">등록된 수상 경력이 없습니다.</p>
+              <GlassButton
+                type="button"
+                onClick={addAward}
+                variant="secondary"
+                size="sm"
+              >
+                <PlusIcon className="h-4 w-4" />
+                첫 수상 경력 추가하기
+              </GlassButton>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {data.awards?.map((award, index) => (
+                <ScrollReveal key={index} delay={index * 0.05}>
+                  <GlassCard strong hover className="overflow-hidden">
+                    <div className="p-5 md:p-6">
+                      <div className="mb-4 flex items-start justify-between gap-4">
+                        <Badge tone="honey">수상 {index + 1}</Badge>
+                        <button
+                          type="button"
+                          onClick={() => removeAward(index)}
+                          aria-label="수상 경력 삭제"
+                          className="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-white/60 bg-white/60 text-coral-500 shadow-glass-sm backdrop-blur-md transition-all duration-300 hover:-translate-y-0.5 hover:bg-coral-100 hover:text-coral-600 hover:shadow-glass"
+                        >
+                          <TrashIcon className="h-5 w-5" />
+                        </button>
+                      </div>
+                      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+                        <Field label="수상명">
+                          <GlassInput
+                            type="text"
+                            value={award.title}
+                            onChange={(e) => updateAward(index, 'title', e.target.value)}
+                            placeholder="수상명"
+                          />
+                        </Field>
+
+                        <Field label="수여기관">
+                          <GlassInput
+                            type="text"
+                            value={award.organization}
+                            onChange={(e) => updateAward(index, 'organization', e.target.value)}
+                            placeholder="수여기관"
+                          />
+                        </Field>
+
+                        <Field label="수상일">
+                          <GlassInput
+                            type="text"
+                            value={award.date || ''}
+                            onChange={(e) => updateAward(index, 'date', e.target.value)}
+                            placeholder="YYYY-MM 형식으로 입력 (예: 2023-05)"
+                          />
+                        </Field>
+                      </div>
+                    </div>
+                  </GlassCard>
+                </ScrollReveal>
+              ))}
+            </div>
+          )}
+        </section>
+      </ScrollReveal>
     </div>
   );
 }

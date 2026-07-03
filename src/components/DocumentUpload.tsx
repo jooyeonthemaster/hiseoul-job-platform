@@ -1,7 +1,10 @@
 'use client';
 
 import { useState, useRef, useCallback } from 'react';
+import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { DocumentIcon, CloudArrowUpIcon, XMarkIcon, ArrowDownTrayIcon } from '@heroicons/react/24/outline';
+import { GlassButton } from '@/components/ui/GlassButton';
+import { Badge } from '@/components/ui/Badge';
 
 interface UploadedDocument {
   url: string;
@@ -20,9 +23,9 @@ interface DocumentUploadProps {
   allowedTypes?: string[];
 }
 
-export default function DocumentUpload({ 
-  onUploadSuccess, 
-  onUploadError, 
+export default function DocumentUpload({
+  onUploadSuccess,
+  onUploadError,
   className = '',
   maxSize = 20,
   allowedTypes = ['.pdf', '.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx', '.hwp', '.txt', '.rtf', '.zip', '.rar']
@@ -32,6 +35,7 @@ export default function DocumentUpload({
   const [uploadProgress, setUploadProgress] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const reduce = useReducedMotion();
 
   const formatFileSize = (bytes: number): string => {
     if (bytes === 0) return '0 Bytes';
@@ -76,7 +80,7 @@ export default function DocumentUpload({
     // 파일 확장자 검증
     const fileName = file.name.toLowerCase();
     const hasValidExtension = allowedTypes.some(type => fileName.endsWith(type));
-    
+
     if (!hasValidExtension) {
       return `지원되지 않는 파일 형식입니다. 지원 형식: ${allowedTypes.join(', ')}`;
     }
@@ -171,21 +175,21 @@ export default function DocumentUpload({
     try {
       // 🚀 방법 1: Unsigned Upload 시도 (preset 사용)
       console.log('🚀 Unsigned Upload 시도 중 (preset: document_uploads)...');
-      
+
       const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME || 'djhocuyhp';
       const uploadUrl = `https://api.cloudinary.com/v1_1/${cloudName}/raw/upload`;
-      
+
       const formData = new FormData();
       formData.append('file', selectedFile);
       formData.append('upload_preset', 'document_uploads');
       formData.append('resource_type', 'raw');
-      
+
       console.log('Unsigned 업로드 파라미터:');
       console.log('- upload_preset: document_uploads');
       console.log('- resource_type: raw');
       console.log('- cloud_name:', cloudName);
       console.log('- upload_url:', uploadUrl);
-      
+
       // XMLHttpRequest를 사용하여 업로드 진행률 추적
       const uploadPromise = new Promise<any>((resolve, reject) => {
         const xhr = new XMLHttpRequest();
@@ -229,7 +233,7 @@ export default function DocumentUpload({
       } catch (error: any) {
         if (error.message === 'unsigned_failed') {
           console.log('🔄 Unsigned 실패, 서명 방식으로 재시도...');
-          
+
           // 🔐 방법 2: 서명된 업로드 (fallback)
           const signatureResponse = await fetch('/api/upload-signature', {
             method: 'POST',
@@ -313,10 +317,10 @@ export default function DocumentUpload({
         downloadUrl: result.secure_url, // 클라우디너리 URL이 다운로드 URL
         publicId: result.public_id,
       });
-      
+
       setSelectedFile(null);
       setUploadProgress(100);
-      
+
     } catch (error) {
       console.error('업로드 오류:', error);
       onUploadError(error instanceof Error ? error.message : '업로드 중 오류가 발생했습니다.');
@@ -343,7 +347,7 @@ export default function DocumentUpload({
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     setIsDragging(false);
-    
+
     const files = e.dataTransfer.files;
     if (files.length > 0) {
       const file = files[0];
@@ -373,81 +377,130 @@ export default function DocumentUpload({
         className="hidden"
       />
 
-      {!selectedFile && !isUploading && (
-        <div
-          onClick={handleClick}
-          onDragOver={handleDragOver}
-          onDragLeave={handleDragLeave}
-          onDrop={handleDrop}
-          className={`
-            relative border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors
-            ${isDragging 
-              ? 'border-blue-500 bg-blue-50' 
-              : 'border-gray-300 hover:border-gray-400 hover:bg-gray-50'
-            }
-          `}
-        >
-          <CloudArrowUpIcon className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-          <div className="text-lg font-medium text-gray-900 mb-2">
-            문서 파일을 업로드하세요
-          </div>
-          <div className="text-sm text-gray-500 mb-4">
-            파일을 드래그하여 놓거나 클릭하여 선택하세요
-          </div>
-          <div className="text-xs text-gray-400">
-            최대 {maxSize}MB<br />
-            지원 형식: {allowedTypes.join(', ')}
-          </div>
-        </div>
-      )}
-
-      {selectedFile && !isUploading && (
-        <div className="border border-gray-300 rounded-lg p-4">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center space-x-3">
-              <span className="text-2xl">{getFileIcon(selectedFile.name)}</span>
-              <div>
-                <div className="font-medium text-gray-900">{selectedFile.name}</div>
-                <div className="text-sm text-gray-500">{formatFileSize(selectedFile.size)}</div>
-              </div>
-            </div>
-            <button
-              onClick={handleRemoveFile}
-              className="text-gray-400 hover:text-gray-600"
-            >
-              <XMarkIcon className="h-5 w-5" />
-            </button>
-          </div>
-          
-          <button
-            onClick={handleUpload}
-            className="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 transition-colors"
+      <AnimatePresence mode="wait">
+        {!selectedFile && !isUploading && (
+          <motion.div
+            key="dropzone"
+            initial={reduce ? false : { opacity: 0, y: 12 }}
+            animate={reduce ? {} : { opacity: 1, y: 0 }}
+            exit={reduce ? {} : { opacity: 0, y: -12 }}
+            transition={{ duration: 0.32, ease: [0.22, 1, 0.36, 1] }}
+            onClick={handleClick}
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+            onDrop={handleDrop}
+            whileHover={reduce ? undefined : { y: -4 }}
+            whileTap={reduce ? undefined : { scale: 0.99 }}
+            className={`
+              group relative overflow-hidden rounded-4xl p-10 sm:p-14 text-center cursor-pointer
+              backdrop-blur-xl border shadow-glass transition-all duration-300 ease-out
+              ${isDragging
+                ? 'border-azure-400 bg-azure-50/70 shadow-glass-lg ring-2 ring-azure-400/40'
+                : 'border-white/60 bg-white/55 hover:bg-white/70 hover:shadow-glass-lg'
+              }
+            `}
           >
-            업로드
-          </button>
-        </div>
-      )}
-
-      {isUploading && (
-        <div className="border border-gray-300 rounded-lg p-4">
-          <div className="flex items-center space-x-3 mb-4">
-            <span className="text-2xl">{selectedFile ? getFileIcon(selectedFile.name) : '📄'}</span>
-            <div>
-              <div className="font-medium text-gray-900">
-                {selectedFile?.name || '업로드 중...'}
-              </div>
-              <div className="text-sm text-gray-500">업로드 중...</div>
-            </div>
-          </div>
-          
-          <div className="w-full bg-gray-200 rounded-full h-2">
-            <div 
-              className="bg-blue-600 h-2 rounded-full transition-all duration-300"
-              style={{ width: `${uploadProgress}%` }}
+            {/* soft azure aura */}
+            <div
+              className={`pointer-events-none absolute -top-24 left-1/2 h-64 w-64 -translate-x-1/2 rounded-full bg-gradient-to-br from-azure-300/40 via-sky-cool-300/30 to-transparent blur-3xl transition-opacity duration-500 ${
+                isDragging ? 'opacity-100' : 'opacity-60 group-hover:opacity-90'
+              }`}
             />
-          </div>
-        </div>
-      )}
+
+            <div className="relative">
+              <div
+                className={`mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-3xl border border-white/70 bg-gradient-to-br from-azure-500 to-azure-600 shadow-glow transition-transform duration-300 ${
+                  isDragging ? 'scale-110' : 'group-hover:scale-105'
+                }`}
+              >
+                <CloudArrowUpIcon className="h-10 w-10 text-white" />
+              </div>
+
+              <div className="mb-2 font-display text-xl sm:text-2xl font-semibold tracking-tight text-ink-900">
+                문서 파일을 업로드하세요
+              </div>
+              <div className="mb-6 text-sm sm:text-base text-ink-500">
+                파일을 드래그하여 놓거나 클릭하여 선택하세요
+              </div>
+
+              <div className="mx-auto inline-flex flex-col items-center gap-2 rounded-2xl border border-white/60 bg-white/50 px-5 py-3 text-xs text-ink-400 backdrop-blur-sm">
+                <span className="font-medium text-ink-500">최대 {maxSize}MB</span>
+                <span className="leading-relaxed">지원 형식: {allowedTypes.join(', ')}</span>
+              </div>
+            </div>
+          </motion.div>
+        )}
+
+        {selectedFile && !isUploading && (
+          <motion.div
+            key="selected"
+            initial={reduce ? false : { opacity: 0, y: 12 }}
+            animate={reduce ? {} : { opacity: 1, y: 0 }}
+            exit={reduce ? {} : { opacity: 0, y: -12 }}
+            transition={{ duration: 0.32, ease: [0.22, 1, 0.36, 1] }}
+            className="relative rounded-4xl border border-white/60 bg-white/75 p-6 shadow-glass backdrop-blur-xl"
+          >
+            <div className="mb-5 flex items-center justify-between gap-4">
+              <div className="flex items-center gap-4">
+                <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-white/70 bg-azure-50/80 text-2xl shadow-glass-sm">
+                  {getFileIcon(selectedFile.name)}
+                </span>
+                <div className="min-w-0">
+                  <div className="truncate font-semibold text-ink-900">{selectedFile.name}</div>
+                  <div className="text-sm text-ink-500">{formatFileSize(selectedFile.size)}</div>
+                </div>
+              </div>
+              <button
+                onClick={handleRemoveFile}
+                aria-label="파일 제거"
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-white/60 bg-white/60 text-ink-400 transition-all duration-200 hover:bg-coral-100/70 hover:text-coral-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-azure-400/50"
+              >
+                <XMarkIcon className="h-5 w-5" />
+              </button>
+            </div>
+
+            <GlassButton onClick={handleUpload} variant="primary" className="w-full">
+              <CloudArrowUpIcon className="h-5 w-5" />
+              업로드
+            </GlassButton>
+          </motion.div>
+        )}
+
+        {isUploading && (
+          <motion.div
+            key="uploading"
+            initial={reduce ? false : { opacity: 0, y: 12 }}
+            animate={reduce ? {} : { opacity: 1, y: 0 }}
+            exit={reduce ? {} : { opacity: 0, y: -12 }}
+            transition={{ duration: 0.32, ease: [0.22, 1, 0.36, 1] }}
+            className="relative rounded-4xl border border-white/60 bg-white/75 p-6 shadow-glass backdrop-blur-xl"
+          >
+            <div className="mb-5 flex items-center justify-between gap-4">
+              <div className="flex items-center gap-4">
+                <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-white/70 bg-azure-50/80 text-2xl shadow-glass-sm">
+                  {selectedFile ? getFileIcon(selectedFile.name) : '📄'}
+                </span>
+                <div className="min-w-0">
+                  <div className="truncate font-semibold text-ink-900">
+                    {selectedFile?.name || '업로드 중...'}
+                  </div>
+                  <div className="text-sm text-ink-500">업로드 중...</div>
+                </div>
+              </div>
+              <Badge tone="azure">{uploadProgress}%</Badge>
+            </div>
+
+            <div className="h-2.5 w-full overflow-hidden rounded-full bg-ink-100/80">
+              <motion.div
+                className="h-full rounded-full bg-gradient-to-r from-azure-400 via-sky-cool-400 to-azure-600 shadow-glow"
+                initial={false}
+                animate={{ width: `${uploadProgress}%` }}
+                transition={{ duration: 0.3, ease: 'easeOut' }}
+              />
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
@@ -500,8 +553,11 @@ export function DocumentList({ documents, onRemove }: DocumentListProps) {
 
   if (documents.length === 0) {
     return (
-      <div className="text-center py-8 text-gray-500">
-        업로드된 문서가 없습니다.
+      <div className="rounded-4xl border border-white/60 bg-white/50 px-6 py-12 text-center shadow-glass backdrop-blur-xl">
+        <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl border border-white/70 bg-azure-50/80 shadow-glass-sm">
+          <DocumentIcon className="h-7 w-7 text-azure-500" />
+        </div>
+        <p className="text-ink-500">업로드된 문서가 없습니다.</p>
       </div>
     );
   }
@@ -509,35 +565,43 @@ export function DocumentList({ documents, onRemove }: DocumentListProps) {
   return (
     <div className="space-y-3">
       {documents.map((document, index) => (
-        <div key={index} className="border border-gray-200 rounded-lg p-4 flex items-center justify-between">
-          <div className="flex items-center space-x-3">
-            <span className="text-2xl">{getFileIcon(document.fileName)}</span>
-            <div>
-              <div className="font-medium text-gray-900">{document.fileName}</div>
-              <div className="text-sm text-gray-500">{formatFileSize(document.fileSize)}</div>
+        <motion.div
+          key={index}
+          initial={{ opacity: 0, y: 16 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, amount: 0.3 }}
+          transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1], delay: index * 0.05 }}
+          whileHover={{ y: -4 }}
+          className="flex items-center justify-between gap-4 rounded-3xl border border-white/60 bg-white/65 p-5 shadow-glass backdrop-blur-xl transition-shadow duration-300 hover:shadow-glass-lg"
+        >
+          <div className="flex items-center gap-4">
+            <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-white/70 bg-azure-50/80 text-2xl shadow-glass-sm">
+              {getFileIcon(document.fileName)}
+            </span>
+            <div className="min-w-0">
+              <div className="truncate font-semibold text-ink-900">{document.fileName}</div>
+              <div className="text-sm text-ink-500">{formatFileSize(document.fileSize)}</div>
             </div>
           </div>
-          
-          <div className="flex items-center space-x-2">
-            <button
-              onClick={() => handleDownload(document)}
-              className="flex items-center space-x-1 bg-blue-600 text-white px-3 py-1 rounded-md hover:bg-blue-700 transition-colors text-sm"
-            >
+
+          <div className="flex shrink-0 items-center gap-2">
+            <GlassButton onClick={() => handleDownload(document)} variant="primary" size="sm">
               <ArrowDownTrayIcon className="h-4 w-4" />
               <span>다운로드</span>
-            </button>
-            
+            </GlassButton>
+
             {onRemove && (
               <button
                 onClick={() => onRemove(document.publicId)}
-                className="text-gray-400 hover:text-red-600 transition-colors"
+                aria-label="문서 삭제"
+                className="flex h-9 w-9 items-center justify-center rounded-full border border-white/60 bg-white/60 text-ink-400 transition-all duration-200 hover:bg-coral-100/70 hover:text-coral-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-azure-400/50"
               >
                 <XMarkIcon className="h-5 w-5" />
               </button>
             )}
           </div>
-        </div>
+        </motion.div>
       ))}
     </div>
   );
-} 
+}

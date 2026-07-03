@@ -7,18 +7,12 @@ import { useAuth } from '@/contexts/AuthContext';
 import { getUserData } from '@/lib/auth';
 import { collection, query, where, getDocs, orderBy } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import { motion } from 'framer-motion';
 import {
   EnvelopeIcon,
-  ClockIcon,
-  CheckCircleIcon,
-  XCircleIcon,
-  EyeIcon,
   ArrowLeftIcon,
   UserIcon,
   CurrencyDollarIcon,
   CalendarIcon,
-  DocumentTextIcon
 } from '@heroicons/react/24/outline';
 import { GlassButton } from '@/components/ui/GlassButton';
 import { GlassCard } from '@/components/ui/GlassCard';
@@ -48,7 +42,8 @@ export default function InquiriesPage() {
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [inquiries, setInquiries] = useState<JobInquiry[]>([]);
-  const [filter, setFilter] = useState<'all' | 'sent' | 'read' | 'responded' | 'accepted' | 'rejected'>('all');
+  // 관리자 중개형: 구직자의 응답(읽음/수락/거절) 상태는 기업에게 노출하지 않는다.
+  // 기업 본인이 '보낸 제안 목록'만 표시한다.
 
   useEffect(() => {
     const loadInquiries = async () => {
@@ -110,26 +105,8 @@ export default function InquiriesPage() {
     loadInquiries();
   }, [user, router]);
 
-  const filteredInquiries = filter === 'all'
-    ? inquiries
-    : inquiries.filter(inquiry => inquiry.status === filter);
+  const filteredInquiries = inquiries;
 
-  const getStatusBadge = (status: string) => {
-    const badges = {
-      sent: { tone: 'azure' as const, icon: EnvelopeIcon, text: '발송됨' },
-      read: { tone: 'honey' as const, icon: EyeIcon, text: '읽음' },
-      responded: { tone: 'azure' as const, icon: DocumentTextIcon, text: '응답함' },
-      accepted: { tone: 'mint' as const, icon: CheckCircleIcon, text: '수락' },
-      rejected: { tone: 'coral' as const, icon: XCircleIcon, text: '거절' }
-    };
-
-    const badge = badges[status as keyof typeof badges];
-    return (
-      <Badge tone={badge.tone} icon={<badge.icon className="w-4 h-4" />}>
-        {badge.text}
-      </Badge>
-    );
-  };
   if (loading) {
     return (
       <div className="relative min-h-screen flex items-center justify-center overflow-hidden">
@@ -163,46 +140,8 @@ export default function InquiriesPage() {
               받은 문의 관리
             </span>
 
-            <h1 className="font-display text-3xl md:text-4xl lg:text-5xl font-bold tracking-tight text-ink-900 leading-[1.1]">채용 문의 관리</h1>
-            <p className="text-ink-500 mt-4 text-base md:text-lg leading-relaxed">발송한 채용 제안의 상태를 확인하고 관리하세요.</p>
-          </div>
-        </ScrollReveal>
-
-        {/* Filter Tabs */}
-        <ScrollReveal delay={0.06}>
-          <div className="glass-strong rounded-3xl shadow-glass p-2 mb-8">
-            <nav className="flex flex-wrap gap-1.5">
-              {[
-                { key: 'all', label: '전체', count: inquiries.length },
-                { key: 'sent', label: '발송됨', count: inquiries.filter(i => i.status === 'sent').length },
-                { key: 'read', label: '읽음', count: inquiries.filter(i => i.status === 'read').length },
-                { key: 'responded', label: '응답함', count: inquiries.filter(i => i.status === 'responded').length },
-                { key: 'accepted', label: '수락', count: inquiries.filter(i => i.status === 'accepted').length },
-                { key: 'rejected', label: '거절', count: inquiries.filter(i => i.status === 'rejected').length }
-              ].map((tab) => (
-                <button
-                  key={tab.key}
-                  onClick={() => setFilter(tab.key as any)}
-                  className={`relative flex-1 min-w-[5.5rem] px-4 py-2.5 rounded-2xl text-sm font-semibold transition-colors duration-300 ${
-                    filter === tab.key
-                      ? 'text-white'
-                      : 'text-ink-500 hover:text-ink-800 hover:bg-azure-50/60'
-                  }`}
-                >
-                  {filter === tab.key && (
-                    <motion.span
-                      layoutId="inquiryFilterPill"
-                      className="absolute inset-0 rounded-2xl bg-gradient-to-r from-azure-500 to-azure-600 shadow-glow"
-                      transition={{ type: 'spring', stiffness: 400, damping: 32 }}
-                    />
-                  )}
-                  <span className="relative">
-                    {tab.label}
-                    <span className="ml-2 opacity-90">({tab.count})</span>
-                  </span>
-                </button>
-              ))}
-            </nav>
+            <h1 className="font-display text-3xl md:text-4xl lg:text-5xl font-bold tracking-tight text-ink-900 leading-[1.1]">보낸 채용 제안</h1>
+            <p className="text-ink-500 mt-4 text-base md:text-lg leading-relaxed">발송한 채용 제안 목록입니다. 매칭 결과는 관리자를 통해 안내됩니다.</p>
           </div>
         </ScrollReveal>
 
@@ -213,11 +152,9 @@ export default function InquiriesPage() {
               <div className="w-20 h-20 mx-auto mb-6 rounded-3xl bg-azure-50 border border-azure-100 flex items-center justify-center text-azure-500 shadow-glass-sm">
                 <EnvelopeIcon className="w-10 h-10" />
               </div>
-              <h3 className="text-xl md:text-2xl font-semibold text-ink-900 mb-3">채용 문의가 없습니다</h3>
+              <h3 className="text-xl md:text-2xl font-semibold text-ink-900 mb-3">보낸 채용 제안이 없습니다</h3>
               <p className="text-ink-500 mb-8 leading-relaxed">
-                {filter === 'all'
-                  ? '아직 발송한 채용 제안이 없습니다.'
-                  : `${filter} 상태의 채용 제안이 없습니다.`}
+                아직 발송한 채용 제안이 없습니다.
               </p>
               <GlassButton href="/employer-dashboard" size="md">
                 인재 검색하러 가기
@@ -244,7 +181,7 @@ export default function InquiriesPage() {
                         </p>
                       </div>
                     </div>
-                    {getStatusBadge(inquiry.status)}
+                    <Badge tone="azure" icon={<EnvelopeIcon className="w-4 h-4" />}>발송됨</Badge>
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-6 text-sm">
@@ -283,11 +220,6 @@ export default function InquiriesPage() {
                       >
                         포트폴리오 보기
                       </GlassButton>
-                      {inquiry.status === 'responded' && (
-                        <GlassButton type="button" size="sm">
-                          응답 확인
-                        </GlassButton>
-                      )}
                     </div>
                   </div>
                 </GlassCard>
@@ -296,42 +228,19 @@ export default function InquiriesPage() {
           </ScrollRevealStagger>
         )}
 
-        {/* Stats Summary */}
+        {/* Stats Summary — 관리자 중개형: 응답/수락 등 상호 정보는 제외, 본인 발송 건수만 */}
         <ScrollReveal delay={0.08}>
           <GlassCard strong className="mt-12 p-7 md:p-8">
-            <h3 className="text-lg md:text-xl font-semibold text-ink-900 mb-6">채용 문의 통계</h3>
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+            <h3 className="text-lg md:text-xl font-semibold text-ink-900 mb-6">채용 제안 현황</h3>
+            <div className="grid grid-cols-1 gap-4">
               <div className="rounded-2xl bg-azure-50/40 border border-azure-100/60 px-4 py-5 text-center">
                 <div className="font-display text-2xl md:text-3xl font-bold text-ink-900">{inquiries.length}</div>
-                <div className="text-sm text-ink-500 mt-1">전체 제안</div>
-              </div>
-              <div className="rounded-2xl bg-azure-50/40 border border-azure-100/60 px-4 py-5 text-center">
-                <div className="font-display text-2xl md:text-3xl font-bold text-azure-600">
-                  {inquiries.filter(i => i.status === 'sent').length}
-                </div>
-                <div className="text-sm text-ink-500 mt-1">발송됨</div>
-              </div>
-              <div className="rounded-2xl bg-azure-50/40 border border-azure-100/60 px-4 py-5 text-center">
-                <div className="font-display text-2xl md:text-3xl font-bold text-honey-600">
-                  {inquiries.filter(i => i.status === 'read').length}
-                </div>
-                <div className="text-sm text-ink-500 mt-1">읽음</div>
-              </div>
-              <div className="rounded-2xl bg-azure-50/40 border border-azure-100/60 px-4 py-5 text-center">
-                <div className="font-display text-2xl md:text-3xl font-bold text-mint-600">
-                  {inquiries.filter(i => i.status === 'accepted').length}
-                </div>
-                <div className="text-sm text-ink-500 mt-1">수락</div>
-              </div>
-              <div className="rounded-2xl bg-azure-50/40 border border-azure-100/60 px-4 py-5 text-center">
-                <div className="font-display text-2xl md:text-3xl font-bold text-gradient-azure">
-                  {inquiries.length > 0
-                    ? Math.round((inquiries.filter(i => i.status === 'accepted').length / inquiries.length) * 100)
-                    : 0}%
-                </div>
-                <div className="text-sm text-ink-500 mt-1">수락률</div>
+                <div className="text-sm text-ink-500 mt-1">보낸 제안</div>
               </div>
             </div>
+            <p className="text-sm text-ink-400 mt-5 leading-relaxed">
+              면접심사 매칭은 관리자가 진행합니다. 개별 제안의 진행 상황은 관리자를 통해 안내됩니다.
+            </p>
           </GlassCard>
         </ScrollReveal>
       </div>

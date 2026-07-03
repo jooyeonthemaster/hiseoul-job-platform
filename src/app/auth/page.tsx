@@ -4,8 +4,19 @@ import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { signIn, signUp, resetPassword, signInWithGoogle } from '@/lib/auth';
 import { useAuth } from '@/contexts/AuthContext';
-import { motion } from 'framer-motion';
-import { EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline';
+import { motion, AnimatePresence } from 'framer-motion';
+import {
+  EyeIcon,
+  EyeSlashIcon,
+  ExclamationCircleIcon,
+  CheckCircleIcon,
+  UserIcon,
+  BuildingOfficeIcon,
+  ArrowRightIcon,
+} from '@heroicons/react/24/outline';
+import { AuroraBackground } from '@/components/ui/AuroraBackground';
+import { GlassButton } from '@/components/ui/GlassButton';
+import { GlassInput } from '@/components/ui/GlassField';
 
 type AuthMode = 'login' | 'signup' | 'reset';
 type UserRole = 'jobseeker' | 'employer';
@@ -13,9 +24,12 @@ type UserRole = 'jobseeker' | 'employer';
 function AuthContent() {
   const searchParams = useSearchParams();
   const initialMode = (searchParams?.get('mode') as AuthMode) || 'login';
-  
+  const typeParam = searchParams?.get('type');
+  const initialRole: UserRole =
+    typeParam === 'employer' || typeParam === 'jobseeker' ? typeParam : 'jobseeker';
+
   const [mode, setMode] = useState<AuthMode>(initialMode);
-  const [role, setRole] = useState<UserRole>('jobseeker');
+  const [role, setRole] = useState<UserRole>(initialRole);
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -29,7 +43,7 @@ function AuthContent() {
   const [googleLoading, setGoogleLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
-  
+
   const router = useRouter();
   const { user } = useAuth();
 
@@ -44,10 +58,11 @@ function AuthContent() {
   // 로그인된 사용자는 로딩 상태 표시
   if (user) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-white to-indigo-50">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">리다이렉트 중...</p>
+      <div className="relative min-h-screen flex items-center justify-center overflow-hidden bg-gradient-to-b from-azure-50/70 via-white to-[#eef4fc]/90">
+        <AuroraBackground />
+        <div className="relative z-10 text-center">
+          <div className="animate-spin rounded-full h-9 w-9 border-2 border-azure-200 border-t-azure-500 mx-auto"></div>
+          <p className="mt-4 text-ink-500">리다이렉트 중...</p>
         </div>
       </div>
     );
@@ -62,7 +77,7 @@ function AuthContent() {
     try {
       if (mode === 'login') {
         const user = await signIn(formData.email, formData.password, role);
-        
+
         if (user) {
           if (role === 'employer') {
             router.push('/employer-dashboard');
@@ -80,9 +95,9 @@ function AuthContent() {
           throw new Error('비밀번호는 최소 6자 이상이어야 합니다.');
         }
         const result = await signUp(
-          formData.email, 
-          formData.password, 
-          formData.name, 
+          formData.email,
+          formData.password,
+          formData.name,
           role,
           role === 'employer' ? { companyName: formData.companyName, position: formData.position } : undefined
         );
@@ -116,7 +131,7 @@ function AuthContent() {
 
     try {
       const result = await signInWithGoogle(role);
-      
+
       if (result) {
         console.log('✅ 구글 로그인 성공:', result);
         // AuthContext가 사용자 데이터를 로드할 시간을 주기 위해 약간의 지연
@@ -154,50 +169,72 @@ function AuthContent() {
     });
   };
 
+  const roleOptions: { value: UserRole; label: string; Icon: typeof UserIcon }[] = [
+    { value: 'jobseeker', label: '구직자', Icon: UserIcon },
+    { value: 'employer', label: '기업', Icon: BuildingOfficeIcon },
+  ];
+
+  const compactInputClass = '!rounded-xl !py-2.5 text-sm sm:text-base';
+  const compactButtonClass = 'w-full !rounded-xl !px-6 !py-3 !text-base sm:!text-base';
+
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-white to-indigo-50 py-12 px-4 sm:px-6 lg:px-8">
+    <div className="relative min-h-screen flex items-start justify-center overflow-x-hidden overflow-y-auto bg-gradient-to-b from-azure-50/70 via-white to-[#eef4fc]/90 py-6 px-5 sm:px-8 lg:py-8">
+      <AuroraBackground variant="vivid" />
+
       <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-        className="max-w-md w-full space-y-8"
+        initial={{ opacity: 0, y: 24, scale: 0.98 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+        className="relative z-10 w-full min-w-0 max-w-[calc(100vw_-_2.5rem)] sm:max-w-md"
       >
-        <div>
-          <h2 className="mt-6 text-center text-3xl font-bold text-gray-900">
-            {mode === 'login' && '테크벤처 잡 매칭에 로그인'}
-            {mode === 'signup' && '테크벤처 잡 매칭 회원가입'}
-            {mode === 'reset' && '비밀번호 재설정'}
-          </h2>
+        {/* 글래스 카드 */}
+        <div className="relative w-full min-w-0 glass-strong rounded-4xl shadow-glass-lg p-5 sm:p-6">
+          {/* 헤더 */}
+          <div className="text-center">
+            <span className="inline-flex items-center gap-2 rounded-full px-3 py-1 bg-white/60 backdrop-blur-md border border-white/70 text-azure-700 font-semibold text-xs mb-3 shadow-glass-sm">
+              <span className="w-1.5 h-1.5 rounded-full bg-azure-500 animate-pulse" />
+              면접심사 매칭 플랫폼
+            </span>
+            <h2 className="font-display text-xl sm:text-2xl font-bold leading-tight tracking-tight text-ink-900">
+              {mode === 'login' && '면접심사 매칭 플랫폼에 로그인'}
+              {mode === 'signup' && '면접심사 매칭 플랫폼 회원가입'}
+              {mode === 'reset' && '비밀번호 재설정'}
+            </h2>
+          </div>
+
+          {/* 회원 유형 선택 */}
           <div className="mt-4">
-            <label className="block text-sm font-medium text-gray-700 mb-2 text-center">
+            <label className="block text-xs sm:text-sm font-medium text-ink-700 mb-2 text-center">
               회원 유형을 선택해주세요
             </label>
-            <div className="grid grid-cols-2 gap-3">
-              <button
-                type="button"
-                onClick={() => setRole('jobseeker')}
-                className={`p-3 text-sm font-medium rounded-lg border-2 transition-colors ${
-                  role === 'jobseeker'
-                    ? 'border-indigo-600 bg-indigo-50 text-indigo-700'
-                    : 'border-gray-300 text-gray-700 hover:border-gray-400'
-                }`}
-              >
-                구직자
-              </button>
-              <button
-                type="button"
-                onClick={() => setRole('employer')}
-                className={`p-3 text-sm font-medium rounded-lg border-2 transition-colors ${
-                  role === 'employer'
-                    ? 'border-indigo-600 bg-indigo-50 text-indigo-700'
-                    : 'border-gray-300 text-gray-700 hover:border-gray-400'
-                }`}
-              >
-                기업
-              </button>
+            <div className="relative grid grid-cols-2 gap-1.5 glass rounded-2xl p-1">
+              {roleOptions.map(({ value, label, Icon }) => (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => setRole(value)}
+                  className={`relative flex items-center justify-center gap-2 px-3 py-2.5 text-sm font-semibold rounded-xl transition-colors duration-300 ${
+                    role === value ? 'text-white' : 'text-ink-500 hover:text-ink-800'
+                  }`}
+                >
+                  {role === value && (
+                    <motion.span
+                      layoutId="authRolePill"
+                      className="absolute inset-0 rounded-xl bg-gradient-to-r from-azure-500 to-azure-600 shadow-glow"
+                      transition={{ type: 'spring', stiffness: 400, damping: 32 }}
+                    />
+                  )}
+                  <span className="relative flex items-center gap-2">
+                    <Icon className="w-4 h-4" />
+                    {label}
+                  </span>
+                </button>
+              ))}
             </div>
           </div>
-          <p className="mt-4 text-center text-sm text-gray-600">
+
+          {/* 모드 전환 안내 */}
+          <p className="mt-3 text-center text-sm text-ink-500">
             {mode === 'login' && '계정이 없으신가요? '}
             {mode === 'signup' && '이미 계정이 있으신가요? '}
             {mode === 'reset' && '로그인 페이지로 '}
@@ -205,7 +242,7 @@ function AuthContent() {
               onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                
+
                 if (mode === 'login') {
                   setMode('signup');
                 } else if (mode === 'signup') {
@@ -216,249 +253,73 @@ function AuthContent() {
                 setError('');
                 setSuccess('');
               }}
-              className="font-medium text-indigo-600 hover:text-indigo-500 cursor-pointer underline"
+              className="font-semibold text-azure-600 hover:text-azure-700 cursor-pointer underline underline-offset-2 decoration-azure-300 hover:decoration-azure-500 transition-colors"
             >
               {mode === 'login' && '회원가입'}
               {mode === 'signup' && '로그인'}
               {mode === 'reset' && '돌아가기'}
             </span>
           </p>
-        </div>
 
-        {error && (
-          <motion.div
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="rounded-md bg-red-50 p-4 mb-4"
-          >
-            <div className="flex">
-              <div className="flex-shrink-0">
-                <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
-                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-                </svg>
-              </div>
-              <div className="ml-3">
-                <h3 className="text-sm font-medium text-red-800">오류</h3>
-                <div className="mt-2 text-sm text-red-700">{error}</div>
-              </div>
-            </div>
-          </motion.div>
-        )}
-
-        {success && (
-          <motion.div
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="rounded-md bg-green-50 p-4 mb-4"
-          >
-            <div className="flex">
-              <div className="flex-shrink-0">
-                <svg className="h-5 w-5 text-green-400" viewBox="0 0 20 20" fill="currentColor">
-                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                </svg>
-              </div>
-              <div className="ml-3">
-                <h3 className="text-sm font-medium text-green-800">성공</h3>
-                <div className="mt-2 text-sm text-green-700">{success}</div>
-              </div>
-            </div>
-          </motion.div>
-        )}
-
-        <motion.form
-          className="mt-8 space-y-6"
-          onSubmit={handleSubmit}
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.2 }}
-        >
-          <div className="space-y-4">
-            {mode === 'signup' && role === 'jobseeker' && (
-              <div>
-                <label htmlFor="name" className="block text-sm font-medium text-gray-700">
-                  이름
-                </label>
-                <input
-                  id="name"
-                  name="name"
-                  type="text"
-                  required
-                  value={formData.name}
-                  onChange={handleInputChange}
-                  className="mt-1 appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-lg focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
-                  placeholder="이름을 입력하세요"
-                />
-              </div>
+          {/* 알림 */}
+          <AnimatePresence mode="wait">
+            {error && (
+              <motion.div
+                key="error"
+                initial={{ opacity: 0, y: -8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -8 }}
+                transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
+                className="mt-4 rounded-2xl bg-coral-100/70 border border-coral-400/40 backdrop-blur-md p-3 shadow-glass-sm"
+              >
+                <div className="flex items-start gap-3">
+                  <ExclamationCircleIcon className="h-5 w-5 text-coral-500 shrink-0 mt-0.5" />
+                  <div>
+                    <h3 className="text-sm font-semibold text-coral-600">오류</h3>
+                    <div className="mt-1 text-sm text-ink-600">{error}</div>
+                  </div>
+                </div>
+              </motion.div>
             )}
 
-            {mode === 'signup' && role === 'employer' && (
-              <>
-                <div>
-                  <label htmlFor="companyName" className="block text-sm font-medium text-gray-700">
-                    회사 이름
-                  </label>
-                  <input
-                    id="companyName"
-                    name="companyName"
-                    type="text"
-                    required
-                    value={formData.companyName}
-                    onChange={handleInputChange}
-                    className="mt-1 appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-lg focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
-                    placeholder="회사 이름을 입력하세요"
-                  />
+            {success && (
+              <motion.div
+                key="success"
+                initial={{ opacity: 0, y: -8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -8 }}
+                transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
+                className="mt-4 rounded-2xl bg-mint-100/70 border border-mint-400/40 backdrop-blur-md p-3 shadow-glass-sm"
+              >
+                <div className="flex items-start gap-3">
+                  <CheckCircleIcon className="h-5 w-5 text-mint-500 shrink-0 mt-0.5" />
+                  <div>
+                    <h3 className="text-sm font-semibold text-mint-600">성공</h3>
+                    <div className="mt-1 text-sm text-ink-600">{success}</div>
+                  </div>
                 </div>
-                
-                <div>
-                  <label htmlFor="name" className="block text-sm font-medium text-gray-700">
-                    담당자 이름
-                  </label>
-                  <input
-                    id="name"
-                    name="name"
-                    type="text"
-                    required
-                    value={formData.name}
-                    onChange={handleInputChange}
-                    className="mt-1 appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-lg focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
-                    placeholder="담당자 이름을 입력하세요"
-                  />
-                </div>
-
-                <div>
-                  <label htmlFor="position" className="block text-sm font-medium text-gray-700">
-                    담당자 직급
-                  </label>
-                  <input
-                    id="position"
-                    name="position"
-                    type="text"
-                    required
-                    value={formData.position}
-                    onChange={handleInputChange}
-                    className="mt-1 appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-lg focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
-                    placeholder="예: 인사팀 대리, 대표, HR 담당자"
-                  />
-                </div>
-              </>
+              </motion.div>
             )}
-
-            <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700">
-                {mode === 'signup' && role === 'employer' ? '담당자 이메일' : '이메일'}
-              </label>
-              <input
-                id="email"
-                name="email"
-                type="email"
-                required
-                value={formData.email}
-                onChange={handleInputChange}
-                className="mt-1 appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-lg focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
-                placeholder={mode === 'signup' && role === 'employer' ? '담당자 이메일 주소' : '이메일 주소'}
-              />
-            </div>
-
-            {mode !== 'reset' && (
-              <div>
-                <label htmlFor="password" className="block text-sm font-medium text-gray-700">
-                  비밀번호
-                </label>
-                <div className="relative mt-1">
-                  <input
-                    id="password"
-                    name="password"
-                    type={showPassword ? 'text' : 'password'}
-                    required
-                    value={formData.password}
-                    onChange={handleInputChange}
-                    className="appearance-none relative block w-full px-3 py-2 pr-10 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-lg focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
-                    placeholder="비밀번호"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute inset-y-0 right-0 pr-3 flex items-center"
-                  >
-                    {showPassword ? (
-                      <EyeSlashIcon className="h-5 w-5 text-gray-400" />
-                    ) : (
-                      <EyeIcon className="h-5 w-5 text-gray-400" />
-                    )}
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {mode === 'signup' && (
-              <div>
-                <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700">
-                  비밀번호 확인
-                </label>
-                <input
-                  id="confirmPassword"
-                  name="confirmPassword"
-                  type="password"
-                  required
-                  value={formData.confirmPassword}
-                  onChange={handleInputChange}
-                  className="mt-1 appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-lg focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
-                  placeholder="비밀번호 확인"
-                />
-              </div>
-            )}
-          </div>
-
-          <div>
-            <motion.button
-              type="submit"
-              disabled={loading}
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-lg text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {loading ? (
-                <div className="flex items-center">
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                  처리 중...
-                </div>
-              ) : (
-                <>
-                  {mode === 'login' && '로그인'}
-                  {mode === 'signup' && '회원가입'}
-                  {mode === 'reset' && '재설정 이메일 발송'}
-                </>
-              )}
-            </motion.button>
-          </div>
+          </AnimatePresence>
 
           {mode !== 'reset' && (
-            <>
-              <div className="relative">
-                <div className="absolute inset-0 flex items-center">
-                  <div className="w-full border-t border-gray-300" />
-                </div>
-                <div className="relative flex justify-center text-sm">
-                  <span className="px-2 bg-white text-gray-500">또는</span>
-                </div>
-              </div>
-
-              <motion.button
+            <div className="mt-4 space-y-2">
+              <GlassButton
                 type="button"
                 onClick={handleGoogleSignIn}
                 disabled={googleLoading || loading}
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                className="group relative w-full flex justify-center py-2 px-4 border border-gray-300 text-sm font-medium rounded-lg text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                variant="secondary"
+                size="lg"
+                className={`${compactButtonClass} !text-ink-700`}
               >
                 {googleLoading ? (
-                  <div className="flex items-center">
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-700 mr-2"></div>
+                  <div className="flex items-center gap-2">
+                    <div className="animate-spin rounded-full h-4 w-4 border-2 border-azure-200 border-t-azure-500"></div>
                     구글 로그인 중...
                   </div>
                 ) : (
-                  <div className="flex items-center">
-                    <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24">
+                  <div className="flex items-center gap-2">
+                    <svg className="w-5 h-5" viewBox="0 0 24 24">
                       <path
                         fill="#4285F4"
                         d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
@@ -479,26 +340,201 @@ function AuthContent() {
                     Google로 {mode === 'login' ? '로그인' : '회원가입'}
                   </div>
                 )}
-              </motion.button>
-            </>
-          )}
+              </GlassButton>
 
-          {mode === 'login' && (
-            <div className="text-center">
-              <button
-                type="button"
-                onClick={() => {
-                  setMode('reset');
-                  setError('');
-                  setSuccess('');
-                }}
-                className="text-sm text-indigo-600 hover:text-indigo-500"
-              >
-                비밀번호를 잊으셨나요?
-              </button>
+              <div className="relative py-0">
+                <div className="absolute inset-0 flex items-center">
+                  <div className="w-full border-t border-ink-100" />
+                </div>
+                <div className="relative flex justify-center text-sm">
+                  <span className="px-3 bg-white/70 backdrop-blur-sm rounded-full text-ink-400">또는 이메일로</span>
+                </div>
+              </div>
             </div>
           )}
-        </motion.form>
+
+          {/* 폼 */}
+          <motion.form
+            className="mt-4 space-y-3"
+            onSubmit={handleSubmit}
+          >
+            <div className={mode === 'signup' ? 'grid grid-cols-1 gap-3 sm:grid-cols-2' : 'space-y-3'}>
+              {mode === 'signup' && role === 'jobseeker' && (
+                <div className="space-y-1.5">
+                  <label htmlFor="name" className="block text-xs sm:text-sm font-medium text-ink-700">
+                    이름
+                  </label>
+                  <GlassInput
+                    id="name"
+                    name="name"
+                    type="text"
+                    required
+                    value={formData.name}
+                    onChange={handleInputChange}
+                    className={compactInputClass}
+                    placeholder="이름을 입력하세요"
+                  />
+                </div>
+              )}
+
+              {mode === 'signup' && role === 'employer' && (
+                <>
+                  <div className="space-y-1.5">
+                    <label htmlFor="companyName" className="block text-xs sm:text-sm font-medium text-ink-700">
+                      회사 이름
+                    </label>
+                    <GlassInput
+                      id="companyName"
+                      name="companyName"
+                      type="text"
+                      required
+                      value={formData.companyName}
+                      onChange={handleInputChange}
+                      className={compactInputClass}
+                      placeholder="회사 이름을 입력하세요"
+                    />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label htmlFor="name" className="block text-xs sm:text-sm font-medium text-ink-700">
+                      담당자 이름
+                    </label>
+                    <GlassInput
+                      id="name"
+                      name="name"
+                      type="text"
+                      required
+                      value={formData.name}
+                      onChange={handleInputChange}
+                      className={compactInputClass}
+                      placeholder="담당자 이름을 입력하세요"
+                    />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label htmlFor="position" className="block text-xs sm:text-sm font-medium text-ink-700">
+                      담당자 직급
+                    </label>
+                    <GlassInput
+                      id="position"
+                      name="position"
+                      type="text"
+                      required
+                      value={formData.position}
+                      onChange={handleInputChange}
+                      className={compactInputClass}
+                      placeholder="예: 인사팀 대리, 대표, HR 담당자"
+                    />
+                  </div>
+                </>
+              )}
+
+              <div className="space-y-1.5">
+                <label htmlFor="email" className="block text-xs sm:text-sm font-medium text-ink-700">
+                  {mode === 'signup' && role === 'employer' ? '담당자 이메일' : '이메일'}
+                </label>
+                <GlassInput
+                  id="email"
+                  name="email"
+                  type="email"
+                  required
+                  value={formData.email}
+                  onChange={handleInputChange}
+                  className={compactInputClass}
+                  placeholder={mode === 'signup' && role === 'employer' ? '담당자 이메일 주소' : '이메일 주소'}
+                />
+              </div>
+
+              {mode !== 'reset' && (
+                <div className="space-y-1.5">
+                  <label htmlFor="password" className="block text-xs sm:text-sm font-medium text-ink-700">
+                    비밀번호
+                  </label>
+                  <div className="relative">
+                    <GlassInput
+                      id="password"
+                      name="password"
+                      type={showPassword ? 'text' : 'password'}
+                      required
+                      value={formData.password}
+                      onChange={handleInputChange}
+                      className={`${compactInputClass} pr-12`}
+                      placeholder="비밀번호"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute inset-y-0 right-0 pr-4 flex items-center text-ink-400 hover:text-azure-600 transition-colors"
+                    >
+                      {showPassword ? (
+                        <EyeSlashIcon className="h-5 w-5" />
+                      ) : (
+                        <EyeIcon className="h-5 w-5" />
+                      )}
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {mode === 'signup' && (
+                <div className="space-y-1.5">
+                  <label htmlFor="confirmPassword" className="block text-xs sm:text-sm font-medium text-ink-700">
+                    비밀번호 확인
+                  </label>
+                  <GlassInput
+                    id="confirmPassword"
+                    name="confirmPassword"
+                    type="password"
+                    required
+                    value={formData.confirmPassword}
+                    onChange={handleInputChange}
+                    className={compactInputClass}
+                    placeholder="비밀번호 확인"
+                  />
+                </div>
+              )}
+            </div>
+
+            <div className="pt-0">
+              <GlassButton
+                type="submit"
+                disabled={loading}
+                size="lg"
+                className={compactButtonClass}
+              >
+                {loading ? (
+                  <div className="flex items-center gap-2">
+                    <div className="animate-spin rounded-full h-4 w-4 border-2 border-white/40 border-t-white"></div>
+                    처리 중...
+                  </div>
+                ) : (
+                  <>
+                    {mode === 'login' && '로그인'}
+                    {mode === 'signup' && '회원가입'}
+                    {mode === 'reset' && '재설정 이메일 발송'}
+                  </>
+                )}
+              </GlassButton>
+            </div>
+
+            {mode === 'login' && (
+              <div className="text-center pt-0">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMode('reset');
+                    setError('');
+                    setSuccess('');
+                  }}
+                  className="inline-flex items-center gap-1.5 text-sm text-ink-500 hover:text-azure-700 transition-colors"
+                >
+                  비밀번호를 잊으셨나요?
+                  <ArrowRightIcon className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            )}
+          </motion.form>
+        </div>
       </motion.div>
     </div>
   );
@@ -510,4 +546,4 @@ export default function AuthPage() {
       <AuthContent />
     </Suspense>
   );
-} 
+}

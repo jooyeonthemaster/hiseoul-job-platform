@@ -26,6 +26,7 @@ export interface Portfolio {
   projectDetails: ProjectDetail[];
   profileImage?: string;
   currentCourse?: string;
+  courseType?: 'domestic' | 'foreign';
   introVideo?: string;
   introVideos?: VideoLink[];
   selfIntroduction?: SelfIntroduction;

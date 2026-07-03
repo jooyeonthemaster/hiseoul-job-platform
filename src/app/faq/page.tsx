@@ -2,14 +2,16 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { 
-  QuestionMarkCircleIcon, 
-  UserIcon, 
+import { AnimatePresence, motion } from 'framer-motion';
+import {
+  UserIcon,
   BuildingOfficeIcon,
   CogIcon,
   ChevronDownIcon,
-  ChevronUpIcon
 } from '@heroicons/react/24/outline';
+import { GlassButton } from '@/components/ui/GlassButton';
+import { AuroraBackground } from '@/components/ui/AuroraBackground';
+import { ScrollReveal } from '@/components/ui/ScrollReveal';
 
 export default function FAQPage() {
   const [activeCategory, setActiveCategory] = useState<'jobseeker' | 'employer' | 'general'>('jobseeker');
@@ -49,7 +51,7 @@ export default function FAQPage() {
   const faqs = {
     jobseeker: [
       {
-        question: '테크벤처 잡 매칭에 회원가입하려면 어떻게 해야 하나요?',
+        question: '면접심사 매칭 플랫폼에 회원가입하려면 어떻게 해야 하나요?',
         answer: '메인 페이지 우상단의 "시작하기" 버튼을 클릭하거나 /auth 페이지에서 이메일 또는 구글 소셜 로그인으로 간편하게 가입할 수 있습니다.'
       },
       {
@@ -83,8 +85,8 @@ export default function FAQPage() {
     ],
     employer: [
       {
-        question: '테크벤처 잡 매칭 기업 회원가입 조건이 있나요?',
-        answer: '서울시 소재 중소기업으로 테크벤처 잡 매칭 인증을 받은 기업이 가입 가능합니다. 사업자등록증과 관련 서류 제출이 필요합니다.'
+        question: '면접심사 매칭 플랫폼 기업 회원가입 조건이 있나요?',
+        answer: '서울시 민간기업 참여형 매력일자리 사업에 참여하는 서울시 소재 중소기업이 가입 대상입니다. 가입 후 관리자 승인을 거치며, 사업자등록증과 관련 서류 제출이 필요합니다.'
       },
       {
         question: '채용공고는 어떻게 등록하나요?',
@@ -108,7 +110,7 @@ export default function FAQPage() {
       },
       {
         question: '채용 성공률은 어느 정도인가요?',
-        answer: '포트폴리오 기반 매칭으로 기존 대비 약 30% 향상된 채용 성공률을 보이고 있으며, 평균 채용 기간도 단축되었습니다.'
+        answer: '포트폴리오와 자기소개 영상을 기반으로 직무 적합도가 높은 후보를 우선 추천합니다. 서류만으로는 확인하기 어려운 실무 역량을 먼저 살펴보실 수 있습니다.'
       },
       {
         question: '지원자와 직접 소통할 수 있나요?',
@@ -117,12 +119,12 @@ export default function FAQPage() {
     ],
     general: [
       {
-        question: '테크벤처 잡 매칭은 어떤 서비스인가요?',
+        question: '면접심사 매칭 플랫폼은 어떤 서비스인가요?',
         answer: '서울시 중소기업과 우수한 인재를 연결하는 포트폴리오 기반 구인구직 플랫폼으로, AI 매칭 기술을 활용한 혁신적인 채용 서비스입니다.'
       },
       {
         question: '기존 구인구직 사이트와 무엇이 다른가요?',
-        answer: '이력서 대신 포트폴리오 중심의 매칭으로 실무 능력을 정확히 평가할 수 있으며, 서울시 공식 인증 기업만 참여하여 신뢰성이 높습니다.'
+        answer: '이력서 대신 포트폴리오 중심의 매칭으로 실무 능력을 정확히 평가할 수 있으며, 서울시 민간기업 참여형 매력일자리 사업에 참여하는 기업만 함께해 신뢰성이 높습니다.'
       },
       {
         question: '서울시가 아닌 지역에서도 이용할 수 있나요?',
@@ -152,85 +154,81 @@ export default function FAQPage() {
   };
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen overflow-x-clip">
       {/* Header */}
-      <header className="fixed top-0 w-full bg-white/95 backdrop-blur-md border-b border-gray-100 z-50 shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <header className="fixed top-0 w-full glass-nav z-50">
+        <div className="container-wide">
           <div className="flex justify-between items-center h-20">
-            <Link href="/" className="flex items-center space-x-3">
-              <div className="w-10 h-10 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg">
-                <span className="text-white font-bold text-lg">H</span>
+            <Link href="/" className="flex items-center gap-3 group">
+              <div className="w-10 h-10 bg-gradient-to-br from-azure-500 to-azure-600 rounded-2xl flex items-center justify-center shadow-glow group-hover:scale-105 transition-transform duration-300">
+                <span className="text-white font-display font-bold text-lg">H</span>
               </div>
-              <span className="text-2xl font-bold text-gray-900">테크벤처 잡 매칭</span>
+              <span className="text-xl sm:text-2xl font-display font-bold tracking-tight text-ink-900">면접심사 매칭 플랫폼</span>
             </Link>
-            
-            <nav className="hidden md:flex items-center space-x-8">
-              <Link href="/portfolios" className="text-gray-700 hover:text-blue-600 transition-colors font-medium">
+
+            <nav className="hidden md:flex items-center gap-1">
+              <Link href="/portfolios" className="px-4 py-2 rounded-xl text-ink-600 hover:text-azure-700 hover:bg-azure-50/70 transition-all duration-200 font-medium">
                 포트폴리오
               </Link>
-              <Link href="/companies" className="text-gray-700 hover:text-blue-600 transition-colors font-medium">
+              <Link href="/companies" className="px-4 py-2 rounded-xl text-ink-600 hover:text-azure-700 hover:bg-azure-50/70 transition-all duration-200 font-medium">
                 기업정보
               </Link>
-              <Link href="/jobs" className="text-gray-700 hover:text-blue-600 transition-colors font-medium">
+              <Link href="/jobs" className="px-4 py-2 rounded-xl text-ink-600 hover:text-azure-700 hover:bg-azure-50/70 transition-all duration-200 font-medium">
                 채용공고
               </Link>
-              <Link href="/about" className="text-gray-700 hover:text-blue-600 transition-colors font-medium">
+              <Link href="/about" className="px-4 py-2 rounded-xl text-ink-600 hover:text-azure-700 hover:bg-azure-50/70 transition-all duration-200 font-medium">
                 소개
               </Link>
-              <span className="text-blue-600 font-semibold">
+              <span className="px-4 py-2 rounded-xl text-azure-700 bg-azure-50/70 font-semibold">
                 FAQ
               </span>
             </nav>
-            
-            <div className="flex items-center space-x-4">
-              <Link href="/" className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-6 py-3 rounded-xl transition-all duration-200 shadow-lg hover:shadow-xl">
+
+            <div className="flex items-center gap-4">
+              <GlassButton href="/" size="sm">
                 홈으로
-              </Link>
+              </GlassButton>
             </div>
           </div>
         </div>
       </header>
 
-      {/* Hero Section */}
-      <section className="pt-32 pb-20 bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <div className="inline-flex items-center px-4 py-2 bg-blue-100 border border-blue-200 rounded-full text-blue-700 font-medium text-sm mb-8">
-            <QuestionMarkCircleIcon className="w-4 h-4 mr-2" />
-            자주 묻는 질문
-          </div>
-          <h1 className="text-5xl lg:text-6xl font-bold mb-8 text-gray-900 leading-tight">
-            <span className="bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">FAQ</span>
-          </h1>
-          <p className="text-xl text-gray-600 max-w-3xl mx-auto leading-relaxed">
-            테크벤처 잡 매칭 이용 중 궁금한 점들을 모아두었습니다.<br />
-            찾는 답변이 없다면 언제든 문의해주세요.
-          </p>
-        </div>
-      </section>
-
       {/* Category Tabs */}
-      <section className="py-12 bg-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-center mb-16">
-            <div className="bg-gray-100 rounded-2xl p-2 flex">
+      <section className="relative pt-32 pb-12 lg:pt-36 lg:pb-16 overflow-hidden">
+        <AuroraBackground />
+        <div className="relative z-10 container-wide">
+          <h1 className="text-2xl sm:text-3xl font-bold text-ink-900 text-center mb-10 lg:mb-12">
+            자주 묻는 질문
+          </h1>
+          <div className="flex justify-center mb-14 lg:mb-16">
+            <div className="relative glass-strong rounded-3xl p-2 flex gap-1">
               {categories.map((category) => (
                 <button
                   key={category.id}
                   onClick={() => setActiveCategory(category.id)}
-                  className={`flex items-center px-6 py-4 rounded-xl font-semibold transition-all duration-300 ${
+                  className={`relative flex items-center px-5 sm:px-7 py-3.5 sm:py-4 rounded-2xl font-semibold transition-colors duration-300 ${
                     activeCategory === category.id
-                      ? 'bg-blue-600 text-white shadow-lg'
-                      : 'text-gray-600 hover:text-gray-900'
+                      ? 'text-white'
+                      : 'text-ink-500 hover:text-ink-800'
                   }`}
                 >
-                  <category.icon className="w-5 h-5 mr-2" />
-                  {category.title}
-                  <span className={`ml-2 px-2 py-1 rounded-full text-xs ${
-                    activeCategory === category.id
-                      ? 'bg-blue-700 text-blue-100'
-                      : 'bg-gray-200 text-gray-600'
-                  }`}>
-                    {category.count}
+                  {activeCategory === category.id && (
+                    <motion.span
+                      layoutId="faqTabPill"
+                      className="absolute inset-0 rounded-2xl bg-gradient-to-r from-azure-500 to-azure-600 shadow-glow"
+                      transition={{ type: 'spring', stiffness: 400, damping: 32 }}
+                    />
+                  )}
+                  <span className="relative flex items-center">
+                    <category.icon className="w-5 h-5 mr-2" />
+                    {category.title}
+                    <span className={`ml-2 px-2 py-0.5 rounded-full text-xs font-bold ${
+                      activeCategory === category.id
+                        ? 'bg-white/25 text-white'
+                        : 'bg-azure-50 text-azure-600'
+                    }`}>
+                      {category.count}
+                    </span>
                   </span>
                 </button>
               ))}
@@ -238,67 +236,112 @@ export default function FAQPage() {
           </div>
 
           {/* FAQ Content */}
-          <div className="max-w-4xl mx-auto">
+          <div className="max-w-[900px] mx-auto">
             <div className="space-y-4">
-              {faqs[activeCategory].map((faq, index) => (
-                <div key={index} className="bg-white border border-gray-200 rounded-2xl shadow-lg overflow-hidden">
-                  <button
-                    onClick={() => toggleItem(index)}
-                    className="w-full px-8 py-6 text-left hover:bg-gray-50 transition-colors flex items-center justify-between"
-                  >
-                    <h3 className="text-lg font-semibold text-gray-900 pr-4">{faq.question}</h3>
-                    {openItems.has(index) ? (
-                      <ChevronUpIcon className="w-6 h-6 text-blue-600 flex-shrink-0" />
-                    ) : (
-                      <ChevronDownIcon className="w-6 h-6 text-gray-400 flex-shrink-0" />
-                    )}
-                  </button>
-                  {openItems.has(index) && (
-                    <div className="px-8 pb-6">
-                      <div className="border-t border-gray-100 pt-4">
-                        <p className="text-gray-600 leading-relaxed">{faq.answer}</p>
-                      </div>
+              {faqs[activeCategory].map((faq, index) => {
+                const isOpen = openItems.has(index);
+                return (
+                  <ScrollReveal key={`${activeCategory}-${index}`} delay={index * 0.04} y={20}>
+                    <div
+                      className={`group relative backdrop-blur-xl border rounded-3xl shadow-glass overflow-hidden transition-colors duration-300 ${
+                        isOpen
+                          ? 'bg-white/80 border-azure-200'
+                          : 'bg-white/55 border-white/60 hover:border-azure-100'
+                      }`}
+                    >
+                      <button
+                        onClick={() => toggleItem(index)}
+                        className="w-full px-6 sm:px-8 py-6 text-left flex items-center justify-between gap-4 transition-colors hover:bg-azure-50/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-azure-400/50 rounded-3xl"
+                      >
+                        <div className="flex items-center gap-4 min-w-0">
+                          <span className={`flex-shrink-0 flex items-center justify-center w-9 h-9 rounded-2xl font-display font-bold text-sm transition-colors duration-300 ${
+                            isOpen
+                              ? 'bg-gradient-to-br from-azure-500 to-azure-600 text-white shadow-glow'
+                              : 'bg-azure-50 text-azure-600'
+                          }`}>
+                            Q
+                          </span>
+                          <h3 className="text-base sm:text-lg font-semibold text-ink-900 pr-2">{faq.question}</h3>
+                        </div>
+                        <motion.span
+                          animate={{ rotate: isOpen ? 180 : 0 }}
+                          transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
+                          className={`flex-shrink-0 flex items-center justify-center w-9 h-9 rounded-full border transition-colors duration-300 ${
+                            isOpen
+                              ? 'bg-azure-50 border-azure-200 text-azure-600'
+                              : 'bg-white/70 border-white/70 text-ink-400'
+                          }`}
+                        >
+                          <ChevronDownIcon className="w-5 h-5" />
+                        </motion.span>
+                      </button>
+                      <AnimatePresence initial={false}>
+                        {isOpen && (
+                          <motion.div
+                            key="content"
+                            initial={{ height: 0, opacity: 0 }}
+                            animate={{ height: 'auto', opacity: 1 }}
+                            exit={{ height: 0, opacity: 0 }}
+                            transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
+                            className="overflow-hidden"
+                          >
+                            <div className="px-6 sm:px-8 pb-6">
+                              <div className="border-t border-ink-100 pt-4 pl-0 sm:pl-12">
+                                <p className="text-ink-500 leading-relaxed text-sm sm:text-base">{faq.answer}</p>
+                              </div>
+                            </div>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
                     </div>
-                  )}
-                </div>
-              ))}
+                  </ScrollReveal>
+                );
+              })}
             </div>
           </div>
         </div>
       </section>
 
       {/* Contact Section */}
-      <section className="py-20 bg-gray-50">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <h2 className="text-4xl font-bold mb-6 text-gray-900">답변을 찾지 못하셨나요?</h2>
-          <p className="text-xl text-gray-600 mb-12">
-            더 자세한 문의사항이 있으시면 언제든 연락주세요
-          </p>
-          <div className="flex flex-col sm:flex-row gap-6 justify-center">
-            <Link href="/contact" className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 px-8 rounded-xl transition-all duration-200 shadow-xl hover:shadow-2xl">
-              문의하기
-            </Link>
-            <Link href="/help" className="border-2 border-gray-300 hover:border-blue-600 text-gray-700 hover:text-blue-600 font-bold py-4 px-8 rounded-xl transition-all duration-200">
-              사용법 보기
-            </Link>
-          </div>
+      <section className="relative py-20 lg:py-28 overflow-hidden">
+        <div className="container-wide">
+          <ScrollReveal>
+            <div className="relative overflow-hidden rounded-5xl bg-gradient-to-br from-azure-700 via-azure-600 to-sky-cool-600 px-6 py-16 sm:px-12 sm:py-20 text-center shadow-glass-lg">
+              <AuroraBackground variant="vivid" className="opacity-40 mix-blend-overlay" />
+              <div className="relative max-w-3xl mx-auto">
+                <h2 className="font-display text-3xl sm:text-4xl lg:text-5xl font-bold text-white mb-6 tracking-tight">답변을 찾지 못하셨나요?</h2>
+                <p className="text-base sm:text-lg md:text-xl text-azure-50 mb-10 leading-relaxed">
+                  더 자세한 문의사항이 있으시면 언제든 연락주세요
+                </p>
+                <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                  <GlassButton href="/contact" variant="secondary" size="lg" className="!text-azure-700">
+                    문의하기
+                  </GlassButton>
+                  <GlassButton href="/help" variant="outline" size="lg" className="!border-white/70 !text-white hover:!bg-white/15">
+                    사용법 보기
+                  </GlassButton>
+                </div>
+              </div>
+            </div>
+          </ScrollReveal>
         </div>
       </section>
 
       {/* Footer */}
-      <footer className="bg-gray-900 text-white py-12">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <Link href="/" className="inline-flex items-center space-x-3 mb-6">
-            <div className="w-10 h-10 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg">
-              <span className="text-white font-bold text-lg">H</span>
+      <footer className="relative bg-ink-900 text-white overflow-hidden">
+        <div className="absolute inset-0 bg-azure-aurora opacity-25" />
+        <div className="relative container-wide py-12 text-center">
+          <Link href="/" className="inline-flex items-center gap-3 mb-6 group">
+            <div className="w-10 h-10 bg-gradient-to-br from-azure-500 to-azure-600 rounded-2xl flex items-center justify-center shadow-glow group-hover:scale-105 transition-transform duration-300">
+              <span className="text-white font-display font-bold text-lg">H</span>
             </div>
-            <span className="text-2xl font-bold">테크벤처 잡 매칭</span>
+            <span className="text-2xl font-display font-bold tracking-tight">면접심사 매칭 플랫폼</span>
           </Link>
-          <p className="text-gray-400">
-            &copy; 2025 테크벤처 잡 매칭 Job Platform. All rights reserved.
+          <p className="text-ink-400">
+            &copy; 2025 면접심사 매칭 플랫폼. All rights reserved.
           </p>
         </div>
       </footer>
     </div>
   );
-} 
+}

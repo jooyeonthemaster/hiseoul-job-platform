@@ -4,6 +4,24 @@ import { useState } from 'react';
 import { collection, getDocs } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { GoogleSheetsService } from '@/lib/googleSheets';
+import { GlassCard } from '@/components/ui/GlassCard';
+import { GlassButton } from '@/components/ui/GlassButton';
+import { Badge } from '@/components/ui/Badge';
+import { AuroraBackground } from '@/components/ui/AuroraBackground';
+import { ScrollReveal } from '@/components/ui/ScrollReveal';
+import {
+  ArrowPathIcon,
+  CircleStackIcon,
+  TableCellsIcon,
+  CommandLineIcon,
+} from '@heroicons/react/24/outline';
+
+const PROGRESS_LABELS: Record<string, string> = {
+  jobSeekers: '구직자',
+  employers: '기업회원',
+  portfolios: '포트폴리오',
+  jobInquiries: '채용제안',
+};
 
 export default function DataMigrationPage() {
   const [migrating, setMigrating] = useState(false);
@@ -45,17 +63,17 @@ export default function DataMigrationPage() {
           profileCompleteness: data.profileCompleteness || '0%',
           status: 'active',
         });
-        
+
         completed++;
         setProgress(prev => ({ ...prev, jobSeekers: { total, completed } }));
-        
+
         // 과부하 방지를 위한 딜레이
         await new Promise(resolve => setTimeout(resolve, 100));
       } catch (error) {
         addLog(`❌ 구직자 ${doc.id} 마이그레이션 실패: ${error}`);
       }
     }
-    
+
     addLog(`✅ 구직자 마이그레이션 완료: ${completed}/${total}`);
   };
   const migrateEmployers = async () => {
@@ -82,7 +100,7 @@ export default function DataMigrationPage() {
           description: data.description || data.company?.description || '',
           approvalStatus: data.approvalStatus || 'pending',
         });
-        
+
         // 승인 대기중인 경우 승인요청도 추가
         if (data.approvalStatus === 'pending') {
           await GoogleSheetsService.addApprovalRequest({
@@ -93,7 +111,7 @@ export default function DataMigrationPage() {
             businessNumber: data.businessNumber || '',
           });
         }
-        
+
         completed++;
         setProgress(prev => ({ ...prev, employers: { total, completed } }));
         await new Promise(resolve => setTimeout(resolve, 100));
@@ -101,7 +119,7 @@ export default function DataMigrationPage() {
         addLog(`❌ 기업 ${doc.id} 마이그레이션 실패: ${error}`);
       }
     }
-    
+
     addLog(`✅ 기업 마이그레이션 완료: ${completed}/${total}`);
   };
   const migratePortfolios = async () => {
@@ -137,7 +155,7 @@ export default function DataMigrationPage() {
           likeCount: data.likeCount || 0,
           isPublic: data.isPublic !== false,
         });
-        
+
         completed++;
         setProgress(prev => ({ ...prev, portfolios: { total, completed } }));
         await new Promise(resolve => setTimeout(resolve, 100));
@@ -145,7 +163,7 @@ export default function DataMigrationPage() {
         addLog(`❌ 포트폴리오 ${doc.id} 마이그레이션 실패: ${error}`);
       }
     }
-    
+
     addLog(`✅ 포트폴리오 마이그레이션 완료: ${completed}/${total}`);
   };
   const migrateJobInquiries = async () => {
@@ -168,7 +186,7 @@ export default function DataMigrationPage() {
           employmentType: data.employmentType || '정규직',
           status: data.status || 'sent',
         });
-        
+
         completed++;
         setProgress(prev => ({ ...prev, jobInquiries: { total, completed } }));
         await new Promise(resolve => setTimeout(resolve, 100));
@@ -176,20 +194,20 @@ export default function DataMigrationPage() {
         addLog(`❌ 채용제안 ${doc.id} 마이그레이션 실패: ${error}`);
       }
     }
-    
+
     addLog(`✅ 채용제안 마이그레이션 완료: ${completed}/${total}`);
   };
 
   const startMigration = async () => {
     setMigrating(true);
     setLogs([]);
-    
+
     try {
       await migrateJobSeekers();
       await migrateEmployers();
       await migratePortfolios();
       await migrateJobInquiries();
-      
+
       addLog('🎉 모든 데이터 마이그레이션 완료!');
     } catch (error) {
       addLog(`❌ 마이그레이션 중 오류 발생: ${error}`);
@@ -198,71 +216,106 @@ export default function DataMigrationPage() {
     }
   };
   return (
-    <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-4xl mx-auto">
-        <div className="bg-white shadow rounded-lg p-6">
-          <h1 className="text-2xl font-bold text-gray-900 mb-6">
+    <div className="relative min-h-screen overflow-hidden py-20 md:py-28">
+      <AuroraBackground />
+
+      <div className="relative z-10 container-wide">
+        <ScrollReveal className="max-w-3xl">
+          <span className="inline-flex items-center gap-2 rounded-full px-4 py-1.5 mb-5 text-xs font-semibold tracking-[0.18em] uppercase bg-white/60 backdrop-blur-md border border-white/70 text-azure-700 shadow-glass-sm">
+            <span className="w-1.5 h-1.5 rounded-full bg-azure-500 animate-pulse" />
+            ADMIN · DATA MIGRATION
+          </span>
+          <h1 className="font-display font-bold tracking-tight text-ink-900 text-3xl md:text-4xl lg:text-5xl leading-[1.1]">
             Firebase → Google Sheets 데이터 마이그레이션
           </h1>
-          
-          <div className="mb-6">
-            <p className="text-gray-600 mb-4">
-              기존 Firebase 데이터를 Google Sheets로 일괄 전송합니다.
-              이 작업은 한 번만 실행하면 됩니다.
-            </p>
-            
-            <button
-              onClick={startMigration}
-              disabled={migrating}
-              className={`px-6 py-3 rounded-md text-white font-medium ${
-                migrating 
-                  ? 'bg-gray-400 cursor-not-allowed' 
-                  : 'bg-blue-600 hover:bg-blue-700'
-              }`}
-            >
-              {migrating ? '마이그레이션 진행중...' : '마이그레이션 시작'}
-            </button>
-          </div>
+          <p className="mt-5 text-ink-500 text-base md:text-lg leading-relaxed">
+            기존 Firebase 데이터를 Google Sheets로 일괄 전송합니다.
+            이 작업은 한 번만 실행하면 됩니다.
+          </p>
+        </ScrollReveal>
 
-          {/* 진행 상황 */}
-          <div className="space-y-4 mb-6">
-            {Object.entries(progress).map(([key, value]) => (
-              <div key={key}>
-                <div className="flex justify-between text-sm font-medium text-gray-700 mb-1">
-                  <span>
-                    {key === 'jobSeekers' && '구직자'}
-                    {key === 'employers' && '기업회원'}
-                    {key === 'portfolios' && '포트폴리오'}
-                    {key === 'jobInquiries' && '채용제안'}
-                  </span>
-                  <span>{value.completed} / {value.total}</span>
+        <ScrollReveal delay={0.05} className="mt-12">
+          <GlassCard strong className="p-8 sm:p-10">
+            {/* 데이터 흐름 안내 + 실행 */}
+            <div className="flex flex-col gap-8 lg:flex-row lg:items-center lg:justify-between">
+              <div className="flex items-center gap-4">
+                <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-azure-50 text-azure-600 shadow-glass-sm">
+                  <CircleStackIcon className="h-7 w-7" />
                 </div>
-                <div className="w-full bg-gray-200 rounded-full h-2">
-                  <div
-                    className="bg-blue-600 h-2 rounded-full transition-all duration-300"
-                    style={{ 
-                      width: value.total > 0 
-                        ? `${(value.completed / value.total) * 100}%` 
-                        : '0%' 
-                    }}
-                  />
+                <ArrowPathIcon className="h-6 w-6 text-azure-400" />
+                <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-azure-50 text-azure-600 shadow-glass-sm">
+                  <TableCellsIcon className="h-7 w-7" />
+                </div>
+                <div className="ml-2">
+                  <p className="font-semibold text-ink-900">Firebase → Sheets</p>
+                  <p className="text-sm text-ink-400">단방향 일괄 전송</p>
                 </div>
               </div>
-            ))}
-          </div>
 
-          {/* 로그 */}
-          {logs.length > 0 && (
-            <div className="border rounded-md p-4 bg-gray-50">
-              <h3 className="text-sm font-medium text-gray-700 mb-2">실행 로그</h3>
-              <div className="text-xs text-gray-600 space-y-1 max-h-64 overflow-y-auto">
-                {logs.map((log, index) => (
-                  <div key={index}>{log}</div>
-                ))}
-              </div>
+              <GlassButton
+                onClick={startMigration}
+                disabled={migrating}
+                variant="primary"
+                size="lg"
+                className="w-full sm:w-auto"
+              >
+                <ArrowPathIcon className={migrating ? 'h-5 w-5 animate-spin' : 'h-5 w-5'} />
+                {migrating ? '마이그레이션 진행중...' : '마이그레이션 시작'}
+              </GlassButton>
             </div>
-          )}
-        </div>
+
+            {/* 진행 상황 */}
+            <div className="mt-10 grid gap-5 sm:grid-cols-2">
+              {Object.entries(progress).map(([key, value]) => {
+                const pct = value.total > 0 ? (value.completed / value.total) * 100 : 0;
+                const isDone = value.total > 0 && value.completed >= value.total;
+                return (
+                  <div
+                    key={key}
+                    className="rounded-3xl border border-white/60 bg-white/50 p-5 shadow-glass-sm backdrop-blur-md"
+                  >
+                    <div className="mb-3 flex items-center justify-between">
+                      <span className="font-semibold text-ink-900">
+                        {PROGRESS_LABELS[key]}
+                      </span>
+                      <Badge tone={isDone ? 'mint' : 'azure'}>
+                        {value.completed} / {value.total}
+                      </Badge>
+                    </div>
+                    <div className="h-2.5 w-full overflow-hidden rounded-full bg-azure-100/70">
+                      <div
+                        className="h-2.5 rounded-full bg-gradient-to-r from-azure-400 to-azure-600 transition-all duration-300"
+                        style={{
+                          width: value.total > 0
+                            ? `${(value.completed / value.total) * 100}%`
+                            : '0%'
+                        }}
+                      />
+                    </div>
+                    <p className="mt-2 text-xs font-medium text-ink-400">
+                      {Math.round(pct)}%
+                    </p>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* 로그 */}
+            {logs.length > 0 && (
+              <div className="mt-10 overflow-hidden rounded-3xl border border-white/60 bg-ink-900/[0.04] shadow-glass-sm backdrop-blur-md">
+                <div className="flex items-center gap-2 border-b border-ink-100 bg-azure-50/60 px-5 py-3">
+                  <CommandLineIcon className="h-4 w-4 text-azure-600" />
+                  <h3 className="text-sm font-semibold text-ink-700">실행 로그</h3>
+                </div>
+                <div className="max-h-64 space-y-1 overflow-y-auto px-5 py-4 font-mono text-xs leading-relaxed text-ink-500">
+                  {logs.map((log, index) => (
+                    <div key={index}>{log}</div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </GlassCard>
+        </ScrollReveal>
       </div>
     </div>
   );

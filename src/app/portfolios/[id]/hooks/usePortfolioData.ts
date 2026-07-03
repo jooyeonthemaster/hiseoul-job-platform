@@ -1,11 +1,13 @@
 // 포트폴리오 데이터 관리 훅
 import { useState, useEffect } from 'react';
 import { getPortfolio, getJobSeekerProfile } from '@/lib/auth';
+import { useAuth } from '@/contexts/AuthContext';
 import { Portfolio } from '../types/portfolio.types';
 import { portfoliosDetail } from '../constants/portfolio-data';
 import { getAvatarBySpeciality, formatFirebaseDate } from '../utils/portfolio.utils';
 
 export const usePortfolioData = (portfolioId: string, hasAccess: boolean, accessChecked: boolean) => {
+  const { user, userData } = useAuth();
   const [portfolio, setPortfolio] = useState<Portfolio | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -33,7 +35,9 @@ export const usePortfolioData = (portfolioId: string, hasAccess: boolean, access
 
         // Firebase에서 포트폴리오 가져오기
         try {
-          const firebasePortfolio = await getPortfolio(portfolioId);
+          const isOwnPortfolio = user?.uid === portfolioId;
+          const hasAdminAccess = userData?.role === 'admin' || userData?.isAdmin === true;
+          const firebasePortfolio = await getPortfolio(portfolioId, isOwnPortfolio || hasAdminAccess);
           if (firebasePortfolio) {
             // Firebase에서 상세 프로필 정보도 가져오기
             const profileData = await getJobSeekerProfile(portfolioId);
@@ -89,6 +93,7 @@ export const usePortfolioData = (portfolioId: string, hasAccess: boolean, access
                   }],
               profileImage: profile?.profileImage,
               currentCourse: profile?.currentCourse,
+              courseType: profile?.courseType || (firebasePortfolio as any).courseType || undefined,
               introVideo: profile?.introVideo,
               introVideos: profile?.introVideos || [],
               selfIntroduction: profile?.selfIntroduction && 
@@ -177,7 +182,7 @@ export const usePortfolioData = (portfolioId: string, hasAccess: boolean, access
     };
 
     loadPortfolio();
-  }, [portfolioId, hasAccess, accessChecked]);
+  }, [portfolioId, hasAccess, accessChecked, user?.uid, userData?.role, userData?.isAdmin]);
 
   return { portfolio, loading };
 };

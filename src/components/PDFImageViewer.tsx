@@ -1,8 +1,15 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { ChevronLeftIcon, ChevronRightIcon, MagnifyingGlassMinusIcon, MagnifyingGlassPlusIcon } from '@heroicons/react/24/outline';
-import Image from 'next/image';
+import { useEffect, useMemo, useState, type SyntheticEvent } from 'react';
+import {
+  ArrowDownTrayIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
+  DocumentTextIcon,
+  MagnifyingGlassMinusIcon,
+  MagnifyingGlassPlusIcon,
+} from '@heroicons/react/24/outline';
+import { GlassButton } from '@/components/ui/GlassButton';
 
 interface PDFImageViewerProps {
   pdfUrl: string;
@@ -16,25 +23,53 @@ interface PageImage {
   thumbnailUrl: string;
 }
 
+type ViewMode = 'grid' | 'focus';
+type PageDimensions = Record<number, { width: number; height: number }>;
+
+const iconButtonClass =
+  'inline-flex h-9 w-9 items-center justify-center rounded-xl border border-white/70 bg-white/70 text-ink-600 shadow-glass-sm transition hover:bg-white hover:text-azure-700 disabled:cursor-not-allowed disabled:opacity-40';
+
+const getFitScaleForAspectRatio = (aspectRatio: number) => {
+  if (aspectRatio >= 1.55) return 0.58;
+  if (aspectRatio >= 1.25) return 0.64;
+  return 0.72;
+};
+
 export default function PDFImageViewer({ pdfUrl, fileName = 'PDF', className = '' }: PDFImageViewerProps) {
   const [pages, setPages] = useState<PageImage[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
-  const [scale, setScale] = useState(1.0);
+  const [scale, setScale] = useState(0.72);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [viewMode, setViewMode] = useState<'single' | 'scroll'>('single');
+  const [viewMode, setViewMode] = useState<ViewMode>('focus');
+  const [failedImages, setFailedImages] = useState<Record<number, boolean>>({});
+  const [focusLoadedImages, setFocusLoadedImages] = useState<Record<number, boolean>>({});
+  const [pageDimensions, setPageDimensions] = useState<PageDimensions>({});
+  const [hasUserAdjustedScale, setHasUserAdjustedScale] = useState(false);
 
   useEffect(() => {
+    const controller = new AbortController();
+
     const convertPdfToImages = async () => {
       setLoading(true);
       setError('');
+      setPages([]);
+      setCurrentPage(1);
+      setViewMode('focus');
+      setScale(0.72);
+      setFailedImages({});
+      setFocusLoadedImages({});
+      setPageDimensions({});
+      setHasUserAdjustedScale(false);
 
-      try {        const response = await fetch('/api/convert-pdf-to-images', {
+      try {
+        const response = await fetch('/api/convert-pdf-to-images', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({ pdfUrl, fileName }),
+          signal: controller.signal,
         });
 
         if (!response.ok) {
@@ -43,208 +78,326 @@ export default function PDFImageViewer({ pdfUrl, fileName = 'PDF', className = '
         }
 
         const data = await response.json();
-        setPages(data.pages);
+        setPages(Array.isArray(data.pages) ? data.pages : []);
       } catch (err) {
+        if (controller.signal.aborted) return;
         console.error('PDF 이미지 변환 에러:', err);
         setError(err instanceof Error ? err.message : 'PDF를 이미지로 변환하는 데 실패했습니다.');
       } finally {
-        setLoading(false);
+        if (!controller.signal.aborted) setLoading(false);
       }
     };
 
     if (pdfUrl) {
       convertPdfToImages();
     }
+
+    return () => controller.abort();
   }, [pdfUrl, fileName]);
 
-  const goToPage = (pageNumber: number) => {    if (pageNumber >= 1 && pageNumber <= pages.length) {
+  const currentImage = useMemo(
+    () => pages.find((page) => page.pageNumber === currentPage) || pages[0],
+    [pages, currentPage],
+  );
+
+  const currentDimensions = currentImage ? pageDimensions[currentImage.pageNumber] : undefined;
+  const currentAspectRatio = currentDimensions ? currentDimensions.width / currentDimensions.height : 0;
+  const isLandscapePage = currentAspectRatio >= 1.25;
+  const isWideLandscapePage = currentAspectRatio >= 1.55;
+
+  useEffect(() => {
+    if (!currentDimensions || hasUserAdjustedScale) return;
+    setScale(getFitScaleForAspectRatio(currentAspectRatio));
+  }, [currentAspectRatio, currentDimensions, hasUserAdjustedScale]);
+
+  const rememberImageDimensions = (pageNumber: number, event: SyntheticEvent<HTMLImageElement>) => {
+    const { naturalWidth, naturalHeight } = event.currentTarget;
+    if (!naturalWidth || !naturalHeight) return;
+
+    setPageDimensions((prev) => {
+      const existing = prev[pageNumber];
+      if (existing?.width === naturalWidth && existing?.height === naturalHeight) {
+        return prev;
+      }
+
+      return {
+        ...prev,
+        [pageNumber]: {
+          width: naturalWidth,
+          height: naturalHeight,
+        },
+      };
+    });
+  };
+
+  const pageAspectClass = (pageNumber: number) => {
+    const dimensions = pageDimensions[pageNumber];
+    if (!dimensions) return 'aspect-[3/4]';
+    return dimensions.width / dimensions.height >= 1.25 ? 'aspect-video' : 'aspect-[3/4]';
+  };
+
+  const goToPage = (pageNumber: number) => {
+    if (pageNumber >= 1 && pageNumber <= pages.length) {
       setCurrentPage(pageNumber);
     }
   };
 
-  const zoomIn = () => setScale(prev => Math.min(prev + 0.2, 3.0));
-  const zoomOut = () => setScale(prev => Math.max(prev - 0.2, 0.5));
+  const openPage = (pageNumber: number) => {
+    goToPage(pageNumber);
+    setViewMode('focus');
+  };
+
+  const zoomIn = () => {
+    setHasUserAdjustedScale(true);
+    setScale((prev) => Math.min(prev + 0.08, 1.4));
+  };
+  const zoomOut = () => {
+    setHasUserAdjustedScale(true);
+    setScale((prev) => Math.max(prev - 0.08, 0.5));
+  };
 
   if (loading) {
     return (
-      <div className={`flex items-center justify-center p-8 bg-gray-50 rounded-lg ${className}`}>
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-        <span className="ml-2 text-gray-600">PDF를 변환하는 중...</span>
+      <div className={`flex min-h-[18rem] items-center justify-center rounded-3xl border border-white/60 bg-white/55 p-8 ${className}`}>
+        <div className="h-9 w-9 animate-spin rounded-full border-2 border-azure-100 border-t-azure-500" />
+        <span className="ml-3 text-sm font-semibold text-ink-500">PDF를 준비하는 중...</span>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className={`flex items-center justify-center p-8 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300 ${className}`}>
+      <div className={`flex min-h-[18rem] items-center justify-center rounded-3xl border border-white/60 bg-white/55 p-8 ${className}`}>
         <div className="text-center">
-          <div className="text-red-500 text-lg font-medium mb-2">변환 실패</div>
-          <div className="text-gray-600 mb-4">{error}</div>
-          <a
-            href={pdfUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-          >
+          <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-2xl border border-coral-400/40 bg-coral-100 text-coral-600 shadow-glass-sm">
+            <DocumentTextIcon className="h-7 w-7" />
+          </div>
+          <div className="mb-2 text-lg font-bold text-coral-600">변환 실패</div>
+          <div className="mb-6 text-sm leading-relaxed text-ink-500">{error}</div>
+          <GlassButton href={pdfUrl} target="_blank" rel="noopener noreferrer" size="md">
+            <ArrowDownTrayIcon className="h-5 w-5" />
             PDF 다운로드
-          </a>        </div>
+          </GlassButton>
+        </div>
       </div>
     );
   }
 
   if (pages.length === 0) {
     return (
-      <div className={`text-center p-8 bg-gray-50 rounded-lg ${className}`}>
-        <p className="text-gray-600">표시할 페이지가 없습니다.</p>
+      <div className={`flex min-h-[18rem] items-center justify-center rounded-3xl border border-white/60 bg-white/55 p-8 ${className}`}>
+        <div className="text-center">
+          <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-2xl border border-azure-100 bg-azure-50 text-azure-500 shadow-glass-sm">
+            <DocumentTextIcon className="h-7 w-7" />
+          </div>
+          <p className="font-medium text-ink-500">표시할 페이지가 없습니다.</p>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className={`bg-white sm:rounded-lg sm:shadow-lg ${className}`}>
-      {/* 컨트롤 바 */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-2 sm:p-4 border-b bg-gray-50 sm:rounded-t-lg space-y-2 sm:space-y-0">
-        {/* 상단: 페이지 네비게이션 */}
-        <div className="flex items-center justify-center sm:justify-start space-x-2">
-          <button
-            onClick={() => goToPage(currentPage - 1)}
-            disabled={currentPage <= 1}
-            className="p-2 rounded-md bg-white border hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            <ChevronLeftIcon className="w-5 h-5" />
-          </button>
-          
-          <span className="text-sm text-gray-600 min-w-[50px] text-center">
-            {currentPage} / {pages.length}
-          </span>
-          
-          <button
-            onClick={() => goToPage(currentPage + 1)}
-            disabled={currentPage >= pages.length}
-            className="p-2 rounded-md bg-white border hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            <ChevronRightIcon className="w-5 h-5" />
-          </button>
-        </div>
-
-        {/* 하단: 컨트롤들 */}
-        <div className="flex items-center justify-center space-x-2 sm:space-x-4">
-          {/* 보기 모드 토글 */}
-          <div className="flex items-center space-x-1 sm:space-x-2">
-            <button
-              onClick={() => setViewMode('single')}
-              className={`px-2 py-1 text-xs sm:text-sm rounded ${viewMode === 'single' ? 'bg-blue-600 text-white' : 'bg-white border'}`}
-            >
-              단일
-            </button>
-            <button
-              onClick={() => setViewMode('scroll')}
-              className={`px-2 py-1 text-xs sm:text-sm rounded ${viewMode === 'scroll' ? 'bg-blue-600 text-white' : 'bg-white border'}`}
-            >
-              스크롤
-            </button>
-          </div>
-
-          {/* 줌 컨트롤 */}
-          <div className="flex items-center space-x-1 sm:space-x-2">
-            <button
-              onClick={zoomOut}
-              className="p-1.5 sm:p-2 rounded-md bg-white border hover:bg-gray-50"
-            >
-              <MagnifyingGlassMinusIcon className="w-4 h-4 sm:w-5 sm:h-5" />
-            </button>
-            
-            <span className="text-xs sm:text-sm text-gray-600 min-w-[45px] sm:min-w-[60px] text-center">
-              {Math.round(scale * 100)}%
-            </span>
-            
-            <button
-              onClick={zoomIn}
-              className="p-1.5 sm:p-2 rounded-md bg-white border hover:bg-gray-50"
-            >
-              <MagnifyingGlassPlusIcon className="w-4 h-4 sm:w-5 sm:h-5" />
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* 이미지 뷰어 */}
-      <div className="p-0 sm:p-4">
-        {viewMode === 'single' ? (
-          // 단일 페이지 보기
-          <div className="flex justify-center overflow-auto">
-            <div 
-              className="relative w-full"
-              style={{ transform: `scale(${scale})`, transformOrigin: 'center top' }}
-            >
-              <Image
-                src={pages[currentPage - 1].url}
-                alt={`${fileName} - 페이지 ${currentPage}`}
-                width={1200}
-                height={1600}
-                className="sm:shadow-lg w-full h-auto"
-                style={{ maxWidth: '100%', height: 'auto' }}
-                priority
-              />
+    <div className={`overflow-hidden rounded-3xl border border-white/60 bg-white/55 shadow-glass ${className}`}>
+      <div className="flex flex-col gap-3 border-b border-white/60 bg-azure-50/35 p-4">
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex min-w-0 items-center gap-3">
+            <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-azure-400 to-azure-600 text-white shadow-glow">
+              <DocumentTextIcon className="h-5 w-5" />
+            </div>
+            <div className="min-w-0">
+              <h3 className="truncate text-sm font-bold text-ink-900">{fileName}</h3>
+              <p className="mt-0.5 text-xs font-semibold text-ink-400">{pages.length}페이지</p>
             </div>
           </div>
-        ) : (
-          // 스크롤 보기
-          <div className="space-y-2 sm:space-y-4 max-h-[70vh] sm:max-h-[800px] overflow-y-auto">
-            {pages.map((page) => (
-              <div key={page.pageNumber} className="flex justify-center">
-                <div 
-                  className="relative w-full"
-                  style={{ transform: `scale(${scale})`, transformOrigin: 'center top' }}
-                >
-                  <Image
-                    src={page.url}
-                    alt={`${fileName} - 페이지 ${page.pageNumber}`}
-                    width={1200}
-                    height={1600}
-                    className="sm:shadow-lg w-full h-auto"
-                    style={{ maxWidth: '100%', height: 'auto' }}
-                  />
-                  <div className="absolute top-2 right-2 sm:top-4 sm:right-4 bg-black bg-opacity-50 text-white px-2 py-1 rounded text-xs sm:text-sm">
-                    페이지 {page.pageNumber}
-                  </div>
-                </div>
-              </div>
-            ))}
+
+          <GlassButton href={pdfUrl} target="_blank" rel="noopener noreferrer" variant="secondary" size="sm">
+            <ArrowDownTrayIcon className="h-4 w-4" />
+            다운로드
+          </GlassButton>
+        </div>
+
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => goToPage(currentPage - 1)}
+              disabled={currentPage <= 1}
+              className={iconButtonClass}
+              aria-label="이전 페이지"
+            >
+              <ChevronLeftIcon className="h-4 w-4" />
+            </button>
+            <span className="min-w-[4.5rem] text-center text-xs font-bold tabular-nums text-ink-700">
+              {currentPage} / {pages.length}
+            </span>
+            <button
+              onClick={() => goToPage(currentPage + 1)}
+              disabled={currentPage >= pages.length}
+              className={iconButtonClass}
+              aria-label="다음 페이지"
+            >
+              <ChevronRightIcon className="h-4 w-4" />
+            </button>
           </div>
-        )}
+
+          <div className="flex items-center gap-2">
+            <div className="flex rounded-2xl border border-white/70 bg-white/65 p-1 shadow-glass-sm">
+              <button
+                onClick={() => setViewMode('grid')}
+                className={`rounded-xl px-3 py-1.5 text-xs font-bold transition ${
+                  viewMode === 'grid' ? 'bg-azure-500 text-white shadow-glow' : 'text-ink-500 hover:text-azure-700'
+                }`}
+              >
+                그리드
+              </button>
+              <button
+                onClick={() => setViewMode('focus')}
+                className={`rounded-xl px-3 py-1.5 text-xs font-bold transition ${
+                  viewMode === 'focus' ? 'bg-azure-500 text-white shadow-glow' : 'text-ink-500 hover:text-azure-700'
+                }`}
+              >
+                확대
+              </button>
+            </div>
+
+            {viewMode === 'focus' && (
+              <div className="flex items-center gap-1 rounded-2xl border border-white/70 bg-white/65 px-1 py-1 shadow-glass-sm">
+                <button onClick={zoomOut} className={iconButtonClass} aria-label="축소">
+                  <MagnifyingGlassMinusIcon className="h-4 w-4" />
+                </button>
+                <span className="min-w-[3.25rem] text-center text-xs font-bold tabular-nums text-ink-700">
+                  {Math.round(scale * 100)}%
+                </span>
+                <button onClick={zoomIn} className={iconButtonClass} aria-label="확대">
+                  <MagnifyingGlassPlusIcon className="h-4 w-4" />
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
       </div>
 
-      {/* 썸네일 네비게이션 (5페이지 이상일 때만 표시) */}
-      {pages.length > 4 && viewMode === 'single' && (
-        <div className="p-2 sm:p-4 border-t bg-gray-50 sm:rounded-b-lg">
-          <div className="flex space-x-1 sm:space-x-2 overflow-x-auto pb-2 scrollbar-hide">
+      {viewMode === 'grid' ? (
+        <div className="max-h-[34rem] min-h-[18rem] overflow-y-auto bg-gradient-to-b from-white/35 to-azure-50/30 p-3">
+          <div className="grid grid-cols-2 gap-3">
             {pages.map((page) => (
               <button
                 key={page.pageNumber}
-                onClick={() => goToPage(page.pageNumber)}
-                className={`flex-shrink-0 relative ${
-                  page.pageNumber === currentPage
-                    ? 'ring-2 ring-blue-500'
-                    : 'hover:opacity-80'
+                onClick={() => openPage(page.pageNumber)}
+                className={`group overflow-hidden rounded-2xl border bg-white/75 text-left shadow-glass-sm transition hover:-translate-y-0.5 hover:shadow-glass ${
+                  page.pageNumber === currentPage ? 'border-azure-400 ring-2 ring-azure-300/60' : 'border-white/70'
                 }`}
               >
-                <Image
-                  src={page.thumbnailUrl}
-                  alt={`썸네일 ${page.pageNumber}`}
-                  width={80}
-                  height={112}
-                  className="rounded border w-16 h-20 sm:w-20 sm:h-28 object-cover"
-                />
-                <div className={`absolute bottom-0.5 right-0.5 sm:bottom-1 sm:right-1 px-1 py-0.5 text-xs rounded ${
-                  page.pageNumber === currentPage
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-black bg-opacity-50 text-white'
-                }`}>
-                  {page.pageNumber}
+                <div className={`flex ${pageAspectClass(page.pageNumber)} items-center justify-center bg-white`}>
+                  {failedImages[page.pageNumber] ? (
+                    <div className="px-3 text-center text-xs font-semibold text-ink-400">미리보기 실패</div>
+                  ) : (
+                    <img
+                      src={page.thumbnailUrl || page.url}
+                      alt={`${fileName} ${page.pageNumber}페이지`}
+                      className="h-full w-full object-contain"
+                      loading={page.pageNumber <= 8 ? 'eager' : 'lazy'}
+                      decoding="async"
+                      onLoad={(event) => {
+                        rememberImageDimensions(page.pageNumber, event);
+                        if (page.pageNumber === 1) setCurrentPage(1);
+                      }}
+                      onError={() => setFailedImages((prev) => ({ ...prev, [page.pageNumber]: true }))}
+                    />
+                  )}
+                </div>
+                <div className="flex items-center justify-between gap-2 px-3 py-2">
+                  <span className="text-xs font-bold text-ink-700">{page.pageNumber}쪽</span>
+                  <span className="text-[11px] font-semibold text-azure-600 opacity-0 transition group-hover:opacity-100">
+                    보기
+                  </span>
                 </div>
               </button>
             ))}
+          </div>
+        </div>
+      ) : (
+        <div
+          className={
+            isLandscapePage
+              ? 'flex max-h-[34rem] min-h-[18rem] flex-col gap-3 overflow-hidden bg-gradient-to-b from-white/35 to-azure-50/30 p-3'
+              : 'grid h-[34rem] min-h-[24rem] max-h-[34rem] grid-cols-1 gap-3 overflow-hidden bg-gradient-to-b from-white/35 to-azure-50/30 p-3 lg:grid-cols-[minmax(0,1fr)_7rem]'
+          }
+        >
+          <div
+            className={
+              isLandscapePage
+                ? 'min-h-0 flex-1 overflow-auto rounded-2xl border border-white/70 bg-white/70 p-3 shadow-inner sm:p-4'
+                : 'min-h-0 overflow-auto rounded-2xl border border-white/70 bg-white/70 p-4 shadow-inner'
+            }
+          >
+            <div className={isLandscapePage ? 'flex min-h-full items-center justify-center' : 'flex min-h-full items-start justify-center'}>
+              <div
+                className="relative mx-auto flex items-start justify-center"
+                style={{
+                  width: `${Math.round(scale * 100)}%`,
+                  maxWidth: isLandscapePage ? (isWideLandscapePage ? '1120px' : '1040px') : '820px',
+                }}
+              >
+                <img
+                  src={currentImage.thumbnailUrl || currentImage.url}
+                  alt={`${fileName} ${currentImage.pageNumber}페이지 미리보기`}
+                  className={`block h-auto w-full rounded-xl border border-ink-100 bg-white object-contain shadow-glass transition-opacity duration-200 ${
+                    isLandscapePage ? 'max-h-[22rem]' : 'max-h-[31rem]'
+                  } ${
+                    focusLoadedImages[currentImage.pageNumber] ? 'opacity-0' : 'opacity-100'
+                  }`}
+                  loading="eager"
+                  decoding="async"
+                  onLoad={(event) => rememberImageDimensions(currentImage.pageNumber, event)}
+                />
+                <img
+                  src={currentImage.url}
+                  alt={`${fileName} ${currentImage.pageNumber}페이지`}
+                  className={`absolute inset-0 h-auto w-full rounded-xl border border-ink-100 bg-white object-contain shadow-glass transition-opacity duration-200 ${
+                    isLandscapePage ? 'max-h-[22rem]' : 'max-h-[31rem]'
+                  } ${
+                    focusLoadedImages[currentImage.pageNumber] ? 'opacity-100' : 'opacity-0'
+                  }`}
+                  loading="eager"
+                  decoding="async"
+                  onLoad={(event) => {
+                    rememberImageDimensions(currentImage.pageNumber, event);
+                    setFocusLoadedImages((prev) => ({ ...prev, [currentImage.pageNumber]: true }));
+                  }}
+                  onError={() => setFocusLoadedImages((prev) => ({ ...prev, [currentImage.pageNumber]: false }))}
+                />
+              </div>
+            </div>
+          </div>
+
+          <div
+            className={
+              isLandscapePage
+                ? 'h-20 flex-none overflow-x-auto overscroll-contain pb-1'
+                : 'hidden h-full min-h-0 overflow-y-auto overscroll-contain pr-1 lg:block'
+            }
+          >
+            <div className={isLandscapePage ? 'flex gap-2 pb-2' : 'space-y-2 pb-2'}>
+              {pages.map((page) => (
+                <button
+                  key={page.pageNumber}
+                  onClick={() => goToPage(page.pageNumber)}
+                  className={`overflow-hidden rounded-xl border bg-white/70 text-left shadow-glass-sm transition hover:border-azure-200 ${
+                    page.pageNumber === currentPage ? 'border-azure-400 ring-2 ring-azure-300/50' : 'border-white/70'
+                  } ${isLandscapePage ? 'w-24 flex-none sm:w-28' : 'w-full'}`}
+                >
+                  <img
+                    src={page.thumbnailUrl || page.url}
+                    alt={`${page.pageNumber}쪽 썸네일`}
+                    className={`${isLandscapePage ? 'aspect-video' : pageAspectClass(page.pageNumber)} w-full object-contain`}
+                    loading="lazy"
+                    decoding="async"
+                    onLoad={(event) => rememberImageDimensions(page.pageNumber, event)}
+                  />
+                  <div className="px-2 py-1 text-center text-xs font-bold text-ink-600">{page.pageNumber}</div>
+                </button>
+              ))}
+            </div>
           </div>
         </div>
       )}

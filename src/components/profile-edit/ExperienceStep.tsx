@@ -1,9 +1,13 @@
 'use client';
 
 import { useState } from 'react';
-import { PlusIcon, TrashIcon } from '@heroicons/react/24/outline';
+import { PlusIcon, TrashIcon, BriefcaseIcon } from '@heroicons/react/24/outline';
 import { ExperienceItem } from '@/types';
-import { formatDateForInput, createSafeDate } from '@/lib/dateUtils';
+import { GlassButton } from '@/components/ui/GlassButton';
+import { GlassCard } from '@/components/ui/GlassCard';
+import { Badge } from '@/components/ui/Badge';
+import { Field, GlassInput, GlassTextarea } from '@/components/ui/GlassField';
+import { ScrollReveal } from '@/components/ui/ScrollReveal';
 
 interface ExperienceStepProps {
   data: ExperienceItem[];
@@ -39,131 +43,133 @@ export default function ExperienceStep({ data, onChange }: ExperienceStepProps) 
     onChange(updated);
   };
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h3 className="text-lg font-medium text-gray-900">경력 사항</h3>
-          <p className="text-sm text-gray-600 mt-1">
+    <div className="space-y-5">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <div className="space-y-2">
+          <span className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-azure-600">
+            <BriefcaseIcon className="h-4 w-4" />
+            Experience
+          </span>
+          <h3 className="font-display text-2xl font-bold tracking-tight text-ink-900">
+            경력 사항
+          </h3>
+          <p className="text-sm leading-relaxed text-ink-500">
             이전 근무 경험을 추가해주세요.
           </p>
         </div>
-        <button
+        <GlassButton
           type="button"
           onClick={addExperience}
-          className="inline-flex items-center px-3 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700"
+          variant="primary"
+          size="sm"
         >
-          <PlusIcon className="h-4 w-4 mr-1" />
+          <PlusIcon className="h-4 w-4" />
           경력 추가
-        </button>
+        </GlassButton>
       </div>
 
       {experiences.length === 0 ? (
-        <div className="text-center py-12 bg-gray-50 rounded-lg">
-          <p className="text-gray-500">경력 사항이 없습니다.</p>
-          <button
-            type="button"
-            onClick={addExperience}
-            className="mt-4 text-indigo-600 hover:text-indigo-700"
-          >
-            첫 경력 추가하기
-          </button>
-        </div>
+        <ScrollReveal>
+          <div className="glass-card flex flex-col items-center justify-center gap-4 rounded-3xl px-6 py-10 text-center">
+            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-azure-400 to-azure-600 text-white shadow-glow">
+              <BriefcaseIcon className="h-7 w-7" />
+            </div>
+            <p className="text-ink-500">경력 사항이 없습니다.</p>
+            <GlassButton
+              type="button"
+              onClick={addExperience}
+              variant="secondary"
+              size="sm"
+            >
+              <PlusIcon className="h-4 w-4" />
+              첫 경력 추가하기
+            </GlassButton>
+          </div>
+        </ScrollReveal>
       ) : (
-        <div className="space-y-6">
+        <div className="space-y-4">
           {experiences.map((exp, index) => (
-            <div key={index} className="bg-white border border-gray-200 rounded-lg p-6">
-              <div className="flex justify-between items-start mb-4">
-                <h4 className="text-md font-medium text-gray-900">
-                  경력 {index + 1}
-                </h4>
-                <button
-                  type="button"
-                  onClick={() => removeExperience(index)}
-                  className="text-red-600 hover:text-red-700"
-                >
-                  <TrashIcon className="h-5 w-5" />
-                </button>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    회사명
-                  </label>
-                  <input
-                    type="text"
-                    value={exp.company}
-                    onChange={(e) => updateExperience(index, 'company', e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500"
-                  />
-                </div>
+            <ScrollReveal key={index} delay={index * 0.05}>
+              <GlassCard strong hover className="overflow-hidden">
+                <div className="p-5 md:p-6">
+                  <div className="mb-4 flex items-start justify-between gap-4">
+                    <div className="flex items-center gap-3">
+                      <Badge tone="azure">경력 {index + 1}</Badge>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => removeExperience(index)}
+                      aria-label="경력 삭제"
+                      className="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-white/60 bg-white/60 text-coral-500 shadow-glass-sm backdrop-blur-md transition-all duration-300 hover:-translate-y-0.5 hover:bg-coral-100 hover:text-coral-600 hover:shadow-glass"
+                    >
+                      <TrashIcon className="h-5 w-5" />
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+                    <Field label="회사명">
+                      <GlassInput
+                        type="text"
+                        value={exp.company}
+                        onChange={(e) => updateExperience(index, 'company', e.target.value)}
+                      />
+                    </Field>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    직책/직급
-                  </label>
-                  <input
-                    type="text"
-                    value={exp.position}
-                    onChange={(e) => updateExperience(index, 'position', e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500"
-                  />
-                </div>
+                    <Field label="직책/직급">
+                      <GlassInput
+                        type="text"
+                        value={exp.position}
+                        onChange={(e) => updateExperience(index, 'position', e.target.value)}
+                      />
+                    </Field>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    시작일
-                  </label>
-                  <input
-                    type="text"
-                    value={exp.startDate || ''}
-                    onChange={(e) => updateExperience(index, 'startDate', e.target.value)}
-                    placeholder="YYYY-MM 형식으로 입력 (예: 2020-03)"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500"
-                  />
-                </div>
+                    <Field label="시작일">
+                      <GlassInput
+                        type="text"
+                        value={exp.startDate || ''}
+                        onChange={(e) => updateExperience(index, 'startDate', e.target.value)}
+                        placeholder="YYYY-MM 형식으로 입력 (예: 2020-03)"
+                      />
+                    </Field>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    종료일
-                  </label>
-                  <input
-                    type="text"
-                    value={exp.endDate || ''}
-                    onChange={(e) => updateExperience(index, 'endDate', e.target.value)}
-                    disabled={exp.isCurrent}
-                    placeholder="YYYY-MM 형식으로 입력 (예: 2022-12)"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 disabled:bg-gray-100"
-                  />
-                </div>
-                <div className="md:col-span-2">
-                  <div className="flex items-center mb-1">
-                    <input
-                      type="checkbox"
-                      id={`current-${index}`}
-                      checked={exp.isCurrent}
-                      onChange={(e) => updateExperience(index, 'isCurrent', e.target.checked)}
-                      className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
-                    />
-                    <label htmlFor={`current-${index}`} className="ml-2 text-sm text-gray-700">
-                      현재 재직중
-                    </label>
+                    <Field label="종료일">
+                      <GlassInput
+                        type="text"
+                        value={exp.endDate || ''}
+                        onChange={(e) => updateExperience(index, 'endDate', e.target.value)}
+                        disabled={exp.isCurrent}
+                        placeholder="YYYY-MM 형식으로 입력 (예: 2022-12)"
+                      />
+                    </Field>
+
+                    <div className="md:col-span-2">
+                      <label
+                        htmlFor={`current-${index}`}
+                        className="inline-flex cursor-pointer items-center gap-2.5 rounded-2xl border border-white/60 bg-white/50 px-4 py-2.5 text-sm font-medium text-ink-700 shadow-glass-sm backdrop-blur-md transition-all duration-300 hover:bg-white/70"
+                      >
+                        <input
+                          type="checkbox"
+                          id={`current-${index}`}
+                          checked={exp.isCurrent}
+                          onChange={(e) => updateExperience(index, 'isCurrent', e.target.checked)}
+                          className="h-4 w-4 rounded border-ink-200 text-azure-500 focus:ring-2 focus:ring-azure-400/50"
+                        />
+                        현재 재직중
+                      </label>
+                    </div>
+
+                    <Field label="업무 내용" className="md:col-span-2 xl:col-span-4">
+                      <GlassTextarea
+                        value={exp.description}
+                        onChange={(e) => updateExperience(index, 'description', e.target.value)}
+                        rows={2}
+                        className="min-h-[92px]"
+                        placeholder="담당했던 업무와 성과를 구체적으로 작성해주세요."
+                      />
+                    </Field>
                   </div>
                 </div>
-
-                <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    업무 내용
-                  </label>
-                  <textarea
-                    value={exp.description}
-                    onChange={(e) => updateExperience(index, 'description', e.target.value)}
-                    rows={3}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500"
-                    placeholder="담당했던 업무와 성과를 구체적으로 작성해주세요."
-                  />
-                </div>
-              </div>
-            </div>
+              </GlassCard>
+            </ScrollReveal>
           ))}
         </div>
       )}

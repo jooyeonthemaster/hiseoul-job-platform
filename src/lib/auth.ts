@@ -590,6 +590,8 @@ export const registerPortfolio = async (uid: string, portfolioData: {
   experience?: any[];
   education?: any[];
   description?: string;
+  currentCourse?: string;
+  courseType?: 'domestic' | 'foreign';
   certificates?: any[];
   awards?: any[];
   introVideo?: string;
@@ -638,6 +640,8 @@ export const registerPortfolio = async (uid: string, portfolioData: {
       experience: portfolioData.experience || [],
       education: portfolioData.education || [],
       description: portfolioData.description || '',
+      currentCourse: portfolioData.currentCourse || '',
+      courseType: portfolioData.courseType || null, // 내국인/외국인 과정 구분
       certificates: portfolioData.certificates || [],
       awards: portfolioData.awards || [],
       introVideo: portfolioData.introVideo || '',
@@ -719,6 +723,7 @@ export const getAllPortfolios = async (includeHidden: boolean = false) => {
         // 사용자 프로필 이미지와 과정 정보 가져오기 (jobseekers 컬렉션에서)
         let profileImage = data.profileImage || '';
         let currentCourse = '';
+        let courseType: 'domestic' | 'foreign' | null = data.courseType || null;
         try {
           const jobseekerDocRef = doc(db, 'jobseekers', userId);
           const jobseekerDoc = await getDoc(jobseekerDocRef);
@@ -726,6 +731,8 @@ export const getAllPortfolios = async (includeHidden: boolean = false) => {
             const jobseekerData = jobseekerDoc.data() as any;
             profileImage = jobseekerData.profile?.profileImage || data.profileImage || '';
             currentCourse = jobseekerData.profile?.currentCourse || '';
+            // 내국인/외국인 과정 구분: jobseekers 프로필 우선, 없으면 portfolio 문서값 사용
+            courseType = jobseekerData.profile?.courseType || data.courseType || null;
             console.log(`🖼️ getAllPortfolios - ${data.name}의 프로필 이미지:`, profileImage);
             console.log(`📚 getAllPortfolios - ${data.name}의 수행 과정:`, currentCourse);
           }
@@ -754,6 +761,7 @@ export const getAllPortfolios = async (includeHidden: boolean = false) => {
           isHidden: data.isHidden || false, // 숨김 상태 추가
           profileImage: profileImage, // 실시간 프로필 이미지
           currentCourse: currentCourse, // 수행 중인 과정
+          courseType: courseType, // 내국인('domestic') / 외국인('foreign') 과정 구분
           portfolioPdfs: data.portfolioPdfs || [],
           additionalDocuments: data.additionalDocuments || [],
           createdAt: data.createdAt?.toDate(),
@@ -919,6 +927,11 @@ export const getEmployerById = async (employerId: string) => {
     }
     return null;
   } catch (error) {
+    // 미승인/반려 기업은 보안 규칙(approved 또는 본인)상 비당사자가 읽을 수 없음 — 예상된 거부이므로 조용히 무시.
+    // (예: 구직자가 찜한 기업이 이후 '반려'되면 마이페이지 찜 목록 로딩에서 permission-denied 발생)
+    if ((error as { code?: string })?.code === 'permission-denied') {
+      return null;
+    }
     console.error('Error fetching employer by ID:', error);
     return null;
   }
@@ -1057,7 +1070,7 @@ export const canAccessPortfolio = async (userId: string): Promise<boolean> => {
     const userData = userDoc.data();
     
     // 어드민은 항상 접근 가능
-    if (userData.role === 'admin') {
+    if (userData.role === 'admin' || userData.isAdmin === true) {
       return true;
     }
     

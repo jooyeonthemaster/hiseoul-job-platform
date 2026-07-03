@@ -7,25 +7,26 @@ import {
   WelcomeHeader,
   ProfileCompletionCard,
   FavoriteCompaniesCard,
-  JobInquiriesCard,
   PortfolioStatusCard,
   RecommendedCompaniesCard
 } from '@/components/dashboard';
-import JobInquiryDetailModal from '@/components/JobInquiryDetailModal';
 import { calculateProfileCompletion as calculateProfileCompletionUtil } from '@/lib/profileCompletion';
 import {
   getJobSeekerProfile,
   updateJobSeekerProfile,
   updateUserProfile,
-  logOut,
   registerPortfolio,
   getPortfolio,
   getFavoriteCompanies,
   getAllEmployers,
   getEmployerById
 } from '@/lib/auth';
-import { collection, query, where, getDocs, orderBy, doc, updateDoc } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import { AuroraBackground } from '@/components/ui/AuroraBackground';
+import { GlassCard } from '@/components/ui/GlassCard';
+import { GlassButton } from '@/components/ui/GlassButton';
+import { GlassInput, GlassSelect } from '@/components/ui/GlassField';
+import { ScrollReveal } from '@/components/ui/ScrollReveal';
+import { AcademicCapIcon } from '@heroicons/react/24/outline';
 
 export default function ProfilePage() {
   const { user, userData, loading: authLoading, refreshUserData } = useAuth();
@@ -36,8 +37,6 @@ export default function ProfilePage() {
   const [formData, setFormData] = useState<any>({});
   const [portfolioRegistered, setPortfolioRegistered] = useState(false);
   const [registeringPortfolio, setRegisteringPortfolio] = useState(false);
-  const [jobInquiries, setJobInquiries] = useState<any[]>([]);
-  const [loadingInquiries, setLoadingInquiries] = useState(false);
   const [favoriteCompanies, setFavoriteCompanies] = useState<any[]>([]);
   const [dashboardStats, setDashboardStats] = useState({
     profileCompletion: 0,
@@ -47,10 +46,6 @@ export default function ProfilePage() {
   });
   const [loadingDashboard, setLoadingDashboard] = useState(false);
   const [recommendedCompanies, setRecommendedCompanies] = useState<any[]>([]);
-  
-  // Modal states
-  const [showInquiryModal, setShowInquiryModal] = useState(false);
-  const [selectedInquiry, setSelectedInquiry] = useState<any>(null);
 
   // Redirect if not authenticated or not jobseeker
   useEffect(() => {
@@ -67,7 +62,6 @@ export default function ProfilePage() {
     if (user && userData && userData.role === 'jobseeker') {
       loadProfileAndDashboard();
       checkPortfolioRegistration();
-      loadJobInquiries();
     }
   }, [user, userData, authLoading]);
 
@@ -96,7 +90,8 @@ export default function ProfilePage() {
         languages: profileData?.profile?.languages?.join(', ') || '',
         speciality: profileData?.profile?.speciality || '',
         profileImage: profileData?.profile?.profileImage || '',
-        currentCourse: profileData?.profile?.currentCourse || ''
+        currentCourse: profileData?.profile?.currentCourse || '',
+        courseType: profileData?.profile?.courseType || ''
       };
       
       console.log('loadProfile - setting formData:', newFormData);
@@ -114,43 +109,12 @@ export default function ProfilePage() {
     if (!user || !userData) return;
 
     try {
-      const portfolio = await getPortfolio(user.uid);
+      const portfolio = await getPortfolio(user.uid, true);
       setPortfolioRegistered(!!portfolio);
     } catch (error) {
       console.error('Error checking portfolio:', error);
     }
   };
-  const loadJobInquiries = async () => {
-    if (!user || !userData) return;
-
-    try {
-      setLoadingInquiries(true);
-      // 임시로 orderBy 제거하여 인덱스 에러 방지
-      const inquiriesQuery = query(
-        collection(db, 'jobInquiries'),
-        where('jobSeekerId', '==', user.uid)
-      );
-      
-      const querySnapshot = await getDocs(inquiriesQuery);
-      const inquiries = querySnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data(),
-        sentAt: doc.data().sentAt?.toDate() // Firestore timestamp를 Date로 변환
-      }))
-      // 클라이언트 사이드에서 정렬
-      .sort((a, b) => {
-        if (!a.sentAt || !b.sentAt) return 0;
-        return b.sentAt.getTime() - a.sentAt.getTime();
-      });
-      
-      setJobInquiries(inquiries);
-    } catch (error) {
-      console.error('Error loading job inquiries:', error);
-    } finally {
-      setLoadingInquiries(false);
-    }
-  };
-
   const loadDashboardData = async (profileFormData?: any) => {
     if (!user || !userData) return;
 
@@ -173,7 +137,7 @@ export default function ProfilePage() {
       
       // 프로필 데이터를 직접 로드하여 완성도 계산
       const profileData = await getJobSeekerProfile(user.uid);
-      const portfolio = await getPortfolio(user.uid);
+      const portfolio = await getPortfolio(user.uid, true);
       
       // 메인 페이지와 동일한 방식으로 데이터 변환
       const profileForCalculation = profileData?.profile ? {
@@ -202,10 +166,11 @@ export default function ProfilePage() {
       setRecommendedCompanies(recommended.slice(0, 3));
       
       // Update dashboard stats
+      // REQ2(관리자 중개형): 받은 채용 제안 수는 구직자에게 노출하지 않는다.
       setDashboardStats({
         profileCompletion: completion,
         totalFavorites: favoriteIds.length,
-        totalInquiries: jobInquiries.length,
+        totalInquiries: 0,
         portfolioViews: Math.floor(Math.random() * 50) + 10 // Mock data
       });
       
@@ -263,54 +228,6 @@ export default function ProfilePage() {
       .sort(() => Math.random() - 0.5); // 랜덤 정렬
   };
 
-  // 채용 제안 상태 업데이트 함수
-  const handleInquiryStatusUpdate = async (inquiryId: string, newStatus: string) => {
-    try {
-      const inquiryRef = doc(db, 'jobInquiries', inquiryId);
-      await updateDoc(inquiryRef, {
-        status: newStatus,
-        respondedAt: new Date()
-      });
-
-      // 로컬 상태 업데이트
-      setJobInquiries(prev => 
-        prev.map(inquiry => 
-          inquiry.id === inquiryId 
-            ? { ...inquiry, status: newStatus, respondedAt: new Date() }
-            : inquiry
-        )
-      );
-
-      // 수락/거절일 때만 모달 닫기
-      if (newStatus === 'accepted' || newStatus === 'rejected') {
-        setShowInquiryModal(false);
-        setSelectedInquiry(null);
-        alert(newStatus === 'accepted' ? '채용 제안을 수락했습니다!' : '채용 제안을 거절했습니다.');
-      }
-      // 'read' 상태는 조용히 처리 (alert 없음)
-    } catch (error) {
-      console.error('Error updating inquiry status:', error);
-      alert('상태 업데이트 중 오류가 발생했습니다.');
-    }
-  };
-
-  // 모달 열기 함수
-  const openInquiryModal = (inquiry: any) => {
-    setSelectedInquiry(inquiry);
-    setShowInquiryModal(true);
-    
-    // 읽음 상태로 업데이트 (sent 상태인 경우에만)
-    if (inquiry.status === 'sent') {
-      handleInquiryStatusUpdate(inquiry.id, 'read');
-    }
-  };
-
-  // 모달 닫기 함수
-  const closeInquiryModal = () => {
-    setShowInquiryModal(false);
-    setSelectedInquiry(null);
-  };
-
   const handleSaveProfile = async (data: any) => {
     if (!user || !userData) return;
 
@@ -321,12 +238,17 @@ export default function ProfilePage() {
       await updateUserProfile(user.uid, { name: data.name });
 
       // Update jobseeker profile
+      // 주의: updateJobSeekerProfile 은 profile 객체 전체를 덮어쓴다.
+      // 기존 profile 을 먼저 spread 해 자격증/수상/영상/자기소개/courseType 등
+      // 이 화면에서 편집하지 않는 필드가 유실되지 않도록 병합-보존한다.
       await updateJobSeekerProfile(user.uid, {
+        ...(profile?.profile || {}),
         phone: data.phone || '',
         address: data.address || '',
         speciality: data.speciality || '',
         profileImage: data.profileImage || '',
         currentCourse: data.currentCourse || '',
+        courseType: data.courseType || profile?.profile?.courseType || null,
         skills: data.skills.split(',').map((s: string) => s.trim()).filter(Boolean),
         languages: data.languages.split(',').map((s: string) => s.trim()).filter(Boolean),
         experience: profile?.profile?.experience || [],
@@ -373,14 +295,6 @@ export default function ProfilePage() {
     }
   };
 
-  const handleLogout = async () => {
-    try {
-      await logOut();
-      router.push('/');
-    } catch (error) {
-      console.error('Logout error:', error);
-    }
-  };
   // Get missing fields for profile completion
   const getMissingFields = () => {
     if (!profile?.profile) {
@@ -406,8 +320,12 @@ export default function ProfilePage() {
 
   if (authLoading || loading || loadingDashboard) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
+      <div className="relative min-h-screen flex items-center justify-center overflow-hidden bg-azure-aurora">
+        <AuroraBackground />
+        <div className="relative z-10 flex flex-col items-center gap-5">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-azure-500"></div>
+          <p className="text-sm text-ink-400">불러오는 중...</p>
+        </div>
       </div>
     );
   }
@@ -417,35 +335,11 @@ export default function ProfilePage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100">
-      {/* Header */}
-      <header className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <div className="flex items-center">
-              <button
-                onClick={() => router.push('/')}
-                className="text-2xl font-bold text-indigo-600"
-              >
-                테크벤처 잡 매칭
-              </button>
-            </div>
-            <div className="flex items-center space-x-4">
-              <span className="text-sm text-gray-600">
-                {userData.name}님 
-              </span>
-              <button
-                onClick={handleLogout}
-                className="text-sm text-gray-600 hover:text-gray-900"
-              >
-                로그아웃
-              </button>
-            </div>
-          </div>
-        </div>
-      </header>
+    <div className="relative min-h-screen overflow-x-clip bg-azure-aurora">
+      <AuroraBackground />
+
       {/* Main Dashboard Content */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="relative z-10 mx-auto w-full max-w-[1680px] px-4 py-6 sm:px-6 lg:px-8 2xl:px-10">
         {/* Welcome Header */}
         <WelcomeHeader 
           userName={userData.name} 
@@ -478,93 +372,105 @@ export default function ProfilePage() {
           }}
         />
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Main Content - Left Column */}
-          <div className="lg:col-span-2 space-y-8">
-            {/* Profile Completion Card */}
-            <ProfileCompletionCard 
+        <div className="grid grid-cols-1 gap-5 xl:grid-cols-12">
+          <div className="xl:col-span-7">
+            <ProfileCompletionCard
               completionPercentage={dashboardStats.profileCompletion}
               onEditClick={() => router.push('/profile/edit')}
               missingFields={getMissingFields()}
             />
-
-            {/* Current Course Card */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold text-gray-900">수행 중인 과정</h3>
-                <div className="text-2xl">📚</div>
-              </div>
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    현재 참여 중인 교육과정이나 프로그램
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.currentCourse || ''}
-                    onChange={(e) => setFormData((prev: any) => ({ ...prev, currentCourse: e.target.value }))}
-                    placeholder="예: 영상콘텐츠 마케터 양성과정 3기, 외국인 유학생 AI 마케터 인턴과정"
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                  />
-                </div>
-                <button
-                  onClick={() => handleSaveProfile(formData)}
-                  disabled={loading}
-                  className="w-full bg-indigo-600 text-white py-2 px-4 rounded-lg hover:bg-indigo-700 transition-colors disabled:opacity-50"
-                >
-                  {loading ? '저장 중...' : '과정 정보 저장'}
-                </button>
-                {formData.currentCourse && (
-                  <div className="bg-green-50 border border-green-200 rounded-lg p-3">
-                    <p className="text-sm text-green-700">
-                      <span className="font-medium">현재 과정:</span> {formData.currentCourse}
-                    </p>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Favorite Companies Card */}
-            <FavoriteCompaniesCard 
-              companies={favoriteCompanies}
-              loading={loadingDashboard}
-            />
-
-            {/* Job Inquiries Card */}
-            <JobInquiriesCard 
-              inquiries={jobInquiries}
-              loading={loadingInquiries}
-              onRefresh={loadJobInquiries}
-              onDetailClick={openInquiryModal}
-            />
           </div>
-          {/* Sidebar - Right Column */}
-          <div className="space-y-8">
-            {/* Portfolio Status Card */}
+
+          <div className="xl:col-span-5">
+            <ScrollReveal>
+              <GlassCard className="h-full p-5 md:p-6">
+                <div className="mb-4 flex items-center justify-between gap-4">
+                  <div>
+                    <span className="text-xs font-semibold uppercase tracking-[0.18em] text-azure-600">Course</span>
+                    <h3 className="mt-1 font-display text-xl font-bold tracking-tight text-ink-900">수행 중인 과정</h3>
+                  </div>
+                  <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-azure-100 bg-azure-50 text-azure-600 shadow-glass-sm">
+                    <AcademicCapIcon className="h-5 w-5" />
+                  </div>
+                </div>
+                <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_180px]">
+                  <div className="space-y-2">
+                    <label className="block text-sm font-medium text-ink-700">
+                      현재 참여 중인 교육과정이나 프로그램
+                    </label>
+                    <GlassInput
+                      type="text"
+                      value={formData.currentCourse || ''}
+                      onChange={(e) => setFormData((prev: any) => ({ ...prev, currentCourse: e.target.value }))}
+                      placeholder="예: 영상콘텐츠 마케터 양성과정 3기, 외국인 유학생 AI 마케터 인턴과정"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="block text-sm font-medium text-ink-700">
+                      과정 구분 (내국인 / 외국인)
+                    </label>
+                    <GlassSelect
+                      value={formData.courseType || ''}
+                      onChange={(e) => setFormData((prev: any) => ({ ...prev, courseType: e.target.value }))}
+                    >
+                      <option value="">선택 안 함</option>
+                      <option value="domestic">내국인</option>
+                      <option value="foreign">외국인</option>
+                    </GlassSelect>
+                  </div>
+                  <div className="flex flex-col gap-3 lg:col-span-2 lg:flex-row lg:items-center lg:justify-between">
+                    <p className="text-xs leading-relaxed text-ink-400">
+                      기업이 내국인/외국인 과정별로 포트폴리오를 탐색할 때 사용됩니다.
+                    </p>
+                    <GlassButton
+                      onClick={() => handleSaveProfile(formData)}
+                      disabled={loading}
+                      className="w-full lg:w-auto"
+                      size="sm"
+                    >
+                      {loading ? '저장 중...' : '과정 정보 저장'}
+                    </GlassButton>
+                  </div>
+                  {formData.currentCourse && (
+                    <div className="glass rounded-2xl border border-mint-400/40 bg-mint-100/60 p-3 lg:col-span-2">
+                      <p className="text-sm text-mint-600">
+                        <span className="font-semibold">현재 과정:</span> {formData.currentCourse}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </GlassCard>
+            </ScrollReveal>
+          </div>
+
+          <div className="xl:col-span-4">
             <PortfolioStatusCard 
               isRegistered={portfolioRegistered}
               views={dashboardStats.portfolioViews}
               userId={user?.uid}
               onRegisterClick={handlePortfolioRegister}
             />
+          </div>
 
-            {/* Recommended Companies Card */}
+          <div className="xl:col-span-4">
             <RecommendedCompaniesCard 
               companies={recommendedCompanies}
               loading={loadingDashboard}
             />
           </div>
+
+          <div className="xl:col-span-4">
+            <FavoriteCompaniesCard
+              companies={favoriteCompanies}
+              loading={loadingDashboard}
+            />
+          </div>
+          {/*
+            REQ2(완전 관리자 중개형): 받은 채용 제안(JobInquiriesCard) 및 상세 모달은
+            구직자에게 노출하지 않는다. 관련 로딩/상태/핸들러도 제거함.
+          */}
         </div>
       </div>
-      {/* Job Inquiry Detail Modal */}
-      {showInquiryModal && selectedInquiry && (
-        <JobInquiryDetailModal
-          isOpen={showInquiryModal}
-          inquiry={selectedInquiry}
-          onStatusUpdate={handleInquiryStatusUpdate}
-          onClose={closeInquiryModal}
-        />
-      )}
     </div>
   );
 }

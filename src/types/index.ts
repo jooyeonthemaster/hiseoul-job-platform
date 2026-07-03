@@ -4,6 +4,7 @@ export interface User {
   email: string;
   name: string;
   role: 'jobseeker' | 'employer' | 'admin';
+  isAdmin?: boolean;
   createdAt: Date;
   updatedAt: Date;
   // 기업 담당자 정보 (role이 'employer'인 경우)
@@ -32,7 +33,8 @@ export interface JobSeekerProfile {
   profileImage?: string;
   speciality?: string;
   currentCourse?: string; // 수행 중인 과정 (예: 영상콘텐츠 마케터 양성과정 3기)
-  
+  courseType?: 'domestic' | 'foreign'; // 과정 구분: 내국인/외국인 (포트폴리오 필터용)
+
   // 추가 필드들
   certificates?: CertificateItem[];
   awards?: AwardItem[];
@@ -302,4 +304,4 @@ export interface Notification {
   isRead: boolean;
   createdAt: Date;
   actionUrl?: string;
-} 
+}

@@ -67,3 +67,18 @@ tasks/
 *firebase-adminsdk*.json
 *-sa.json
 .secrets/
+
+# Playwright MCP artifacts
+.playwright-mcp/
+
+# Local dev screenshots
+/about-decluttered.png
+/about-full.png
+/auth-employer-preselect.png
+/companies-decluttered.png
+/faq-decluttered.png
+/home-hero-anon.png
+/portfolios-anon-gate.png
+
+# Raw font download (app uses woff2 in src/app/fonts/)
+/Paperlogy-1.000/

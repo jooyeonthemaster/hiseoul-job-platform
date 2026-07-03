@@ -1,7 +1,8 @@
 'use client';
+
 import { PlayIcon } from '@heroicons/react/24/outline';
 import { getYouTubeId } from '../../utils/portfolio.utils';
-import { VideoLink } from '../../types/portfolio.types';
+import type { VideoLink } from '../../types/portfolio.types';
 
 interface IntroVideoProps {
   introVideo?: string;
@@ -9,72 +10,90 @@ interface IntroVideoProps {
 }
 
 export default function IntroVideo({ introVideo, introVideos }: IntroVideoProps) {
-  // 영상 목록 생성 (새로운 다중 영상 우선, 기존 단일 영상은 호환성 위해 유지)
-  const getVideoList = (): VideoLink[] => {
-    const videos = introVideos || [];
-    
-    // 기존 단일 영상이 있고 배열에 없다면 추가
-    if (introVideo && !videos.some(v => v.url === introVideo)) {
-      return [...videos, {
-        url: introVideo,
-        title: '자기소개 영상',
-        addedAt: new Date()
-      }];
-    }
-    
-    return videos;
-  };
+  const videos = introVideos || [];
+  const videoList: VideoLink[] = introVideo && !videos.some((video) => video.url === introVideo)
+    ? [
+        ...videos,
+        {
+          url: introVideo,
+          title: '자기소개 영상',
+          addedAt: new Date(),
+        },
+      ]
+    : videos;
 
-  const videoList = getVideoList();
-
-  // 영상이 없으면 렌더링하지 않음
   if (videoList.length === 0) return null;
 
+  const gridClassName =
+    videoList.length === 1
+      ? 'grid grid-cols-1 gap-4 flex-1 min-h-0'
+      : videoList.length === 2
+        ? 'grid grid-cols-1 md:grid-cols-2 gap-4 flex-1 min-h-0'
+        : videoList.length === 3
+          ? 'grid grid-cols-1 md:grid-cols-2 xl:grid-cols-2 xl:grid-rows-2 gap-4 flex-1 min-h-0'
+          : 'grid grid-cols-1 md:grid-cols-2 2xl:grid-cols-3 gap-4 flex-1 min-h-0 auto-rows-fr';
+
+  const getTileClassName = (index: number) =>
+    videoList.length === 3 && index === 0
+      ? 'md:col-span-2 xl:col-span-1 xl:row-span-2'
+      : '';
+
   return (
-    <div className="bg-white/80 backdrop-blur-lg rounded-2xl p-8 shadow-xl border border-white/20">
-      <h2 className="text-2xl font-bold text-gray-900 mb-6">
-        {videoList.length === 1 ? '자기소개 영상' : `자기소개 영상 (${videoList.length}개)`}
-      </h2>
-      
-      <div className="space-y-6">
+    <div className="glass-card h-full min-h-[18rem] lg:min-h-0 p-6 md:p-7 flex flex-col">
+      <div className="flex items-center justify-between gap-4 mb-5">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-azure-400 to-azure-600 text-white shadow-glow">
+            <PlayIcon className="h-5 w-5" />
+          </div>
+          <h2 className="font-display text-xl md:text-2xl font-bold tracking-tight text-ink-900">
+            자기소개 영상
+          </h2>
+        </div>
+        <span className="flex-shrink-0 rounded-full border border-azure-100 bg-azure-50 px-3 py-1 text-sm font-semibold text-azure-700">
+          {videoList.length}개
+        </span>
+      </div>
+
+      <div className={gridClassName}>
         {videoList.map((video, index) => {
           const youtubeId = getYouTubeId(video.url);
-          
+          const title = video.title || `영상 ${index + 1}`;
+
           return (
-            <div key={index} className={videoList.length > 1 ? 'border-b border-gray-200 pb-6 last:border-b-0 last:pb-0' : ''}>
-              {/* 영상 제목 (다중 영상인 경우에만 표시) */}
-              {videoList.length > 1 && (
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                  {video.title || `영상 ${index + 1}`}
-                </h3>
-              )}
-              
+            <div
+              key={`${video.url}-${index}`}
+              className={`flex min-h-0 flex-col overflow-hidden rounded-2xl border border-ink-100 bg-white/65 shadow-glass-sm ${getTileClassName(index)}`}
+            >
               {youtubeId ? (
-                <div className="relative aspect-video rounded-lg overflow-hidden shadow-lg">
+                <div className="relative aspect-video lg:aspect-auto lg:flex-1 min-h-0 overflow-hidden bg-ink-900">
                   <iframe
                     src={`https://www.youtube.com/embed/${youtubeId}`}
-                    title={video.title || '자기소개 영상'}
-                    className="w-full h-full"
+                    title={title}
+                    className="h-full w-full"
                     allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                     allowFullScreen
                   />
                 </div>
               ) : (
-                <div className="relative aspect-video bg-gray-100 rounded-lg flex items-center justify-center">
-                  <div className="text-center">
-                    <PlayIcon className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-                    <p className="text-gray-600">영상을 재생할 수 없습니다</p>
-                    <a 
-                      href={video.url} 
-                      target="_blank" 
+                <div className="relative aspect-video lg:aspect-auto lg:flex-1 min-h-0 flex items-center justify-center overflow-hidden bg-azure-50">
+                  <div className="px-4 text-center">
+                    <PlayIcon className="h-10 w-10 text-azure-300 mx-auto mb-3" />
+                    <p className="text-sm text-ink-500">영상을 재생할 수 없습니다</p>
+                    <a
+                      href={video.url}
+                      target="_blank"
                       rel="noopener noreferrer"
-                      className="text-blue-600 hover:text-blue-700 text-sm font-medium mt-2 inline-block"
+                      className="mt-2 inline-block text-sm font-semibold text-azure-600 hover:text-azure-700"
                     >
-                      원본 링크로 보기 →
+                      원본 링크로 보기
                     </a>
                   </div>
                 </div>
               )}
+
+              <div className="px-3 py-2">
+                <h3 className="truncate text-sm font-semibold text-ink-900">{title}</h3>
+              </div>
             </div>
           );
         })}

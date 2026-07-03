@@ -1,11 +1,16 @@
 'use client';
 
 import { useState } from 'react';
-import { DocumentIcon, TrashIcon } from '@heroicons/react/24/outline';
+import { AnimatePresence, motion } from 'framer-motion';
+import { DocumentIcon, TrashIcon, VideoCameraIcon, DocumentArrowUpIcon, FolderArrowDownIcon } from '@heroicons/react/24/outline';
 import { PlusIcon, PlayIcon } from '@heroicons/react/24/solid';
 import PDFUpload from '@/components/PDFUpload';
 import PDFImageViewer from '@/components/PDFImageViewer';
 import DocumentUpload, { DocumentList } from '@/components/DocumentUpload';
+import { GlassButton } from '@/components/ui/GlassButton';
+import { GlassInput, Field } from '@/components/ui/GlassField';
+import { Badge } from '@/components/ui/Badge';
+import { ScrollReveal } from '@/components/ui/ScrollReveal';
 
 interface UploadedDocument {
   url: string;
@@ -44,7 +49,7 @@ export default function MediaStep({ data, onChange }: MediaStepProps) {
   const formatDate = (dateValue: any): string => {
     try {
       let date: Date;
-      
+
       // Date 객체인 경우
       if (dateValue instanceof Date) {
         date = dateValue;
@@ -77,12 +82,12 @@ export default function MediaStep({ data, onChange }: MediaStepProps) {
         console.warn('Unknown date format:', dateValue);
         return '날짜 정보 없음';
       }
-      
+
       if (isNaN(date.getTime())) {
         console.warn('Invalid date:', dateValue);
         return '날짜 정보 없음';
       }
-      
+
       return date.toLocaleDateString('ko-KR');
     } catch (error) {
       console.error('Date formatting error:', error, 'Value:', dateValue);
@@ -93,7 +98,7 @@ export default function MediaStep({ data, onChange }: MediaStepProps) {
   // 기존 단일 영상을 배열로 마이그레이션
   const getVideoList = (): VideoLink[] => {
     const videos = data.introVideos || [];
-    
+
     // 기존 단일 영상이 있고 배열에 없다면 추가
     if (data.introVideo && !videos.some(v => v.url === data.introVideo)) {
       return [...videos, {
@@ -102,27 +107,27 @@ export default function MediaStep({ data, onChange }: MediaStepProps) {
         addedAt: new Date()
       }];
     }
-    
+
     return videos;
   };
 
   const handleAddVideo = () => {
     if (!newVideoUrl.trim()) return;
-    
+
     const videoList = getVideoList();
     const newVideo: VideoLink = {
       url: newVideoUrl.trim(),
       title: newVideoTitle.trim() || '영상',
       addedAt: new Date()
     };
-    
+
     const updatedVideos = [...videoList, newVideo];
-    onChange({ 
-      ...data, 
+    onChange({
+      ...data,
       introVideos: updatedVideos,
       introVideo: undefined // 기존 단일 영상 필드 제거
     });
-    
+
     setNewVideoUrl('');
     setNewVideoTitle('');
   };
@@ -130,8 +135,8 @@ export default function MediaStep({ data, onChange }: MediaStepProps) {
   const handleRemoveVideo = (index: number) => {
     const videoList = getVideoList();
     const updatedVideos = videoList.filter((_, i) => i !== index);
-    onChange({ 
-      ...data, 
+    onChange({
+      ...data,
       introVideos: updatedVideos,
       introVideo: undefined // 기존 단일 영상 필드 제거
     });
@@ -186,121 +191,155 @@ export default function MediaStep({ data, onChange }: MediaStepProps) {
   const videoList = getVideoList();
 
   return (
-    <div className="space-y-8">
+    <div className="grid grid-cols-1 gap-5 xl:grid-cols-2">
       {/* Multiple Video Links Section */}
-      <div>
-        <h3 className="text-lg font-medium text-gray-900 mb-4">자기소개 영상</h3>
-        <p className="text-sm text-gray-600 mb-4">
-          YouTube에 업로드한 영상들의 URL을 추가해주세요. 여러 개의 영상을 추가할 수 있습니다.
-        </p>
+      <ScrollReveal as="section" className="space-y-4">
+        <div className="flex items-start gap-4">
+          <span className="inline-flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-azure-400 to-azure-600 text-white shadow-glow">
+            <VideoCameraIcon className="h-5 w-5" />
+          </span>
+          <div>
+            <div className="flex items-center gap-3">
+              <h3 className="font-display text-xl font-bold tracking-tight text-ink-900">자기소개 영상</h3>
+              {videoList.length > 0 && (
+                <Badge tone="azure">{videoList.length}개</Badge>
+              )}
+            </div>
+            <p className="mt-1.5 text-sm leading-relaxed text-ink-500">
+              YouTube에 업로드한 영상들의 URL을 추가해주세요. 여러 개의 영상을 추가할 수 있습니다.
+            </p>
+          </div>
+        </div>
 
         {/* Add New Video Form */}
-        <div className="bg-gray-50 rounded-lg p-4 mb-6">
-          <h4 className="text-md font-medium text-gray-900 mb-3">새 영상 추가</h4>
-          <div className="space-y-3">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                영상 제목
-              </label>
-              <input
+        <div className="glass-card p-5">
+          <h4 className="mb-4 text-base font-semibold text-ink-900">새 영상 추가</h4>
+          <div className="grid gap-4 md:grid-cols-2">
+            <Field label="영상 제목">
+              <GlassInput
                 type="text"
                 value={newVideoTitle}
                 onChange={(e) => setNewVideoTitle(e.target.value)}
                 placeholder="예: 포트폴리오 소개, 프로젝트 데모 등"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500"
               />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                YouTube URL
-              </label>
-              <input
+            </Field>
+            <Field label="YouTube URL">
+              <GlassInput
                 type="url"
                 value={newVideoUrl}
                 onChange={(e) => setNewVideoUrl(e.target.value)}
                 placeholder="https://www.youtube.com/watch?v=..."
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500"
               />
-            </div>
-            <button
+            </Field>
+          </div>
+          <div className="mt-4">
+            <GlassButton
               type="button"
               onClick={handleAddVideo}
               disabled={!newVideoUrl.trim()}
-              className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              <PlusIcon className="h-4 w-4 mr-2" />
+              <PlusIcon className="h-4 w-4" />
               영상 추가
-            </button>
+            </GlassButton>
           </div>
         </div>
 
         {/* Video List */}
         {videoList.length > 0 && (
           <div className="space-y-4">
-            <h4 className="text-md font-medium text-gray-900">추가된 영상 ({videoList.length}개)</h4>
-            {videoList.map((video, index) => (
-              <div key={index} className="border border-gray-300 rounded-lg p-4">
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center space-x-3">
-                    <PlayIcon className="h-6 w-6 text-red-500" />
-                    <div>
-                      <div className="font-medium text-gray-900">{video.title}</div>
-                      <div className="text-sm text-gray-500 truncate max-w-md">
-                        {video.url}
-                      </div>
-                      <div className="text-xs text-gray-400">
-                        추가일: {formatDate(video.addedAt)}
+            <h4 className="text-base font-semibold text-ink-700">추가된 영상 ({videoList.length}개)</h4>
+            <div className="space-y-4">
+              {videoList.map((video, index) => (
+                <div
+                  key={index}
+                  className="glass rounded-3xl p-4 transition-all duration-300 hover:-translate-y-1 hover:shadow-glass-lg"
+                >
+                  <div className="flex items-start justify-between gap-4 mb-3">
+                    <div className="flex items-start gap-3 min-w-0">
+                      <span className="flex-shrink-0 inline-flex h-10 w-10 items-center justify-center rounded-2xl bg-azure-50 text-azure-600 border border-azure-100">
+                        <PlayIcon className="h-5 w-5" />
+                      </span>
+                      <div className="min-w-0">
+                        <div className="font-semibold text-ink-900 truncate">{video.title}</div>
+                        <div className="text-sm text-ink-500 truncate max-w-md">
+                          {video.url}
+                        </div>
+                        <div className="text-xs text-ink-400 mt-0.5">
+                          추가일: {formatDate(video.addedAt)}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => handleRemoveVideo(index)}
-                    className="text-red-600 hover:text-red-700 p-1"
-                  >
-                    <TrashIcon className="h-5 w-5" />
-                  </button>
-                </div>
-
-                {getYouTubeId(video.url) && (
-                  <div className="mt-3">
                     <button
                       type="button"
-                      onClick={() => togglePreview(index)}
-                      className="text-indigo-600 hover:text-indigo-700 text-sm font-medium"
+                      onClick={() => handleRemoveVideo(index)}
+                      className="flex-shrink-0 inline-flex h-9 w-9 items-center justify-center rounded-xl text-coral-500 hover:bg-coral-100 hover:text-coral-600 transition-colors duration-200"
                     >
-                      {showPreview[index] ? '미리보기 숨기기' : '미리보기 보기'}
+                      <TrashIcon className="h-5 w-5" />
                     </button>
-                    {showPreview[index] && (
-                      <div className="mt-3">
-                        <iframe
-                          src={`https://www.youtube.com/embed/${getYouTubeId(video.url)}`}
-                          className="w-full h-64 rounded-lg"
-                          allowFullScreen
-                        />
-                      </div>
-                    )}
                   </div>
-                )}
-              </div>
-            ))}
+
+                  {getYouTubeId(video.url) && (
+                    <div className="mt-3 border-t border-ink-100 pt-3">
+                      <button
+                        type="button"
+                        onClick={() => togglePreview(index)}
+                        className="text-azure-600 hover:text-azure-700 text-sm font-semibold transition-colors duration-200"
+                      >
+                        {showPreview[index] ? '미리보기 숨기기' : '미리보기 보기'}
+                      </button>
+                      <AnimatePresence initial={false}>
+                        {showPreview[index] && (
+                          <motion.div
+                            initial={{ opacity: 0, height: 0 }}
+                            animate={{ opacity: 1, height: 'auto' }}
+                            exit={{ opacity: 0, height: 0 }}
+                            transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
+                            className="overflow-hidden"
+                          >
+                            <div className="mt-3 overflow-hidden rounded-2xl border border-white/60 shadow-glass">
+                              <iframe
+                                src={`https://www.youtube.com/embed/${getYouTubeId(video.url)}`}
+                                className="w-full h-64"
+                                allowFullScreen
+                              />
+                            </div>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
           </div>
         )}
 
         {videoList.length === 0 && (
-          <div className="text-center py-8 text-gray-500">
-            아직 추가된 영상이 없습니다. 첫 번째 영상을 추가해보세요!
+          <div className="glass-faint rounded-3xl text-center py-12 px-6">
+            <span className="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-azure-50 text-azure-500 border border-azure-100 mb-4">
+              <VideoCameraIcon className="h-7 w-7" />
+            </span>
+            <p className="text-ink-500">
+              아직 추가된 영상이 없습니다. 첫 번째 영상을 추가해보세요!
+            </p>
           </div>
         )}
-      </div>
+      </ScrollReveal>
 
       {/* Portfolio PDF Upload Section */}
-      <div>
-        <h3 className="text-lg font-medium text-gray-900 mb-4">포트폴리오 PDF</h3>
-        <p className="text-sm text-gray-600 mb-4">
-          자소서, 포트폴리오, 작품집 등의 PDF 파일을 업로드하세요. 업로드된 PDF는 포트폴리오 페이지에서 페이지별로 확인할 수 있습니다.
-        </p>
-        
+      <ScrollReveal as="section" delay={0.05} className="space-y-4">
+        <div className="flex items-start gap-4">
+          <span className="inline-flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-azure-400 to-azure-600 text-white shadow-glow">
+            <DocumentArrowUpIcon className="h-5 w-5" />
+          </span>
+          <div>
+            <h3 className="font-display text-xl font-bold tracking-tight text-ink-900">포트폴리오 PDF</h3>
+            <p className="mt-1.5 text-sm leading-relaxed text-ink-500">
+              자소서, 포트폴리오, 작품집 등의 PDF 파일을 업로드하세요. 업로드된 PDF는 포트폴리오 페이지에서 페이지별로 확인할 수 있습니다.
+            </p>
+          </div>
+        </div>
+
         <PDFUpload
           onUploadSuccess={handlePDFUploadSuccess}
           onUploadError={handlePDFUploadError}
@@ -310,16 +349,21 @@ export default function MediaStep({ data, onChange }: MediaStepProps) {
         {/* Uploaded PDFs List */}
         {data.portfolioPdfs && data.portfolioPdfs.length > 0 && (
           <div className="mt-6">
-            <h4 className="text-md font-medium text-gray-900 mb-3">업로드된 PDF 파일</h4>
+            <h4 className="text-base font-semibold text-ink-700 mb-4">업로드된 PDF 파일</h4>
             <div className="space-y-6">
               {data.portfolioPdfs.map((pdf, index) => (
-                <div key={index} className="bg-gray-50 rounded-lg p-4">
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center space-x-3">
-                      <DocumentIcon className="h-8 w-8 text-red-500" />
-                      <div>
-                        <div className="font-medium text-gray-900">{pdf.fileName}</div>
-                        <div className="text-sm text-gray-500">
+                <div
+                  key={index}
+                  className="glass rounded-3xl p-4 transition-all duration-300 hover:shadow-glass-lg"
+                >
+                  <div className="flex items-start justify-between gap-4 mb-4">
+                    <div className="flex items-start gap-3 min-w-0">
+                      <span className="flex-shrink-0 inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-azure-50 text-azure-600 border border-azure-100">
+                        <DocumentIcon className="h-6 w-6" />
+                      </span>
+                      <div className="min-w-0">
+                        <div className="font-semibold text-ink-900 truncate">{pdf.fileName}</div>
+                        <div className="text-sm text-ink-500 mt-0.5">
                           업로드: {formatDate(pdf.uploadedAt)}
                         </div>
                       </div>
@@ -327,14 +371,14 @@ export default function MediaStep({ data, onChange }: MediaStepProps) {
                     <button
                       type="button"
                       onClick={() => removePDF(index)}
-                      className="text-red-600 hover:text-red-700 p-1"
+                      className="flex-shrink-0 inline-flex h-9 w-9 items-center justify-center rounded-xl text-coral-500 hover:bg-coral-100 hover:text-coral-600 transition-colors duration-200"
                     >
                       <TrashIcon className="h-5 w-5" />
                     </button>
                   </div>
-                  
+
                   {/* PDF 미리보기 */}
-                  <div className="mt-4">
+                  <div className="mt-4 border-t border-ink-100 pt-4">
                     <PDFImageViewer
                       pdfUrl={pdf.url}
                       fileName={pdf.fileName}
@@ -346,15 +390,22 @@ export default function MediaStep({ data, onChange }: MediaStepProps) {
             </div>
           </div>
         )}
-      </div>
+      </ScrollReveal>
 
       {/* Additional Documents Upload Section */}
-      <div>
-        <h3 className="text-lg font-medium text-gray-900 mb-4">추가 문서 업로드</h3>
-        <p className="text-sm text-gray-600 mb-4">
-          자소서, 포트폴리오, 작품집 등의 다양한 문서 파일을 업로드하세요. 업로드된 문서는 포트폴리오 페이지에서 페이지별로 확인할 수 있습니다.
-        </p>
-        
+      <ScrollReveal as="section" delay={0.1} className="space-y-4 xl:col-span-2">
+        <div className="flex items-start gap-4">
+          <span className="inline-flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-azure-400 to-azure-600 text-white shadow-glow">
+            <FolderArrowDownIcon className="h-5 w-5" />
+          </span>
+          <div>
+            <h3 className="font-display text-xl font-bold tracking-tight text-ink-900">추가 문서 업로드</h3>
+            <p className="mt-1.5 text-sm leading-relaxed text-ink-500">
+              자소서, 포트폴리오, 작품집 등의 다양한 문서 파일을 업로드하세요. 업로드된 문서는 포트폴리오 페이지에서 페이지별로 확인할 수 있습니다.
+            </p>
+          </div>
+        </div>
+
         <DocumentUpload
           onUploadSuccess={handleDocumentUploadSuccess}
           onUploadError={handleDocumentUploadError}
@@ -364,14 +415,14 @@ export default function MediaStep({ data, onChange }: MediaStepProps) {
         {/* Uploaded Documents List */}
         {data.additionalDocuments && data.additionalDocuments.length > 0 && (
           <div className="mt-6">
-            <h4 className="text-md font-medium text-gray-900 mb-3">업로드된 문서</h4>
-            <DocumentList 
-              documents={data.additionalDocuments} 
+            <h4 className="text-base font-semibold text-ink-700 mb-4">업로드된 문서</h4>
+            <DocumentList
+              documents={data.additionalDocuments}
               onRemove={removeDocument}
             />
           </div>
         )}
-      </div>
+      </ScrollReveal>
     </div>
   );
 }

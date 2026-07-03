@@ -1,14 +1,23 @@
 'use client';
 
 import Link from 'next/link';
-import { 
-  ShieldCheckIcon, 
-  DocumentTextIcon, 
+import {
+  ShieldCheckIcon,
+  DocumentTextIcon,
   ClockIcon,
   UserGroupIcon,
   LockClosedIcon,
-  ExclamationTriangleIcon
+  ExclamationTriangleIcon,
+  EnvelopeIcon,
+  ArrowRightIcon,
+  HomeIcon,
 } from '@heroicons/react/24/outline';
+import { GlassButton } from '@/components/ui/GlassButton';
+import { GlassCard } from '@/components/ui/GlassCard';
+import { SectionHeading } from '@/components/ui/SectionHeading';
+import { AuroraBackground } from '@/components/ui/AuroraBackground';
+import { Badge } from '@/components/ui/Badge';
+import { ScrollReveal, ScrollRevealStagger, ScrollRevealItem } from '@/components/ui/ScrollReveal';
 
 export default function PrivacyPage() {
   const sections = [
@@ -75,198 +84,206 @@ export default function PrivacyPage() {
     }
   ];
 
+  const reportChannels = [
+    { name: '개인정보보호위원회', info: 'privacy.go.kr / 국번없이 182' },
+    { name: '개인정보 침해신고센터', info: 'privacy.kisa.or.kr / 국번없이 118' },
+    { name: '대검찰청 사이버수사과', info: 'spo.go.kr / (02) 3480-3571' },
+    { name: '경찰청 사이버안전국', info: 'cyberbureau.police.go.kr / 국번없이 182' },
+  ];
+
   return (
-    <div className="min-h-screen bg-white">
-      {/* Header */}
-      <header className="fixed top-0 w-full bg-white/95 backdrop-blur-md border-b border-gray-100 z-50 shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-20">
-            <Link href="/" className="flex items-center space-x-3">
-              <div className="w-10 h-10 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg">
-                <span className="text-white font-bold text-lg">H</span>
-              </div>
-              <span className="text-2xl font-bold text-gray-900">테크벤처 잡 매칭</span>
-            </Link>
-            
-            <nav className="hidden md:flex items-center space-x-8">
-              <Link href="/portfolios" className="text-gray-700 hover:text-blue-600 transition-colors font-medium">
-                포트폴리오
-              </Link>
-              <Link href="/companies" className="text-gray-700 hover:text-blue-600 transition-colors font-medium">
-                기업정보
-              </Link>
-              <Link href="/jobs" className="text-gray-700 hover:text-blue-600 transition-colors font-medium">
-                채용공고
-              </Link>
-              <Link href="/about" className="text-gray-700 hover:text-blue-600 transition-colors font-medium">
-                소개
-              </Link>
-              <span className="text-blue-600 font-semibold">
+    <div className="min-h-screen overflow-x-clip">
+      {/* ====================== Policy Content ====================== */}
+      <section className="relative pt-28 pb-12 lg:pt-32 lg:pb-20 overflow-hidden">
+        <AuroraBackground variant="vivid" />
+        <div className="relative z-10 container-wide">
+          {/* Heading */}
+          <ScrollReveal>
+            <div className="max-w-4xl mx-auto text-center mb-10 lg:mb-14">
+              <h1 className="text-2xl sm:text-3xl font-bold text-ink-900 tracking-tight">
                 개인정보처리방침
-              </span>
-            </nav>
-            
-            <div className="flex items-center space-x-4">
-              <Link href="/" className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-6 py-3 rounded-xl transition-all duration-200 shadow-lg hover:shadow-xl">
-                홈으로
-              </Link>
+              </h1>
+              <div className="mt-5 inline-flex flex-wrap items-center justify-center gap-2">
+                <Badge tone="azure">시행일자: 2024년 1월 1일</Badge>
+                <Badge tone="neutral">최종 수정일: 2024년 12월 15일</Badge>
+              </div>
             </div>
-          </div>
-        </div>
-      </header>
+          </ScrollReveal>
 
-      {/* Hero Section */}
-      <section className="pt-32 pb-20 bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <div className="inline-flex items-center px-4 py-2 bg-blue-100 border border-blue-200 rounded-full text-blue-700 font-medium text-sm mb-8">
-            <ShieldCheckIcon className="w-4 h-4 mr-2" />
-            개인정보 보호
-          </div>
-          <h1 className="text-5xl lg:text-6xl font-bold mb-8 text-gray-900 leading-tight">
-            <span className="bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">개인정보</span>
-            처리방침
-          </h1>
-          <p className="text-xl text-gray-600 max-w-3xl mx-auto leading-relaxed">
-            테크벤처 잡 매칭은 이용자의 개인정보를 소중히 여기며,<br />
-            관련 법령에 따라 안전하게 보호하고 있습니다.
-          </p>
-          <div className="mt-8 text-sm text-gray-500">
-            시행일자: 2024년 1월 1일 | 최종 수정일: 2024년 12월 15일
-          </div>
-        </div>
-      </section>
-
-      {/* Privacy Policy Content */}
-      <section className="py-20 bg-white">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
           {/* Introduction */}
-          <div className="mb-16 text-center">
-            <h2 className="text-3xl font-bold mb-6 text-gray-900">개인정보처리방침 개요</h2>
-            <p className="text-lg text-gray-600 max-w-4xl mx-auto leading-relaxed">
-              테크벤처 잡 매칭('https://techventure.co.kr' 이하 '테크벤처 잡 매칭')은 개인정보보호법에 따라 이용자의 개인정보 보호 및 권익을 보호하고 
-              개인정보와 관련한 이용자의 고충을 원활하게 처리할 수 있도록 다음과 같은 처리방침을 수립·공개합니다.
-            </p>
-          </div>
+          <ScrollReveal>
+            <GlassCard strong className="p-8 sm:p-12 lg:p-16 mb-14 lg:mb-20 text-center max-w-4xl mx-auto">
+              <h2 className="font-display text-2xl sm:text-3xl font-bold mb-6 text-ink-900 tracking-tight">
+                개인정보처리방침 개요
+              </h2>
+              <p className="text-base sm:text-lg text-ink-500 leading-relaxed">
+                면접심사 매칭 플랫폼('https://techventure.co.kr' 이하 '면접심사 매칭 플랫폼')은 개인정보보호법에 따라 이용자의 개인정보 보호 및 권익을 보호하고
+                개인정보와 관련한 이용자의 고충을 원활하게 처리할 수 있도록 다음과 같은 처리방침을 수립·공개합니다.
+              </p>
+            </GlassCard>
+          </ScrollReveal>
 
           {/* Policy Sections */}
-          <div className="space-y-12">
+          <ScrollRevealStagger className="space-y-8 lg:space-y-10">
             {sections.map((section, index) => (
-              <div key={index} className="bg-gray-50 rounded-2xl p-8 shadow-lg">
-                <div className="flex items-start space-x-4 mb-6">
-                  <div className="w-12 h-12 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-xl flex items-center justify-center flex-shrink-0">
-                    <section.icon className="w-6 h-6 text-white" />
+              <ScrollRevealItem key={index}>
+                <GlassCard hover className="p-8 sm:p-10 lg:p-12">
+                  <div className="flex items-start gap-5 mb-7">
+                    <div className="flex items-center justify-center flex-shrink-0 w-14 h-14 rounded-2xl bg-gradient-to-br from-azure-500 to-azure-600 text-white shadow-glow">
+                      <section.icon className="w-7 h-7" />
+                    </div>
+                    <div className="flex items-center gap-3 pt-1">
+                      <span className="font-display text-sm font-bold text-azure-400 tabular-nums">
+                        {String(index + 1).padStart(2, '0')}
+                      </span>
+                      <h3 className="text-xl sm:text-2xl font-bold text-ink-900 tracking-tight">
+                        {section.title}
+                      </h3>
+                    </div>
                   </div>
-                  <h3 className="text-2xl font-bold text-gray-900">{section.title}</h3>
-                </div>
-                
-                <ul className="space-y-3 ml-16">
-                  {section.content.map((item, itemIndex) => (
-                    <li key={itemIndex} className="flex items-start space-x-3">
-                      <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 flex-shrink-0"></div>
-                      <span className="text-gray-700 leading-relaxed">{item}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
+
+                  <ul className="space-y-4 sm:ml-[4.75rem]">
+                    {section.content.map((item, itemIndex) => (
+                      <li key={itemIndex} className="flex items-start gap-3">
+                        <span className="mt-2.5 w-1.5 h-1.5 rounded-full bg-azure-500 flex-shrink-0" />
+                        <span className="text-ink-600 leading-relaxed text-base">{item}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </GlassCard>
+              </ScrollRevealItem>
             ))}
-          </div>
+          </ScrollRevealStagger>
         </div>
       </section>
 
-      {/* Contact & Report Section */}
-      <section className="py-20 bg-gray-50">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid md:grid-cols-2 gap-12">
+      {/* ====================== Contact & Report ====================== */}
+      <section className="relative py-16 lg:py-24 overflow-hidden">
+        <AuroraBackground />
+        <div className="relative z-10 container-wide">
+          <SectionHeading
+            eyebrow="문의 및 신고"
+            title={
+              <>
+                개인정보 관련 <span className="text-gradient-azure">연락처</span>
+              </>
+            }
+          />
+
+          <div className="grid lg:grid-cols-2 gap-8 mt-14 max-w-6xl mx-auto">
             {/* Privacy Officer */}
-            <div className="bg-white rounded-2xl p-8 shadow-lg">
-              <h3 className="text-2xl font-bold mb-6 text-gray-900">개인정보보호책임자</h3>
-              <div className="space-y-4">
-                <div>
-                  <span className="font-semibold text-gray-700">성명:</span>
-                  <span className="ml-2 text-gray-600">김기홍</span>
+            <ScrollReveal>
+              <GlassCard hover className="h-full p-8 sm:p-10">
+                <div className="flex items-center gap-4 mb-7">
+                  <div className="flex items-center justify-center w-12 h-12 rounded-2xl bg-azure-50 border border-azure-100 text-azure-600 shadow-glass-sm">
+                    <UserGroupIcon className="w-6 h-6" />
+                  </div>
+                  <h3 className="text-xl sm:text-2xl font-bold text-ink-900 tracking-tight">개인정보보호책임자</h3>
                 </div>
-                <div>
-                  <span className="font-semibold text-gray-700">직책:</span>
-                  <span className="ml-2 text-gray-600">대표</span>
+                <div className="space-y-4">
+                  <div className="flex items-center gap-3">
+                    <span className="font-semibold text-ink-700 w-16 shrink-0">성명</span>
+                    <span className="text-ink-500">김기홍</span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className="font-semibold text-ink-700 w-16 shrink-0">직책</span>
+                    <span className="text-ink-500">대표</span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className="font-semibold text-ink-700 w-16 shrink-0">연락처</span>
+                    <span className="text-ink-500">010-3721-0204</span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className="font-semibold text-ink-700 w-16 shrink-0">이메일</span>
+                    <a href="mailto:tvs@techventure.co.kr" className="inline-flex items-center gap-1.5 text-azure-600 hover:text-azure-700 transition-colors font-medium">
+                      <EnvelopeIcon className="w-4 h-4" />
+                      tvs@techventure.co.kr
+                    </a>
+                  </div>
                 </div>
-                <div>
-                  <span className="font-semibold text-gray-700">연락처:</span>
-                  <span className="ml-2 text-gray-600">010-3721-0204</span>
-                </div>
-                <div>
-                  <span className="font-semibold text-gray-700">이메일:</span>
-                  <a href="mailto:tvs@techventure.co.kr" className="ml-2 text-blue-600 hover:text-blue-700">
-                  tvs@techventure.co.kr
-                  </a>
-                </div>
-              </div>
-            </div>
+              </GlassCard>
+            </ScrollReveal>
 
             {/* External Report */}
-            <div className="bg-white rounded-2xl p-8 shadow-lg">
-              <h3 className="text-2xl font-bold mb-6 text-gray-900">개인정보 침해 신고</h3>
-              <div className="space-y-4">
-                <div>
-                  <div className="font-semibold text-gray-700">개인정보보호위원회</div>
-                  <div className="text-gray-600">privacy.go.kr / 국번없이 182</div>
+            <ScrollReveal delay={0.08}>
+              <GlassCard hover className="h-full p-8 sm:p-10">
+                <div className="flex items-center gap-4 mb-7">
+                  <div className="flex items-center justify-center w-12 h-12 rounded-2xl bg-azure-50 border border-azure-100 text-azure-600 shadow-glass-sm">
+                    <ExclamationTriangleIcon className="w-6 h-6" />
+                  </div>
+                  <h3 className="text-xl sm:text-2xl font-bold text-ink-900 tracking-tight">개인정보 침해 신고</h3>
                 </div>
-                <div>
-                  <div className="font-semibold text-gray-700">개인정보 침해신고센터</div>
-                  <div className="text-gray-600">privacy.kisa.or.kr / 국번없이 118</div>
+                <div className="space-y-4">
+                  {reportChannels.map((channel) => (
+                    <div key={channel.name} className="glass rounded-2xl px-5 py-4">
+                      <div className="font-semibold text-ink-700">{channel.name}</div>
+                      <div className="text-ink-500 text-sm mt-0.5">{channel.info}</div>
+                    </div>
+                  ))}
                 </div>
-                <div>
-                  <div className="font-semibold text-gray-700">대검찰청 사이버수사과</div>
-                  <div className="text-gray-600">spo.go.kr / (02) 3480-3571</div>
+              </GlassCard>
+            </ScrollReveal>
+          </div>
+        </div>
+      </section>
+
+      {/* ====================== Important Notice ====================== */}
+      <section className="relative py-16 lg:py-24 overflow-hidden">
+        <div className="relative z-10 container-wide">
+          <ScrollReveal>
+            <div className="relative overflow-hidden rounded-5xl bg-gradient-to-br from-azure-600 via-azure-500 to-sky-cool-500 p-8 sm:p-12 lg:p-16 text-white shadow-glass-lg max-w-5xl mx-auto">
+              <AuroraBackground variant="vivid" className="opacity-30 mix-blend-overlay" />
+              <div className="relative">
+                <h3 className="font-display text-2xl sm:text-3xl font-bold mb-7 text-white tracking-tight">중요 안내사항</h3>
+                <div className="space-y-5 text-left max-w-3xl">
+                  <p className="flex items-start gap-3 text-white/90 leading-relaxed text-base sm:text-lg">
+                    <span className="mt-2.5 w-1.5 h-1.5 rounded-full bg-white/80 flex-shrink-0" />
+                    본 개인정보처리방침은 2024년 1월 1일부터 적용됩니다.
+                  </p>
+                  <p className="flex items-start gap-3 text-white/90 leading-relaxed text-base sm:text-lg">
+                    <span className="mt-2.5 w-1.5 h-1.5 rounded-full bg-white/80 flex-shrink-0" />
+                    개인정보처리방침의 내용 추가, 삭제 및 수정이 있을 시에는 개정 최소 7일 전부터 홈페이지의 '공지사항'을 통하여 고지할 것입니다.
+                  </p>
+                  <p className="flex items-start gap-3 text-white/90 leading-relaxed text-base sm:text-lg">
+                    <span className="mt-2.5 w-1.5 h-1.5 rounded-full bg-white/80 flex-shrink-0" />
+                    이전의 개인정보처리방침은 아래에서 확인하실 수 있습니다.
+                  </p>
                 </div>
-                <div>
-                  <div className="font-semibold text-gray-700">경찰청 사이버안전국</div>
-                  <div className="text-gray-600">cyberbureau.police.go.kr / 국번없이 182</div>
+                <div className="mt-10">
+                  <GlassButton href="/contact" variant="secondary" size="lg" className="!text-azure-700">
+                    <EnvelopeIcon className="w-5 h-5" />
+                    개인정보 관련 문의하기
+                    <ArrowRightIcon className="w-5 h-5" />
+                  </GlassButton>
                 </div>
               </div>
             </div>
-          </div>
+          </ScrollReveal>
+
+          <ScrollReveal delay={0.1} className="mt-10 text-center">
+            <GlassButton href="/" variant="outline" size="md">
+              <HomeIcon className="w-5 h-5" />
+              홈으로 돌아가기
+            </GlassButton>
+          </ScrollReveal>
         </div>
       </section>
 
-      {/* Important Notice */}
-      <section className="py-16 bg-blue-50">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <div className="bg-white rounded-2xl p-8 shadow-lg">
-            <h3 className="text-2xl font-bold mb-4 text-gray-900">중요 안내사항</h3>
-            <div className="space-y-4 text-left">
-              <p className="text-gray-700">
-                • 본 개인정보처리방침은 2024년 1월 1일부터 적용됩니다.
-              </p>
-              <p className="text-gray-700">
-                • 개인정보처리방침의 내용 추가, 삭제 및 수정이 있을 시에는 개정 최소 7일 전부터 홈페이지의 '공지사항'을 통하여 고지할 것입니다.
-              </p>
-              <p className="text-gray-700">
-                • 이전의 개인정보처리방침은 아래에서 확인하실 수 있습니다.
-              </p>
+      {/* ====================== Footer ====================== */}
+      <footer className="relative mt-10 bg-ink-900 text-white overflow-hidden">
+        <div className="absolute inset-0 bg-azure-aurora opacity-25" />
+        <div className="relative container-wide py-14 text-center">
+          <Link href="/" className="inline-flex items-center gap-3 mb-6 group">
+            <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-glass p-1 group-hover:scale-105 transition-transform duration-300">
+              <img src="/images/logo.png" alt="면접심사 매칭 플랫폼 Logo" className="w-full h-full object-contain" />
             </div>
-            <div className="mt-8">
-              <Link href="/contact" className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-8 rounded-xl transition-all duration-200 shadow-lg hover:shadow-xl">
-                개인정보 관련 문의하기
-              </Link>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Footer */}
-      <footer className="bg-gray-900 text-white py-12">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <Link href="/" className="inline-flex items-center space-x-3 mb-6">
-            <div className="w-10 h-10 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg">
-              <span className="text-white font-bold text-lg">H</span>
-            </div>
-            <span className="text-2xl font-bold">테크벤처 잡 매칭</span>
+            <span className="text-xl font-bold">면접심사 매칭 플랫폼</span>
           </Link>
-          <p className="text-gray-400">
-            &copy; 2025 테크벤처 잡 매칭 Job Platform. All rights reserved.
+          <p className="text-ink-400">
+            &copy; 2025 면접심사 매칭 플랫폼. All rights reserved.
           </p>
         </div>
       </footer>
     </div>
   );
-} 
+}

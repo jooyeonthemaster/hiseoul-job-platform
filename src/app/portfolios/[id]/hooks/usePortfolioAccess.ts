@@ -7,7 +7,7 @@ import { PortfolioAccessState } from '../types/portfolio.types';
 
 export const usePortfolioAccess = (portfolioId: string) => {
   const router = useRouter();
-  const { user, userData } = useAuth();
+  const { user, userData, loading: authLoading } = useAuth();
   
   const [state, setState] = useState<PortfolioAccessState>({
     hasAccess: false,
@@ -18,6 +18,10 @@ export const usePortfolioAccess = (portfolioId: string) => {
 
   useEffect(() => {
     const checkAccess = async () => {
+      if (authLoading) {
+        return;
+      }
+
       if (!user) {
         setState(prev => ({
           ...prev,
@@ -29,6 +33,18 @@ export const usePortfolioAccess = (portfolioId: string) => {
       }
 
       try {
+        const hasAdminAccess = userData?.role === 'admin' || userData?.isAdmin === true;
+
+        if (hasAdminAccess) {
+          setState(prev => ({
+            ...prev,
+            hasAccess: true,
+            accessChecked: true,
+            showAccessModal: false
+          }));
+          return;
+        }
+
         // 구직자가 자신의 포트폴리오를 보는 경우는 허용
         const isOwnPortfolio = userData?.role === 'jobseeker' && portfolioId === user.uid;
         
@@ -71,7 +87,7 @@ export const usePortfolioAccess = (portfolioId: string) => {
     if (user !== undefined) {
       checkAccess();
     }
-  }, [user, userData, portfolioId, router]);
+  }, [user, userData, authLoading, portfolioId, router]);
 
   return state;
 };

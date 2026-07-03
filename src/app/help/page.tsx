@@ -2,15 +2,21 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { 
-  UserIcon, 
-  BuildingOfficeIcon, 
+import { motion } from 'framer-motion';
+import {
+  UserIcon,
+  BuildingOfficeIcon,
   DocumentTextIcon,
   MagnifyingGlassIcon,
   ChatBubbleLeftRightIcon,
   CheckCircleIcon,
-  QuestionMarkCircleIcon
+  ArrowRightIcon,
+  UserGroupIcon,
 } from '@heroicons/react/24/outline';
+import { GlassButton } from '@/components/ui/GlassButton';
+import { GlassCard } from '@/components/ui/GlassCard';
+import { AuroraBackground } from '@/components/ui/AuroraBackground';
+import { ScrollReveal, ScrollRevealStagger, ScrollRevealItem } from '@/components/ui/ScrollReveal';
 
 export default function HelpPage() {
   const [activeTab, setActiveTab] = useState<'jobseeker' | 'employer'>('jobseeker');
@@ -64,11 +70,11 @@ export default function HelpPage() {
   const employerSteps = [
     {
       icon: BuildingOfficeIcon,
-      title: '1. 기업 등록 및 인증',
-      description: '테크벤처 잡 매칭 기업 인증을 받고 기업 정보를 등록하세요.',
+      title: '1. 기업 등록 및 참여',
+      description: '면접심사 매칭 플랫폼에 기업 정보를 등록하고 참여하세요.',
       details: [
         '사업자 등록증 및 관련 서류 제출',
-        '서울시 공식 인증 프로세스 진행',
+        '서울시 민간기업 참여형 절차 진행',
         '기업 소개, 문화, 복리후생 정보 입력',
         '전담 컨설턴트 배정 및 상담'
       ]
@@ -109,154 +115,167 @@ export default function HelpPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen pt-16 -mt-16 overflow-x-clip">
       {/* Header */}
-      <header className="fixed top-0 w-full bg-white/95 backdrop-blur-md border-b border-gray-100 z-50 shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-20">
-            <Link href="/" className="flex items-center space-x-3">
-              <div className="w-10 h-10 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg">
-                <span className="text-white font-bold text-lg">H</span>
+      <header className="fixed top-0 w-full glass-nav z-50">
+        <div className="container-wide">
+          <div className="flex justify-between items-center h-16">
+            <Link href="/" className="flex items-center gap-3 group">
+              <div className="w-10 h-10 bg-gradient-to-br from-azure-500 to-azure-600 rounded-2xl flex items-center justify-center shadow-glow group-hover:scale-105 transition-transform duration-300">
+                <span className="text-white font-display font-bold text-lg">H</span>
               </div>
-              <span className="text-2xl font-bold text-gray-900">테크벤처 잡 매칭</span>
+              <span className="text-xl sm:text-2xl font-bold text-ink-900 tracking-tight">면접심사 매칭 플랫폼</span>
             </Link>
-            
-            <nav className="hidden md:flex items-center space-x-8">
-              <Link href="/portfolios" className="text-gray-700 hover:text-blue-600 transition-colors font-medium">
+
+            <nav className="hidden md:flex items-center gap-1">
+              <Link href="/portfolios" className="px-4 py-2 rounded-xl text-ink-600 hover:text-azure-700 hover:bg-azure-50/70 transition-all duration-200 font-medium">
                 포트폴리오
               </Link>
-              <Link href="/companies" className="text-gray-700 hover:text-blue-600 transition-colors font-medium">
+              <Link href="/companies" className="px-4 py-2 rounded-xl text-ink-600 hover:text-azure-700 hover:bg-azure-50/70 transition-all duration-200 font-medium">
                 기업정보
               </Link>
-              <Link href="/jobs" className="text-gray-700 hover:text-blue-600 transition-colors font-medium">
+              <Link href="/jobs" className="px-4 py-2 rounded-xl text-ink-600 hover:text-azure-700 hover:bg-azure-50/70 transition-all duration-200 font-medium">
                 채용공고
               </Link>
-              <Link href="/about" className="text-gray-700 hover:text-blue-600 transition-colors font-medium">
+              <Link href="/about" className="px-4 py-2 rounded-xl text-ink-600 hover:text-azure-700 hover:bg-azure-50/70 transition-all duration-200 font-medium">
                 소개
               </Link>
-              <span className="text-blue-600 font-semibold">
+              <span className="px-4 py-2 rounded-xl text-azure-700 bg-azure-50/70 font-semibold">
                 도움말
               </span>
             </nav>
-            
-            <div className="flex items-center space-x-4">
-              <Link href="/" className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-6 py-3 rounded-xl transition-all duration-200 shadow-lg hover:shadow-xl">
+
+            <div className="flex items-center gap-3">
+              <GlassButton href="/" size="sm">
                 홈으로
-              </Link>
+              </GlassButton>
             </div>
           </div>
         </div>
       </header>
 
-      {/* Hero Section */}
-      <section className="pt-32 pb-20 bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <div className="inline-flex items-center px-4 py-2 bg-blue-100 border border-blue-200 rounded-full text-blue-700 font-medium text-sm mb-8">
-            <QuestionMarkCircleIcon className="w-4 h-4 mr-2" />
-            도움말 센터
-          </div>
-          <h1 className="text-5xl lg:text-6xl font-bold mb-8 text-gray-900 leading-tight">
-            <span className="bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">테크벤처 잡 매칭</span> 
-            사용법
-          </h1>
-          <p className="text-xl text-gray-600 max-w-3xl mx-auto leading-relaxed">
-            구직자와 기업을 위한 상세한 가이드를 확인하고,<br />
-            테크벤처 잡 매칭의 모든 기능을 효과적으로 활용해보세요.
-          </p>
-        </div>
-      </section>
-
       {/* Tab Navigation */}
-      <section className="py-12 bg-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-center mb-16">
-            <div className="bg-gray-100 rounded-2xl p-2">
+      <section className="relative pt-28 pb-12 lg:pt-32 lg:pb-16 overflow-hidden">
+        <AuroraBackground />
+        <div className="relative z-10 container-wide">
+          <h1 className="text-2xl sm:text-3xl font-bold text-ink-900 tracking-tight text-center mb-10 lg:mb-12">
+            도움말
+          </h1>
+          <div className="flex justify-center mb-14 lg:mb-16">
+            <div className="relative glass-strong rounded-3xl p-2 flex gap-1">
               <button
                 onClick={() => setActiveTab('jobseeker')}
-                className={`px-8 py-4 rounded-xl font-semibold transition-all duration-300 ${
+                className={`relative px-7 sm:px-10 py-4 rounded-2xl font-semibold text-sm sm:text-base transition-colors duration-300 ${
                   activeTab === 'jobseeker'
-                    ? 'bg-blue-600 text-white shadow-lg'
-                    : 'text-gray-600 hover:text-gray-900'
+                    ? 'text-white'
+                    : 'text-ink-500 hover:text-ink-800'
                 }`}
               >
-                구직자 가이드
+                {activeTab === 'jobseeker' && (
+                  <motion.span
+                    layoutId="helpTabPill"
+                    className="absolute inset-0 rounded-2xl bg-gradient-to-r from-azure-500 to-azure-600 shadow-glow"
+                    transition={{ type: 'spring', stiffness: 400, damping: 32 }}
+                  />
+                )}
+                <span className="relative flex items-center gap-2">
+                  <UserGroupIcon className="w-5 h-5" />
+                  구직자 가이드
+                </span>
               </button>
               <button
                 onClick={() => setActiveTab('employer')}
-                className={`px-8 py-4 rounded-xl font-semibold transition-all duration-300 ${
+                className={`relative px-7 sm:px-10 py-4 rounded-2xl font-semibold text-sm sm:text-base transition-colors duration-300 ${
                   activeTab === 'employer'
-                    ? 'bg-indigo-600 text-white shadow-lg'
-                    : 'text-gray-600 hover:text-gray-900'
+                    ? 'text-white'
+                    : 'text-ink-500 hover:text-ink-800'
                 }`}
               >
-                기업 가이드
+                {activeTab === 'employer' && (
+                  <motion.span
+                    layoutId="helpTabPill"
+                    className="absolute inset-0 rounded-2xl bg-gradient-to-r from-azure-500 to-azure-600 shadow-glow"
+                    transition={{ type: 'spring', stiffness: 400, damping: 32 }}
+                  />
+                )}
+                <span className="relative flex items-center gap-2">
+                  <BuildingOfficeIcon className="w-5 h-5" />
+                  기업 가이드
+                </span>
               </button>
             </div>
           </div>
 
           {/* Guide Content */}
-          <div className="grid md:grid-cols-2 gap-8">
+          <ScrollRevealStagger className="grid md:grid-cols-2 gap-6 lg:gap-8">
             {(activeTab === 'jobseeker' ? jobseekerSteps : employerSteps).map((step, index) => (
-              <div key={index} className="bg-white border border-gray-200 rounded-2xl p-8 shadow-lg hover:shadow-xl transition-all duration-300">
-                <div className="flex items-start space-x-4">
-                  <div className={`w-16 h-16 rounded-2xl flex items-center justify-center flex-shrink-0 ${
-                    activeTab === 'jobseeker' 
-                      ? 'bg-gradient-to-r from-blue-600 to-blue-700' 
-                      : 'bg-gradient-to-r from-indigo-600 to-indigo-700'
-                  }`}>
-                    <step.icon className="w-8 h-8 text-white" />
+              <ScrollRevealItem key={index}>
+                <GlassCard hover className="h-full p-8 lg:p-10">
+                  <div className="flex items-start gap-5">
+                    <div className="w-16 h-16 rounded-3xl bg-gradient-to-br from-azure-400 to-azure-600 flex items-center justify-center flex-shrink-0 shadow-glow">
+                      <step.icon className="w-8 h-8 text-white" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h3 className="text-xl font-bold mb-3 text-ink-900 tracking-tight">{step.title}</h3>
+                      <p className="text-ink-500 leading-relaxed mb-5">{step.description}</p>
+                      <ul className="space-y-2.5">
+                        {step.details.map((detail, detailIndex) => (
+                          <li key={detailIndex} className="flex items-start gap-2.5">
+                            <CheckCircleIcon className="w-4 h-4 text-azure-500 mt-0.5 flex-shrink-0" />
+                            <span className="text-sm text-ink-500 leading-relaxed">{detail}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
                   </div>
-                  <div className="flex-1">
-                    <h3 className="text-xl font-bold mb-3 text-gray-900">{step.title}</h3>
-                    <p className="text-gray-600 mb-4">{step.description}</p>
-                    <ul className="space-y-2">
-                      {step.details.map((detail, detailIndex) => (
-                        <li key={detailIndex} className="flex items-start space-x-2">
-                          <div className="w-1.5 h-1.5 bg-blue-500 rounded-full mt-2 flex-shrink-0"></div>
-                          <span className="text-sm text-gray-600">{detail}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                </div>
-              </div>
+                </GlassCard>
+              </ScrollRevealItem>
             ))}
-          </div>
+          </ScrollRevealStagger>
         </div>
       </section>
 
       {/* Contact Section */}
-      <section className="py-20 bg-white">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <h2 className="text-4xl font-bold mb-6 text-gray-900">추가 도움이 필요하신가요?</h2>
-          <p className="text-xl text-gray-600 mb-12">
-            더 자세한 문의사항이 있으시면 언제든 연락주세요
-          </p>
-          <div className="flex flex-col sm:flex-row gap-6 justify-center">
-            <Link href="/contact" className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 px-8 rounded-xl transition-all duration-200 shadow-xl hover:shadow-2xl">
-              문의하기
-            </Link>
-            <Link href="/faq" className="border-2 border-gray-300 hover:border-blue-600 text-gray-700 hover:text-blue-600 font-bold py-4 px-8 rounded-xl transition-all duration-200">
-              FAQ 보기
-            </Link>
-          </div>
+      <section className="relative py-24 lg:py-32 overflow-hidden">
+        <div className="container-wide">
+          <ScrollReveal>
+            <div className="relative overflow-hidden rounded-5xl bg-gradient-to-br from-azure-700 via-azure-600 to-sky-cool-600 px-6 py-16 sm:px-12 sm:py-20 text-center shadow-glass-lg">
+              <AuroraBackground variant="vivid" className="opacity-40 mix-blend-overlay" />
+              <div className="relative max-w-3xl mx-auto">
+                <h2 className="font-display text-3xl sm:text-4xl lg:text-5xl font-bold text-white mb-6 tracking-tight">추가 도움이 필요하신가요?</h2>
+                <p className="text-base sm:text-lg md:text-xl text-azure-50 mb-10 leading-relaxed">
+                  더 자세한 문의사항이 있으시면 언제든 연락주세요
+                </p>
+                <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                  <GlassButton href="/contact" variant="secondary" size="lg" className="!text-azure-700">
+                    문의하기
+                    <ArrowRightIcon className="w-5 h-5" />
+                  </GlassButton>
+                  <GlassButton href="/faq" variant="outline" size="lg" className="!border-white/70 !text-white hover:!bg-white/15">
+                    FAQ 보기
+                  </GlassButton>
+                </div>
+              </div>
+            </div>
+          </ScrollReveal>
         </div>
       </section>
 
       {/* Footer */}
-      <footer className="bg-gray-900 text-white py-12">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <Link href="/" className="inline-flex items-center space-x-3 mb-6">
-            <div className="w-10 h-10 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg">
-              <span className="text-white font-bold text-lg">H</span>
+      <footer className="relative bg-ink-900 text-white overflow-hidden">
+        <div className="absolute inset-0 bg-azure-aurora opacity-25" />
+        <div className="relative container-wide py-16 text-center">
+          <Link href="/" className="inline-flex items-center gap-3 mb-6 group">
+            <div className="w-10 h-10 bg-gradient-to-br from-azure-500 to-azure-600 rounded-2xl flex items-center justify-center shadow-glow group-hover:scale-105 transition-transform duration-300">
+              <span className="text-white font-display font-bold text-lg">H</span>
             </div>
-            <span className="text-2xl font-bold">테크벤처 잡 매칭</span>
+            <span className="text-2xl font-bold tracking-tight">면접심사 매칭 플랫폼</span>
           </Link>
-          <p className="text-gray-400">
-            &copy; 2025 테크벤처 잡 매칭 Job Platform. All rights reserved.
+          <p className="text-ink-400">
+            &copy; 2025 면접심사 매칭 플랫폼. All rights reserved.
           </p>
         </div>
       </footer>
     </div>
   );
-} 
+}

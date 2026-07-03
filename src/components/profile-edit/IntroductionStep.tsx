@@ -2,14 +2,19 @@
 
 import { useState } from 'react';
 import { SelfIntroduction, SelfIntroductionSection } from '@/types';
-import { 
-  PlusIcon, 
-  TrashIcon, 
-  ArrowUpIcon, 
+import {
+  PlusIcon,
+  TrashIcon,
+  ArrowUpIcon,
   ArrowDownIcon,
   ArrowsRightLeftIcon,
-  DocumentTextIcon
+  DocumentTextIcon,
 } from '@heroicons/react/24/outline';
+import { GlassCard } from '@/components/ui/GlassCard';
+import { GlassButton } from '@/components/ui/GlassButton';
+import { GlassInput, GlassTextarea } from '@/components/ui/GlassField';
+import { Badge } from '@/components/ui/Badge';
+import { ScrollReveal, ScrollRevealStagger, ScrollRevealItem } from '@/components/ui/ScrollReveal';
 
 interface IntroductionStepProps {
   data: SelfIntroduction;
@@ -33,7 +38,7 @@ export default function IntroductionStep({ data, onChange }: IntroductionStepPro
   // 기존 데이터를 새로운 섹션 형태로 변환
   const convertLegacyToSections = (): SelfIntroductionSection[] => {
     const sections: SelfIntroductionSection[] = [];
-    
+
     if (data.motivation) {
       sections.push({
         id: 'motivation',
@@ -43,7 +48,7 @@ export default function IntroductionStep({ data, onChange }: IntroductionStepPro
         color: 'blue'
       });
     }
-    
+
     if (data.personality) {
       sections.push({
         id: 'personality',
@@ -53,7 +58,7 @@ export default function IntroductionStep({ data, onChange }: IntroductionStepPro
         color: 'green'
       });
     }
-    
+
     if (data.experience) {
       sections.push({
         id: 'experience',
@@ -63,7 +68,7 @@ export default function IntroductionStep({ data, onChange }: IntroductionStepPro
         color: 'purple'
       });
     }
-    
+
     if (data.aspiration) {
       sections.push({
         id: 'aspiration',
@@ -93,7 +98,7 @@ export default function IntroductionStep({ data, onChange }: IntroductionStepPro
   // 커스텀 모드로 전환
   const switchToCustomMode = () => {
     const convertedSections = convertLegacyToSections();
-    
+
     // 빈 섹션이 있으면 기본 섹션으로 채우기
     if (convertedSections.length === 0) {
       const defaultSections = DEFAULT_SECTIONS.map((section, index) => ({
@@ -103,7 +108,7 @@ export default function IntroductionStep({ data, onChange }: IntroductionStepPro
         order: index,
         color: section.color
       }));
-      
+
       onChange({
         ...data,
         sections: defaultSections,
@@ -116,7 +121,7 @@ export default function IntroductionStep({ data, onChange }: IntroductionStepPro
         useCustomSections: true
       });
     }
-    
+
     setIsCustomMode(true);
   };
 
@@ -130,7 +135,7 @@ export default function IntroductionStep({ data, onChange }: IntroductionStepPro
       aspiration: sections.find(s => s.id === 'aspiration' || s.title === '입사 후 포부')?.content || '',
       useCustomSections: false
     };
-    
+
     onChange(legacyData);
     setIsCustomMode(false);
   };
@@ -145,7 +150,7 @@ export default function IntroductionStep({ data, onChange }: IntroductionStepPro
       order: currentSections.length,
       color: SECTION_COLORS[currentSections.length % SECTION_COLORS.length]
     };
-    
+
     onChange({
       ...data,
       sections: [...currentSections, newSection],
@@ -159,7 +164,7 @@ export default function IntroductionStep({ data, onChange }: IntroductionStepPro
     const updatedSections = currentSections.map(section =>
       section.id === id ? { ...section, [field]: value } : section
     );
-    
+
     onChange({
       ...data,
       sections: updatedSections,
@@ -171,13 +176,13 @@ export default function IntroductionStep({ data, onChange }: IntroductionStepPro
   const removeSection = (id: string) => {
     const currentSections = getCurrentSections();
     const filteredSections = currentSections.filter(section => section.id !== id);
-    
+
     // 순서 재정렬
     const reorderedSections = filteredSections.map((section, index) => ({
       ...section,
       order: index
     }));
-    
+
     onChange({
       ...data,
       sections: reorderedSections,
@@ -189,26 +194,26 @@ export default function IntroductionStep({ data, onChange }: IntroductionStepPro
   const moveSection = (id: string, direction: 'up' | 'down') => {
     const currentSections = getCurrentSections();
     const sectionIndex = currentSections.findIndex(s => s.id === id);
-    
+
     if (
       (direction === 'up' && sectionIndex === 0) ||
       (direction === 'down' && sectionIndex === currentSections.length - 1)
     ) {
       return;
     }
-    
+
     const newSections = [...currentSections];
     const targetIndex = direction === 'up' ? sectionIndex - 1 : sectionIndex + 1;
-    
+
     // 순서 교체
     [newSections[sectionIndex], newSections[targetIndex]] = [newSections[targetIndex], newSections[sectionIndex]];
-    
+
     // order 값 재설정
     const reorderedSections = newSections.map((section, index) => ({
       ...section,
       order: index
     }));
-    
+
     onChange({
       ...data,
       sections: reorderedSections,
@@ -216,156 +221,196 @@ export default function IntroductionStep({ data, onChange }: IntroductionStepPro
     });
   };
 
-  const getColorClasses = (color: string) => {
-    const colorMap: { [key: string]: string } = {
-      blue: 'border-blue-500 bg-blue-50',
-      green: 'border-green-500 bg-green-50',
-      purple: 'border-purple-500 bg-purple-50',
-      orange: 'border-orange-500 bg-orange-50',
-      red: 'border-red-500 bg-red-50',
-      indigo: 'border-indigo-500 bg-indigo-50',
-      pink: 'border-pink-500 bg-pink-50',
-      yellow: 'border-yellow-500 bg-yellow-50'
+  // 색상 토큰 → azure 글래스 계열 시각화 (저장되는 color 값은 그대로 유지).
+  // 단일 azure 패밀리 안에서 채도/명도만 다르게 하여 무지개를 피한다.
+  const getSwatchClass = (color: string) => {
+    const swatchMap: { [key: string]: string } = {
+      blue: 'bg-azure-500',
+      green: 'bg-mint-500',
+      purple: 'bg-azure-700',
+      orange: 'bg-honey-500',
+      red: 'bg-coral-500',
+      indigo: 'bg-azure-600',
+      pink: 'bg-sky-cool-400',
+      yellow: 'bg-azure-300'
     };
-    return colorMap[color] || 'border-gray-500 bg-gray-50';
+    return swatchMap[color] || 'bg-ink-300';
   };
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h3 className="text-lg font-medium text-gray-900 mb-4">자기소개서</h3>
-        <p className="text-sm text-gray-600 mb-6">
-          각 항목별로 구체적이고 진솔한 내용을 작성해주세요.
-        </p>
-        
-        {/* 모드 전환 버튼 */}
-        <div className="flex items-center justify-between mb-6 p-4 bg-gray-50 rounded-lg">
+    <div className="space-y-5">
+      <ScrollReveal>
+        <div className="flex items-start gap-4">
+          <div className="hidden h-10 w-10 flex-none items-center justify-center rounded-2xl bg-gradient-to-br from-azure-400 to-azure-600 text-white shadow-glow sm:flex">
+            <DocumentTextIcon className="h-5 w-5" />
+          </div>
           <div>
-            <h4 className="font-medium text-gray-900">
-              {isCustomMode ? '사용자 정의 섹션' : '기본 섹션'}
-            </h4>
-            <p className="text-sm text-gray-600">
-              {isCustomMode 
-                ? '소제목과 내용을 자유롭게 구성할 수 있습니다.' 
-                : '정해진 4개 섹션으로 구성됩니다.'
-              }
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-azure-600 mb-2">
+              Self Introduction
+            </p>
+            <h3 className="font-display text-2xl font-bold tracking-tight text-ink-900">
+              자기소개서
+            </h3>
+            <p className="mt-1.5 text-sm leading-relaxed text-ink-500">
+              각 항목별로 구체적이고 진솔한 내용을 작성해주세요.
             </p>
           </div>
-          <button
-            onClick={isCustomMode ? switchToLegacyMode : switchToCustomMode}
-            className="flex items-center space-x-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
-          >
-            <ArrowsRightLeftIcon className="w-4 h-4" />
-            <span>{isCustomMode ? '기본 모드로' : '사용자 정의로'}</span>
-          </button>
         </div>
-      </div>
+      </ScrollReveal>
+
+      {/* 모드 전환 패널 */}
+      <ScrollReveal delay={0.05}>
+        <GlassCard strong className="rounded-3xl p-4 md:p-5">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="space-y-1.5">
+              <div className="flex items-center gap-2.5">
+                <h4 className="font-semibold text-lg text-ink-900">
+                  {isCustomMode ? '사용자 정의 섹션' : '기본 섹션'}
+                </h4>
+                <Badge tone={isCustomMode ? 'azure' : 'neutral'}>
+                  {isCustomMode ? '자유 구성' : '4개 항목'}
+                </Badge>
+              </div>
+              <p className="text-sm text-ink-500 leading-relaxed">
+                {isCustomMode
+                  ? '소제목과 내용을 자유롭게 구성할 수 있습니다.'
+                  : '정해진 4개 섹션으로 구성됩니다.'
+                }
+              </p>
+            </div>
+            <GlassButton
+              onClick={isCustomMode ? switchToLegacyMode : switchToCustomMode}
+              variant="primary"
+              size="md"
+              className="flex-none"
+            >
+              <ArrowsRightLeftIcon className="w-4 h-4" />
+              <span>{isCustomMode ? '기본 모드로' : '사용자 정의로'}</span>
+            </GlassButton>
+          </div>
+        </GlassCard>
+      </ScrollReveal>
 
       {/* 기존 모드 */}
       {!isCustomMode && (
-        <div className="space-y-6">
+        <ScrollRevealStagger className="grid grid-cols-1 gap-4 xl:grid-cols-2">
           {DEFAULT_SECTIONS.map((section, index) => {
             const fieldMap = ['motivation', 'personality', 'experience', 'aspiration'] as const;
             const field = fieldMap[index];
             const value = data[field] || '';
-            
+
             return (
-              <div key={field} className={`border-l-4 ${getColorClasses(section.color)} p-4 rounded-r-lg`}>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  {section.title}
-                </label>
-                <textarea
-                  value={value}
-                  onChange={(e) => handleLegacyChange(field, e.target.value)}
-                  rows={5}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500"
-                  placeholder={section.placeholder}
-                />
-              </div>
+              <ScrollRevealItem key={field}>
+                <GlassCard className="rounded-3xl p-4 md:p-5">
+                  <div className="mb-3 flex items-center gap-3">
+                    <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-azure-50 text-sm font-semibold text-azure-700">
+                      {index + 1}
+                    </span>
+                    <label className="block text-base font-semibold text-ink-900">
+                      {section.title}
+                    </label>
+                  </div>
+                  <GlassTextarea
+                    value={value}
+                    onChange={(e) => handleLegacyChange(field, e.target.value)}
+                    rows={4}
+                    className="min-h-[128px]"
+                    placeholder={section.placeholder}
+                  />
+                </GlassCard>
+              </ScrollRevealItem>
             );
           })}
-        </div>
+        </ScrollRevealStagger>
       )}
 
       {/* 커스텀 모드 */}
       {isCustomMode && (
-        <div className="space-y-4">
+        <ScrollRevealStagger className="grid grid-cols-1 gap-4 xl:grid-cols-2">
           {getCurrentSections().map((section, index) => (
-            <div key={section.id} className={`border-l-4 ${getColorClasses(section.color || 'blue')} p-4 rounded-r-lg`}>
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center space-x-2">
-                  <DocumentTextIcon className="w-5 h-5 text-gray-500" />
-                  <span className="text-sm font-medium text-gray-700">섹션 {index + 1}</span>
-                </div>
-                <div className="flex items-center space-x-1">
-                  <button
-                    onClick={() => moveSection(section.id, 'up')}
-                    disabled={index === 0}
-                    className="p-1 text-gray-400 hover:text-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    <ArrowUpIcon className="w-4 h-4" />
-                  </button>
-                  <button
-                    onClick={() => moveSection(section.id, 'down')}
-                    disabled={index === getCurrentSections().length - 1}
-                    className="p-1 text-gray-400 hover:text-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    <ArrowDownIcon className="w-4 h-4" />
-                  </button>
-                  <button
-                    onClick={() => removeSection(section.id)}
-                    className="p-1 text-red-400 hover:text-red-600"
-                  >
-                    <TrashIcon className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
-              
-              {/* 소제목 입력 */}
-              <input
-                type="text"
-                value={section.title}
-                onChange={(e) => updateSection(section.id, 'title', e.target.value)}
-                placeholder="소제목을 입력하세요 (예: 지원동기, 성격의 장점, 특별한 경험 등)"
-                className="w-full mb-3 px-3 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 font-medium"
-              />
-              
-              {/* 내용 입력 */}
-              <textarea
-                value={section.content}
-                onChange={(e) => updateSection(section.id, 'content', e.target.value)}
-                rows={5}
-                placeholder="내용을 입력하세요"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500"
-              />
-              
-              {/* 색상 선택 */}
-              <div className="mt-3 flex items-center space-x-2">
-                <span className="text-sm text-gray-600">색상:</span>
-                <div className="flex space-x-1">
-                  {SECTION_COLORS.map(color => (
+            <ScrollRevealItem key={section.id}>
+              <GlassCard className="rounded-3xl p-4 md:p-5">
+                <div className="mb-3 flex items-center justify-between">
+                  <div className="flex items-center gap-2.5">
+                    <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-azure-50 text-azure-600">
+                      <DocumentTextIcon className="w-5 h-5" />
+                    </span>
+                    <span className="text-sm font-semibold text-ink-700">섹션 {index + 1}</span>
+                  </div>
+                  <div className="flex items-center gap-1">
                     <button
-                      key={color}
-                      onClick={() => updateSection(section.id, 'color', color)}
-                      className={`w-6 h-6 rounded-full border-2 ${
-                        section.color === color ? 'border-gray-800' : 'border-gray-300'
-                      } ${getColorClasses(color).split(' ')[1]}`}
-                    />
-                  ))}
+                      onClick={() => moveSection(section.id, 'up')}
+                      disabled={index === 0}
+                      className="flex h-9 w-9 items-center justify-center rounded-xl text-ink-400 transition-all duration-200 hover:bg-azure-50 hover:text-azure-600 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-ink-400"
+                    >
+                      <ArrowUpIcon className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={() => moveSection(section.id, 'down')}
+                      disabled={index === getCurrentSections().length - 1}
+                      className="flex h-9 w-9 items-center justify-center rounded-xl text-ink-400 transition-all duration-200 hover:bg-azure-50 hover:text-azure-600 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-ink-400"
+                    >
+                      <ArrowDownIcon className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={() => removeSection(section.id)}
+                      className="flex h-9 w-9 items-center justify-center rounded-xl text-ink-400 transition-all duration-200 hover:bg-coral-100 hover:text-coral-600"
+                    >
+                      <TrashIcon className="w-4 h-4" />
+                    </button>
+                  </div>
                 </div>
-              </div>
-            </div>
+
+                {/* 소제목 입력 */}
+                <GlassInput
+                  type="text"
+                  value={section.title}
+                  onChange={(e) => updateSection(section.id, 'title', e.target.value)}
+                  placeholder="소제목을 입력하세요 (예: 지원동기, 성격의 장점, 특별한 경험 등)"
+                  className="mb-3 font-medium"
+                />
+
+                {/* 내용 입력 */}
+                <GlassTextarea
+                  value={section.content}
+                  onChange={(e) => updateSection(section.id, 'content', e.target.value)}
+                  rows={4}
+                  className="min-h-[128px]"
+                  placeholder="내용을 입력하세요"
+                />
+
+                {/* 색상 선택 */}
+                <div className="mt-4 flex items-center gap-3">
+                  <span className="text-sm font-medium text-ink-700">색상</span>
+                  <div className="flex flex-wrap gap-1.5">
+                    {SECTION_COLORS.map(color => (
+                      <button
+                        key={color}
+                        onClick={() => updateSection(section.id, 'color', color)}
+                        className={`h-7 w-7 rounded-full transition-all duration-200 ${getSwatchClass(color)} ${
+                          section.color === color
+                            ? 'ring-2 ring-offset-2 ring-azure-400 ring-offset-white scale-110'
+                            : 'ring-1 ring-white/60 hover:scale-105'
+                        }`}
+                      />
+                    ))}
+                  </div>
+                </div>
+              </GlassCard>
+            </ScrollRevealItem>
           ))}
-          
+
           {/* 섹션 추가 버튼 */}
-          <button
-            onClick={addSection}
-            className="w-full py-3 border-2 border-dashed border-gray-300 rounded-lg text-gray-600 hover:border-indigo-500 hover:text-indigo-600 transition-colors flex items-center justify-center space-x-2"
-          >
-            <PlusIcon className="w-5 h-5" />
-            <span>새 섹션 추가</span>
-          </button>
-        </div>
+          <ScrollRevealItem className="xl:col-span-2">
+            <button
+              onClick={addSection}
+              className="group flex w-full items-center justify-center gap-2 rounded-3xl border-2 border-dashed border-azure-200 bg-white/40 py-4 text-ink-500 backdrop-blur-sm transition-all duration-300 hover:border-azure-400 hover:bg-azure-50/60 hover:text-azure-700 hover:shadow-glass"
+            >
+              <PlusIcon className="w-5 h-5 transition-transform duration-300 group-hover:scale-110" />
+              <span className="font-medium">새 섹션 추가</span>
+            </button>
+          </ScrollRevealItem>
+        </ScrollRevealStagger>
       )}
     </div>
   );
