@@ -53,7 +53,7 @@ export default function RecommendedCompaniesCard({
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.5 }}
-      className="relative glass-card h-full p-5 md:p-6"
+      className="relative glass-card flex h-full flex-col p-5 md:p-6"
     >
       <div className="mb-5 flex items-center justify-between gap-4">
         <div className="flex items-center gap-3">
@@ -78,7 +78,7 @@ export default function RecommendedCompaniesCard({
       </div>
 
       {companies.length === 0 ? (
-        <div className="py-9 text-center">
+        <div className="flex flex-1 flex-col items-center justify-center py-9 text-center">
           <span className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-azure-50 text-azure-300 shadow-glass-sm">
             <BuildingOfficeIcon className="h-8 w-8" />
           </span>
@@ -86,7 +86,7 @@ export default function RecommendedCompaniesCard({
           <p className="text-sm mt-2 text-ink-400 leading-relaxed">프로필을 완성하면 더 정확한 추천을 받을 수 있습니다.</p>
         </div>
       ) : (
-        <div className="space-y-3">
+        <div className="flex-1 space-y-3">
           {companies.map((company, index) => (
             <motion.div
               key={company.id}

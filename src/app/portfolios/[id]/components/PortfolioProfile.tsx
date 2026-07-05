@@ -11,11 +11,11 @@ import { useAuth } from '@/contexts/AuthContext';
 
 interface PortfolioProfileProps {
   portfolio: Portfolio;
+  canViewContact?: boolean;
 }
 
-export default function PortfolioProfile({ portfolio }: PortfolioProfileProps) {
+export default function PortfolioProfile({ portfolio, canViewContact = false }: PortfolioProfileProps) {
   const { userData } = useAuth();
-  const hasAdminAccess = userData?.role === 'admin' || userData?.isAdmin === true;
 
   return (
     <div className="bg-white/80 backdrop-blur-lg rounded-2xl p-8 shadow-xl border border-white/20 mb-8">
@@ -59,7 +59,7 @@ export default function PortfolioProfile({ portfolio }: PortfolioProfileProps) {
                 <span>{portfolio.location}</span>
               </div>
               {/* 관리자와 구직자에게만 이메일과 전화번호 표시 (기업 회원에게는 완전 숨김) */}
-              {(hasAdminAccess || userData?.role === 'jobseeker') && (
+              {canViewContact ? (
                 <>
                   <div className="flex items-center space-x-1">
                     <EnvelopeIcon className="h-4 w-4" />
@@ -70,7 +70,12 @@ export default function PortfolioProfile({ portfolio }: PortfolioProfileProps) {
                     <span>{portfolio.phone}</span>
                   </div>
                 </>
-              )}
+              ) : userData?.role === 'employer' ? (
+                <div className="flex items-center space-x-1 rounded-full border border-ink-100 bg-white/70 px-3 py-1 text-ink-500">
+                  <EnvelopeIcon className="h-4 w-4" />
+                  <span>관리자 승인 전 연락처 비공개</span>
+                </div>
+              ) : null}
             </div>
           </div>
         </div>

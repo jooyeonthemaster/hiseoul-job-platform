@@ -456,9 +456,6 @@ export default function CompanyDetailPage() {
 
                   {/* Action Buttons */}
                   <div className="mt-8 space-y-3">
-                    <GlassButton type="button" size="md" className="w-full">
-                      채용 문의하기
-                    </GlassButton>
                     <GlassButton
                       onClick={handleFavoriteToggle}
                       disabled={favoriteLoading}

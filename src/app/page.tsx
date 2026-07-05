@@ -41,6 +41,7 @@ import { GlassCard } from '@/components/ui/GlassCard';
 import { SectionHeading } from '@/components/ui/SectionHeading';
 import { AuroraBackground } from '@/components/ui/AuroraBackground';
 import { ScrollReveal, ScrollRevealStagger, ScrollRevealItem } from '@/components/ui/ScrollReveal';
+import { PORTFOLIO_PROGRAMS } from '@/lib/programs';
 
 const EASE = [0.22, 1, 0.36, 1] as const;
 const HERO_SKILLS = ['React', 'TypeScript', 'Figma', 'Next.js', 'Node'];
@@ -61,6 +62,7 @@ function DecorativeImage({
   objectPosition = 'center',
   priority = false,
   sizes = '100vw',
+  maskImage,
 }: {
   src: string;
   className?: string;
@@ -68,6 +70,8 @@ function DecorativeImage({
   objectPosition?: string;
   priority?: boolean;
   sizes?: string;
+  /** 가장자리를 부드럽게 페이드시켜 사각 경계선이 드러나지 않게 하는 CSS mask */
+  maskImage?: string;
 }) {
   return (
     <div aria-hidden="true" className={`pointer-events-none absolute ${className}`}>
@@ -78,7 +82,10 @@ function DecorativeImage({
         priority={priority}
         sizes={sizes}
         className={imageClassName}
-        style={{ objectPosition }}
+        style={{
+          objectPosition,
+          ...(maskImage ? { maskImage, WebkitMaskImage: maskImage } : {}),
+        }}
       />
     </div>
   );
@@ -585,21 +592,120 @@ export default function HomePage() {
         </div>
       </section>
 
+      {/* ====================== Program & Business Benefits ====================== */}
+      <section id="program-benefits" className="relative overflow-hidden py-24 lg:py-32">
+        <div className="absolute inset-0 bg-gradient-to-b from-white via-azure-50/75 to-white" />
+        <DecorativeImage
+          src={LANDING_ASSETS.capability}
+          className="inset-x-0 top-0 hidden h-[42rem] lg:block"
+          imageClassName="object-cover opacity-30"
+          objectPosition="center"
+          sizes="100vw"
+          maskImage="linear-gradient(to bottom, transparent 0%, #000 12%, #000 58%, transparent 100%)"
+        />
+        <div className="relative z-10 container-wide">
+          <SectionHeading
+            eyebrow="수요기업 참여 사업"
+            title={
+              <>
+                교육을 마친 인재를 검토하고
+                <br />
+                <span className="text-gradient-azure">채용 초기 부담을 낮추세요</span>
+              </>
+            }
+            subtitle="서울시 매력일자리 사업과 연계해 교육생 포트폴리오를 먼저 확인하고, 매칭 후 채용 초기 3개월 인건비 지원을 받을 수 있습니다."
+          />
+
+          <ScrollRevealStagger className="mt-14 grid gap-5 md:grid-cols-3">
+            {[
+              { title: '포트폴리오 선검토', desc: '수료생의 자기소개 영상, 프로젝트, 문서를 먼저 확인한 뒤 면접 희망자를 선택합니다.', Icon: BriefcaseIcon },
+              { title: '인건비 지원', desc: '채용 연계 조건 충족 시 최대 3개월 인건비와 4대 보험 사업주 부담분을 지원받을 수 있습니다.', Icon: ChartBarIcon },
+              { title: '과정별 매칭', desc: '내국인 AI 마케팅 과정과 외국인 유학생 글로벌 과정 중 기업 수요에 맞는 인재군을 선택합니다.', Icon: UserGroupIcon },
+            ].map(({ title, desc, Icon }) => (
+              <ScrollRevealItem key={title}>
+                <GlassCard hover className="h-full p-6 md:p-7">
+                  <div className="mb-5 flex h-12 w-12 items-center justify-center rounded-2xl border border-azure-100 bg-azure-50 text-azure-600 shadow-glass-sm">
+                    <Icon className="h-6 w-6" />
+                  </div>
+                  <h3 className="font-display text-xl font-bold tracking-tight text-ink-900">{title}</h3>
+                  <p className="mt-3 text-sm leading-relaxed text-ink-500">{desc}</p>
+                </GlassCard>
+              </ScrollRevealItem>
+            ))}
+          </ScrollRevealStagger>
+
+          <div className="mt-10 grid gap-6 lg:grid-cols-2">
+            {PORTFOLIO_PROGRAMS.map((program) => (
+              <ScrollReveal key={program.id}>
+                <GlassCard className="h-full p-6 md:p-8">
+                  <div className="flex flex-col gap-5 md:flex-row md:items-start md:justify-between">
+                    <div>
+                      <div className="inline-flex items-center gap-2 rounded-full border border-azure-100 bg-azure-50 px-3 py-1 text-xs font-semibold text-azure-700">
+                        {program.audience} · {program.hours}
+                      </div>
+                      <h3 className="mt-4 font-display text-2xl font-bold leading-tight tracking-tight text-ink-900">
+                        {program.name}
+                      </h3>
+                      <p className="mt-3 text-sm leading-relaxed text-ink-500">{program.summary}</p>
+                    </div>
+                    <div className="shrink-0 rounded-3xl border border-white/70 bg-white/70 px-5 py-4 text-center shadow-glass-sm">
+                      <div className="font-display text-2xl font-bold text-azure-700">{program.curriculum.length}</div>
+                      <div className="text-xs font-semibold text-ink-400">커리큘럼 단계</div>
+                    </div>
+                  </div>
+
+                  <div className="mt-6 grid gap-3 sm:grid-cols-2">
+                    {program.skills.slice(0, 4).map((skill) => (
+                      <div key={skill.title} className="flex gap-3 rounded-2xl border border-white/70 bg-white/65 p-3">
+                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-azure-50 text-lg">
+                          {skill.icon}
+                        </span>
+                        <div>
+                          <h4 className="text-sm font-bold text-ink-900">{skill.title}</h4>
+                          <p className="mt-1 text-xs leading-relaxed text-ink-500">{skill.description}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="mt-6">
+                    <h4 className="text-sm font-bold text-ink-900">{program.curriculumLabel}</h4>
+                    <div className="mt-3 grid gap-2">
+                      {program.curriculum.map((item) => (
+                        <div key={item.step} className="flex gap-3 rounded-2xl bg-azure-50/60 px-4 py-3">
+                          <span className="w-20 shrink-0 text-xs font-bold text-azure-600">{item.step}</span>
+                          <div>
+                            <div className="text-sm font-semibold text-ink-900">{item.title}</div>
+                            <div className="mt-0.5 text-xs text-ink-500">{item.description}</div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {program.workHoursNote && (
+                    <div className="mt-5 rounded-2xl border border-honey-400/40 bg-honey-100/50 p-4">
+                      <h4 className="text-sm font-bold text-ink-900">{program.workHoursNote.title}</h4>
+                      <p className="mt-1 text-xs leading-relaxed text-ink-500">{program.workHoursNote.description}</p>
+                    </div>
+                  )}
+                </GlassCard>
+              </ScrollReveal>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* ====================== Features ====================== */}
       <section id="features" className="relative py-24 lg:py-32 overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-b from-white/95 via-azure-50/75 to-white/90" />
         <DecorativeImage
           src={LANDING_ASSETS.features}
-          className="-right-40 top-12 hidden h-[36rem] w-[62rem] lg:block"
-          imageClassName="object-contain opacity-45"
-          sizes="992px"
-        />
-        <DecorativeImage
-          src={LANDING_ASSETS.aiWorkbench}
-          className="-left-48 bottom-24 hidden h-[34rem] w-[58rem] xl:block"
-          imageClassName="object-contain opacity-20"
-          objectPosition="left center"
-          sizes="928px"
+          className="inset-x-0 top-0 hidden h-[42rem] lg:block"
+          imageClassName="object-cover opacity-30"
+          objectPosition="center"
+          sizes="100vw"
+          maskImage="linear-gradient(to bottom, transparent 0%, #000 12%, #000 55%, transparent 100%)"
         />
         <div className="relative z-10 container-wide">
           <SectionHeading
@@ -691,14 +797,7 @@ export default function HomePage() {
           </ScrollReveal>
 
           {/* AI 도구 활용 능력 섹션 */}
-          <div id="ai-tools" className="relative isolate mt-24 scroll-mt-24">
-            <DecorativeImage
-              src={LANDING_ASSETS.aiWorkbench}
-              className="-inset-x-12 top-2 -z-10 h-[42rem]"
-              imageClassName="object-cover opacity-30"
-              objectPosition="center"
-            />
-            <div className="absolute -inset-x-12 top-0 -z-10 h-[44rem] bg-gradient-to-b from-white/70 via-azure-50/70 to-white/90" />
+          <div id="ai-tools" className="relative mt-24 scroll-mt-24">
             <SectionHeading
               eyebrow="전문 도구 활용 능력"
               title={

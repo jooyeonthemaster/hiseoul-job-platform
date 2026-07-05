@@ -29,6 +29,7 @@ export default function FavoriteCompaniesCard({ companies, loading = false }: Fa
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.2 }}
+        className="h-full"
       >
         <GlassCard className="h-full p-5 md:p-6">
           <div className="animate-pulse">
@@ -48,8 +49,9 @@ export default function FavoriteCompaniesCard({ companies, loading = false }: Fa
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.2 }}
+      className="h-full"
     >
-      <GlassCard className="h-full p-5 md:p-6">
+      <GlassCard className="flex h-full flex-col p-5 md:p-6">
         <div className="mb-5 flex items-center justify-between gap-4">
           <h2 className="flex items-center gap-2.5 font-display text-xl font-bold tracking-tight text-ink-900">
             <span className="inline-flex h-10 w-10 items-center justify-center rounded-2xl bg-coral-100 text-coral-500 shadow-glass-sm">
@@ -68,7 +70,7 @@ export default function FavoriteCompaniesCard({ companies, loading = false }: Fa
         </div>
 
         {companies.length === 0 ? (
-          <div className="py-9 text-center">
+          <div className="flex flex-1 flex-col items-center justify-center py-9 text-center">
             <div className="mx-auto mb-4 inline-flex h-14 w-14 items-center justify-center rounded-2xl border border-azure-100 bg-azure-50 text-azure-300 shadow-glass-sm">
               <HeartIcon className="h-7 w-7" />
             </div>
@@ -80,13 +82,16 @@ export default function FavoriteCompaniesCard({ companies, loading = false }: Fa
             </div>
           </div>
         ) : (
-          <div className="space-y-3">
+          <div className="flex-1 space-y-3">
             {companies.slice(0, 3).map((company, index) => (
               <motion.div
                 key={company.companyId}
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: index * 0.1 }}
+              >
+              <Link
+                href={`/companies/${company.companyId}`}
                 className="group flex cursor-pointer items-center justify-between gap-4 rounded-2xl border border-white/60 bg-white/45 p-4 shadow-glass-sm transition-all duration-300 hover:bg-white/70 hover:shadow-glass"
               >
                 <div className="flex items-center gap-4 min-w-0">
@@ -121,6 +126,7 @@ export default function FavoriteCompaniesCard({ companies, loading = false }: Fa
                   </div>
                 </div>
                 <ArrowRightIcon className="w-5 h-5 text-ink-400 shrink-0 transition-all duration-300 group-hover:text-azure-600 group-hover:translate-x-0.5" />
+              </Link>
               </motion.div>
             ))}
           </div>

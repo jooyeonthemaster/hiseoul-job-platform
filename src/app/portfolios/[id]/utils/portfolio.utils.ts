@@ -1,5 +1,7 @@
 // 포트폴리오 관련 유틸리티 함수들
 
+import { formatKoreanDate } from '@/lib/dateUtils';
+
 // 전문분야별 아바타 매핑
 export const getAvatarBySpeciality = (speciality: string): string => {
   const avatarMap: { [key: string]: string } = {
@@ -26,64 +28,10 @@ export const getYouTubeId = (url: string): string | null => {
   return match && match[2].length === 11 ? match[2] : null;
 };
 
-// Firebase Timestamp를 안전하게 날짜 문자열로 변환
-export const formatFirebaseDate = (dateValue: any): string => {
-  if (!dateValue) return '날짜 정보 없음';
-  
-  // null, undefined, 빈 문자열 체크
-  if (dateValue === null || dateValue === undefined || dateValue === '') {
-    return '날짜 정보 없음';
-  }
-  
-  // 빈 객체 체크
-  if (typeof dateValue === 'object' && Object.keys(dateValue).length === 0) {
-    console.warn('Empty object passed as date:', dateValue);
-    return '날짜 정보 없음';
-  }
-  
-  try {
-    let date: Date;
-    
-    // Firebase Timestamp 객체인 경우 (seconds 필드가 있는 경우)
-    if (dateValue && typeof dateValue === 'object' && 'seconds' in dateValue) {
-      date = new Date(dateValue.seconds * 1000);
-    }
-    // Firebase Timestamp 객체 (toDate 메서드가 있는 경우)
-    else if (dateValue && typeof dateValue === 'object' && typeof dateValue.toDate === 'function') {
-      date = dateValue.toDate();
-    }
-    // JavaScript Date 객체인 경우
-    else if (dateValue instanceof Date) {
-      date = dateValue;
-    }
-    // 문자열인 경우
-    else if (typeof dateValue === 'string') {
-      if (dateValue.trim() === '') return '날짜 정보 없음';
-      // ISO 형식 문자열인 경우 그대로 사용
-      if (dateValue.includes('T') || dateValue.includes('Z')) {
-        date = new Date(dateValue);
-      } else {
-        // YYYY-MM-DD 형식인 경우 UTC로 처리
-        date = new Date(dateValue + 'T00:00:00.000Z');
-      }
-    }
-    // 숫자(timestamp)인 경우
-    else if (typeof dateValue === 'number') {
-      date = new Date(dateValue);
-    }
-    else {
-      console.warn('Unknown date format:', dateValue, 'Type:', typeof dateValue);
-      return '날짜 정보 없음';
-    }
-    
-    if (isNaN(date.getTime())) {
-      console.warn('Invalid date:', dateValue);
-      return '날짜 정보 없음';
-    }
-    
-    return date.toLocaleDateString('ko-KR');
-  } catch (error) {
-    console.error('Date formatting error:', error, 'Value:', dateValue);
-    return '날짜 정보 없음';
-  }
-};
+/**
+ * 다양한 날짜 값을 한국어 표시 문자열로 변환.
+ * 공용 formatKoreanDate에 위임한다 — 연-월("YYYY-MM") 문자열도 타임존 변환 없이
+ * "2020년 3월"로 올바르게 표시하며, Timestamp/Date/ISO/epoch 등 레거시 포맷을 모두 수용한다.
+ */
+export const formatFirebaseDate = (dateValue: any): string =>
+  formatKoreanDate(dateValue, { fallback: '날짜 정보 없음' });

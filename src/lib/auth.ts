@@ -31,6 +31,7 @@ import {
 } from 'firebase/firestore';
 import { auth, db } from './firebase';
 import { User, JobSeeker, Employer } from '@/types';
+import { normalizeExternalPortfolioLinks } from '@/lib/externalPortfolioLinks';
 
 // Firebase Timestamp를 Date로 변환하는 헬퍼 함수
 const convertTimestampsToDate = (data: any): any => {
@@ -606,8 +607,11 @@ export const registerPortfolio = async (uid: string, portfolioData: {
     personality?: string;
     experience?: string;
     aspiration?: string;
+    sections?: any[];
+    useCustomSections?: boolean;
   };
   mediaContent?: any[];
+  externalLinks?: any[];
   portfolioPdfs?: Array<{
     url: string;
     fileName: string;
@@ -627,6 +631,10 @@ export const registerPortfolio = async (uid: string, portfolioData: {
     if (!userData || userData.role !== 'jobseeker') {
       throw new Error('구직자만 포트폴리오를 등록할 수 있습니다.');
     }
+
+    const portfolioRef = doc(db, 'portfolios', uid);
+    const existingPortfolioSnap = await getDoc(portfolioRef);
+    const existingPortfolio = existingPortfolioSnap.exists() ? existingPortfolioSnap.data() : {};
 
     const portfolio = {
       userId: uid,
@@ -654,8 +662,13 @@ export const registerPortfolio = async (uid: string, portfolioData: {
         aspiration: ''
       },
       mediaContent: portfolioData.mediaContent || [],
+      externalLinks: normalizeExternalPortfolioLinks(portfolioData.externalLinks),
       portfolioPdfs: portfolioData.portfolioPdfs || [],
       additionalDocuments: portfolioData.additionalDocuments || [],
+      isHidden: existingPortfolio.isHidden === true,
+      contactInfoVisibleToEmployers: existingPortfolio.contactInfoVisibleToEmployers === true,
+      contactVisibilityApprovedAt: existingPortfolio.contactVisibilityApprovedAt || null,
+      contactVisibilityApprovedBy: existingPortfolio.contactVisibilityApprovedBy || '',
       isPublic: true,
       rating: 0,
       projects: 0,
@@ -664,7 +677,7 @@ export const registerPortfolio = async (uid: string, portfolioData: {
       updatedAt: serverTimestamp()
     };
 
-    await setDoc(doc(db, 'portfolios', uid), portfolio);
+    await setDoc(portfolioRef, portfolio);
     return portfolio;
   } catch (error) {
     console.error('Error registering portfolio:', error);
@@ -722,7 +735,7 @@ export const getAllPortfolios = async (includeHidden: boolean = false) => {
         
         // 사용자 프로필 이미지와 과정 정보 가져오기 (jobseekers 컬렉션에서)
         let profileImage = data.profileImage || '';
-        let currentCourse = '';
+        let currentCourse = data.currentCourse || '';
         let courseType: 'domestic' | 'foreign' | null = data.courseType || null;
         try {
           const jobseekerDocRef = doc(db, 'jobseekers', userId);
@@ -730,14 +743,14 @@ export const getAllPortfolios = async (includeHidden: boolean = false) => {
           if (jobseekerDoc.exists()) {
             const jobseekerData = jobseekerDoc.data() as any;
             profileImage = jobseekerData.profile?.profileImage || data.profileImage || '';
-            currentCourse = jobseekerData.profile?.currentCourse || '';
+            currentCourse = jobseekerData.profile?.currentCourse || data.currentCourse || '';
             // 내국인/외국인 과정 구분: jobseekers 프로필 우선, 없으면 portfolio 문서값 사용
             courseType = jobseekerData.profile?.courseType || data.courseType || null;
             console.log(`🖼️ getAllPortfolios - ${data.name}의 프로필 이미지:`, profileImage);
             console.log(`📚 getAllPortfolios - ${data.name}의 수행 과정:`, currentCourse);
           }
         } catch (error) {
-          console.error('Error fetching user profile data:', error);
+          console.warn('Skipping jobseeker profile enrichment:', error);
           // 에러가 발생해도 기존 데이터 사용
         }
         
@@ -759,9 +772,13 @@ export const getAllPortfolios = async (includeHidden: boolean = false) => {
           verified: data.verified || false,
           isPublic: data.isPublic || true,
           isHidden: data.isHidden || false, // 숨김 상태 추가
+          contactInfoVisibleToEmployers: data.contactInfoVisibleToEmployers === true,
+          contactVisibilityApprovedAt: data.contactVisibilityApprovedAt?.toDate?.() || data.contactVisibilityApprovedAt || null,
+          contactVisibilityApprovedBy: data.contactVisibilityApprovedBy || '',
           profileImage: profileImage, // 실시간 프로필 이미지
           currentCourse: currentCourse, // 수행 중인 과정
           courseType: courseType, // 내국인('domestic') / 외국인('foreign') 과정 구분
+          externalLinks: normalizeExternalPortfolioLinks(data.externalLinks),
           portfolioPdfs: data.portfolioPdfs || [],
           additionalDocuments: data.additionalDocuments || [],
           createdAt: data.createdAt?.toDate(),
@@ -1238,6 +1255,21 @@ export const togglePortfolioVisibility = async (portfolioId: string, isHidden: b
 };
 
 // 기업 정보 숨김/표시 토글
+export const setPortfolioContactVisibility = async (portfolioId: string, visible: boolean, approvedBy?: string) => {
+  try {
+    await updateDoc(doc(db, 'portfolios', portfolioId), {
+      contactInfoVisibleToEmployers: visible,
+      contactVisibilityApprovedAt: visible ? serverTimestamp() : null,
+      contactVisibilityApprovedBy: visible ? approvedBy || '' : '',
+      updatedAt: serverTimestamp()
+    });
+    return true;
+  } catch (error) {
+    console.error('포트폴리오 연락처 공개 상태 변경 실패:', error);
+    throw error;
+  }
+};
+
 export const toggleEmployerVisibility = async (employerId: string, isHidden: boolean) => {
   try {
     await updateDoc(doc(db, 'employers', employerId), {

@@ -5,6 +5,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Portfolio } from '../types/portfolio.types';
 import { portfoliosDetail } from '../constants/portfolio-data';
 import { getAvatarBySpeciality, formatFirebaseDate } from '../utils/portfolio.utils';
+import { normalizeExternalPortfolioLinks } from '@/lib/externalPortfolioLinks';
 
 export const usePortfolioData = (portfolioId: string, hasAccess: boolean, accessChecked: boolean) => {
   const { user, userData } = useAuth();
@@ -42,6 +43,8 @@ export const usePortfolioData = (portfolioId: string, hasAccess: boolean, access
             // Firebase에서 상세 프로필 정보도 가져오기
             const profileData = await getJobSeekerProfile(portfolioId);
             const profile = profileData?.profile;
+            const portfolioRecord = firebasePortfolio as any;
+            const selfIntroductionSource = profile?.selfIntroduction || portfolioRecord.selfIntroduction;
             console.log('🖼️ 포트폴리오 상세 - 프로필 데이터:', profile);
             console.log('📁 추가 문서 데이터:', profile?.additionalDocuments);
             console.log('🎥 영상 데이터 확인:', {
@@ -51,33 +54,52 @@ export const usePortfolioData = (portfolioId: string, hasAccess: boolean, access
             
             const convertedPortfolio: Portfolio = {
               id: portfolioId,
-              name: (firebasePortfolio as any).name || '이름 없음',
-              speciality: (firebasePortfolio as any).speciality || '일반',
+              name: portfolioRecord.name || '이름 없음',
+              speciality: portfolioRecord.speciality || '일반',
               experience: '경력',
-              skills: Array.isArray((firebasePortfolio as any).skills) ? (firebasePortfolio as any).skills : [],
-              languages: Array.isArray(profile?.languages) ? profile.languages : [],
-              description: (firebasePortfolio as any).description || '설명이 없습니다.',
-              avatar: getAvatarBySpeciality((firebasePortfolio as any).speciality || '일반'),
-              projects: (firebasePortfolio as any).projects || 0,
-              verified: (firebasePortfolio as any).verified || false,
-              location: (firebasePortfolio as any).address || '위치 정보 없음',
-              email: (firebasePortfolio as any).email || '이메일 정보 없음',
-              phone: (firebasePortfolio as any).phone || '연락처 정보 없음',
+              skills: Array.isArray(portfolioRecord.skills) ? portfolioRecord.skills : [],
+              languages: Array.isArray(profile?.languages) ? profile.languages : Array.isArray(portfolioRecord.languages) ? portfolioRecord.languages : [],
+              description: portfolioRecord.description || '설명이 없습니다.',
+              avatar: getAvatarBySpeciality(portfolioRecord.speciality || '일반'),
+              projects: portfolioRecord.projects || 0,
+              verified: portfolioRecord.verified || false,
+              location: portfolioRecord.address || profile?.address || '위치 정보 없음',
+              email: portfolioRecord.email || profileData?.email || '이메일 정보 없음',
+              phone: portfolioRecord.phone || profile?.phone || '연락처 정보 없음',
+              contactInfoVisibleToEmployers: portfolioRecord.contactInfoVisibleToEmployers === true,
               education: '학력 정보 없음',
-              introduction: (firebasePortfolio as any).description || `안녕하세요, ${(firebasePortfolio as any).speciality || '일반'} 전문가 ${(firebasePortfolio as any).name || ''}입니다.`,
-              achievements: Array.isArray((firebasePortfolio as any).achievements) 
-                ? (firebasePortfolio as any).achievements 
+              introduction: portfolioRecord.description || `안녕하세요, ${portfolioRecord.speciality || '일반'} 전문가 ${portfolioRecord.name || ''}입니다.`,
+              achievements: Array.isArray(portfolioRecord.achievements)
+                ? portfolioRecord.achievements
                 : ['포트폴리오 등록 완료'],
-              workHistory: Array.isArray((firebasePortfolio as any).experience) 
-                ? (firebasePortfolio as any).experience 
+              workHistory: Array.isArray(portfolioRecord.experience)
+                ? portfolioRecord.experience.map((exp: any) => {
+                    // 경력 시작/종료일은 저장 스키마상 "YYYY-MM" 문자열(레거시는 Date/Timestamp/ISO/자유텍스트).
+                    // 기존 period(자유텍스트 "2020.03~2022.05")가 있으면 그대로 보존해 회귀를 방지하고,
+                    // 없을 때만 startDate/endDate를 formatFirebaseDate로 변환해 "2020년 3월 - 2022년 5월" 형태를 구성한다.
+                    let period = exp.period;
+                    if (!period) {
+                      const start = exp.startDate ? formatFirebaseDate(exp.startDate) : '';
+                      const end = exp.isCurrent
+                        ? '현재'
+                        : (exp.endDate ? formatFirebaseDate(exp.endDate) : '');
+                      period = start && end ? `${start} - ${end}` : (start || end || '');
+                    }
+                    return {
+                      company: exp.company || '',
+                      position: exp.position || '',
+                      period,
+                      description: exp.description || ''
+                    };
+                  })
                 : [{
                     company: '회사명',
-                    position: ((firebasePortfolio as any).speciality || '일반') + ' 전문가',
+                    position: (portfolioRecord.speciality || '일반') + ' 전문가',
                     period: '경력 정보 업데이트 예정',
                     description: '상세 경력 정보를 업데이트해주세요.'
                   }],
-              projectDetails: Array.isArray((firebasePortfolio as any).projects) 
-                ? (firebasePortfolio as any).projects.map((project: any) => ({
+              projectDetails: Array.isArray(portfolioRecord.projects)
+                ? portfolioRecord.projects.map((project: any) => ({
                     title: project.title || '프로젝트 정보 업데이트 예정',
                     description: project.description || '프로젝트 상세 정보를 업데이트해주세요.',
                     technologies: Array.isArray(project.technologies) ? project.technologies : [],
@@ -91,25 +113,25 @@ export const usePortfolioData = (portfolioId: string, hasAccess: boolean, access
                     duration: '기간 미정',
                     results: ['결과 정보 업데이트 예정']
                   }],
-              profileImage: profile?.profileImage,
-              currentCourse: profile?.currentCourse,
-              courseType: profile?.courseType || (firebasePortfolio as any).courseType || undefined,
-              introVideo: profile?.introVideo,
-              introVideos: profile?.introVideos || [],
-              selfIntroduction: profile?.selfIntroduction && 
-                Object.keys(profile.selfIntroduction).length > 0 &&
-                (profile.selfIntroduction.motivation || 
-                 profile.selfIntroduction.personality || 
-                 profile.selfIntroduction.experience || 
-                 profile.selfIntroduction.aspiration ||
-                 (profile.selfIntroduction.useCustomSections && profile.selfIntroduction.sections))
+              profileImage: profile?.profileImage || portfolioRecord.profileImage,
+              currentCourse: profile?.currentCourse || portfolioRecord.currentCourse,
+              courseType: profile?.courseType || portfolioRecord.courseType || undefined,
+              introVideo: profile?.introVideo || portfolioRecord.introVideo,
+              introVideos: profile?.introVideos || portfolioRecord.introVideos || [],
+              selfIntroduction: selfIntroductionSource &&
+                Object.keys(selfIntroductionSource).length > 0 &&
+                (selfIntroductionSource.motivation ||
+                 selfIntroductionSource.personality ||
+                 selfIntroductionSource.experience ||
+                 selfIntroductionSource.aspiration ||
+                 (selfIntroductionSource.useCustomSections && selfIntroductionSource.sections))
                 ? {
-                    motivation: profile.selfIntroduction.motivation,
-                    personality: profile.selfIntroduction.personality,
-                    experience: profile.selfIntroduction.experience,
-                    aspiration: profile.selfIntroduction.aspiration,
-                    sections: profile.selfIntroduction.sections,
-                    useCustomSections: profile.selfIntroduction.useCustomSections
+                    motivation: selfIntroductionSource.motivation,
+                    personality: selfIntroductionSource.personality,
+                    experience: selfIntroductionSource.experience,
+                    aspiration: selfIntroductionSource.aspiration,
+                    sections: selfIntroductionSource.sections,
+                    useCustomSections: selfIntroductionSource.useCustomSections
                   }
                 : undefined,
               mediaContent: Array.isArray(profile?.mediaContent) && profile.mediaContent.length > 0
@@ -119,13 +141,27 @@ export const usePortfolioData = (portfolioId: string, hasAccess: boolean, access
                     title: media.title || '제목 없음',
                     description: media.description || ''
                   }))
+                : Array.isArray(portfolioRecord.mediaContent) && portfolioRecord.mediaContent.length > 0
+                  ? portfolioRecord.mediaContent.map((media: any) => ({
+                      type: media.type || 'unknown',
+                      url: media.url || '',
+                      title: media.title || '제목 없음',
+                      description: media.description || ''
+                    }))
                 : [],
+              externalLinks: normalizeExternalPortfolioLinks(profile?.externalLinks || portfolioRecord.externalLinks),
               portfolioPdfs: Array.isArray(profile?.portfolioPdfs) && profile.portfolioPdfs.length > 0
                 ? profile.portfolioPdfs.map((pdf: any) => ({
                     url: pdf.url || '',
                     fileName: pdf.fileName || '파일명 없음',
                     uploadedAt: pdf.uploadedAt || null
                   }))
+                : Array.isArray(portfolioRecord.portfolioPdfs) && portfolioRecord.portfolioPdfs.length > 0
+                  ? portfolioRecord.portfolioPdfs.map((pdf: any) => ({
+                      url: pdf.url || '',
+                      fileName: pdf.fileName || '파일명 없음',
+                      uploadedAt: pdf.uploadedAt || null
+                    }))
                 : [],
               certificates: Array.isArray(profile?.certificates) && profile.certificates.length > 0
                 ? profile.certificates.map((cert: any) => ({
@@ -161,6 +197,15 @@ export const usePortfolioData = (portfolioId: string, hasAccess: boolean, access
                     downloadUrl: doc.downloadUrl || doc.url || '',
                     publicId: doc.publicId || ''
                   }))
+                : Array.isArray(portfolioRecord.additionalDocuments) && portfolioRecord.additionalDocuments.length > 0
+                  ? portfolioRecord.additionalDocuments.map((doc: any) => ({
+                      url: doc.url || '',
+                      fileName: doc.fileName || '파일명 없음',
+                      fileSize: doc.fileSize || 0,
+                      fileType: doc.fileType || 'unknown',
+                      downloadUrl: doc.downloadUrl || doc.url || '',
+                      publicId: doc.publicId || ''
+                    }))
                 : []
             };
 

@@ -4,15 +4,17 @@ import { useState, useEffect } from 'react';
 import { collection, query, where, getDocs, updateDoc, doc, serverTimestamp, orderBy } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { AnimatePresence, motion } from 'framer-motion';
-import { CheckCircleIcon, XCircleIcon, ClockIcon, BuildingOfficeIcon, LockClosedIcon, EyeIcon, EyeSlashIcon, EnvelopeIcon, UserGroupIcon, UserIcon, BriefcaseIcon, MagnifyingGlassIcon, FunnelIcon, CalendarDaysIcon, PencilIcon, ArrowLeftIcon, ArrowRightIcon, XMarkIcon, ArrowPathIcon, ChevronUpIcon, ChevronDownIcon, ArrowDownTrayIcon, TableCellsIcon, ArrowTopRightOnSquareIcon } from '@heroicons/react/24/outline';
+import { CheckCircleIcon, XCircleIcon, ClockIcon, BuildingOfficeIcon, LockClosedIcon, EyeIcon, EyeSlashIcon, EnvelopeIcon, UserGroupIcon, UserIcon, BriefcaseIcon, MagnifyingGlassIcon, FunnelIcon, CalendarDaysIcon, PencilIcon, ArrowLeftIcon, ArrowRightIcon, XMarkIcon, ArrowPathIcon, ChevronUpIcon, ChevronDownIcon, ArrowDownTrayIcon, TableCellsIcon, ArrowTopRightOnSquareIcon, AcademicCapIcon } from '@heroicons/react/24/outline';
 import { GlassButton } from '@/components/ui/GlassButton';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { Badge } from '@/components/ui/Badge';
 import { GlassInput, GlassTextarea, GlassSelect, Field } from '@/components/ui/GlassField';
 import { AuroraBackground } from '@/components/ui/AuroraBackground';
 import { ScrollReveal } from '@/components/ui/ScrollReveal';
-import { getAllPortfolios, updateJobSeekerProfile, getJobSeekerProfile, updateUserProfile, registerPortfolio, togglePortfolioVisibility, toggleEmployerVisibility, getAllEmployers, logOut } from '@/lib/auth';
+import { getAllPortfolios, updateJobSeekerProfile, getJobSeekerProfile, updateUserProfile, registerPortfolio, togglePortfolioVisibility, setPortfolioContactVisibility, toggleEmployerVisibility, getAllEmployers, logOut } from '@/lib/auth';
 import { exportJobseekersToExcel, exportEmployersToExcel, exportSelectionsToExcel, exportAllToExcel } from '@/lib/excelExport';
+import { DEFAULT_VISIBLE_PROGRAM_IDS, PORTFOLIO_PROGRAMS } from '@/lib/programs';
+import { getVisiblePortfolioProgramIds, saveVisiblePortfolioProgramIds } from '@/lib/programSettings';
 import {
   StepNavigation,
   BasicInfoStep,
@@ -24,6 +26,7 @@ import {
 } from '@/components/profile-edit';
 import type { ExperienceItem, EducationItem, CertificateItem, AwardItem, SelfIntroduction } from '@/types';
 import type { VideoLink } from '@/app/portfolios/[id]/types/portfolio.types';
+import type { ExternalPortfolioLink } from '@/lib/externalPortfolioLinks';
 import ProfileImageManager from '@/components/admin/ProfileImageManager';
 import JobInquiryDetailModal from '@/components/JobInquiryDetailModal';
 import { useAuth } from '@/contexts/AuthContext';
@@ -124,13 +127,23 @@ interface Portfolio {
   introVideo?: string;
   introVideos?: VideoLink[];
   mediaContent?: any[];
+  externalLinks?: ExternalPortfolioLink[];
   portfolioPdfs?: Array<{
     url: string;
     fileName: string;
     uploadedAt: Date;
   }>;
+  additionalDocuments?: Array<{
+    url: string;
+    fileName: string;
+    fileSize: number;
+    fileType: string;
+    downloadUrl: string;
+    publicId: string;
+  }>;
   dateOfBirth?: Date;
   isHidden?: boolean; // 숨김 상태 추가
+  contactInfoVisibleToEmployers?: boolean;
 }
 
 // 프로필 수정을 위한 FormData 인터페이스
@@ -159,10 +172,19 @@ interface ProfileFormData {
     introVideo: string;
     introVideos?: VideoLink[];
     mediaContent: any[];
+    externalLinks?: ExternalPortfolioLink[];
     portfolioPdfs?: Array<{
       url: string;
       fileName: string;
       uploadedAt: Date;
+    }>;
+    additionalDocuments?: Array<{
+      url: string;
+      fileName: string;
+      fileSize: number;
+      fileType: string;
+      downloadUrl: string;
+      publicId: string;
     }>;
   };
 }
@@ -253,10 +275,14 @@ export default function AdminPage() {
     media: {
       introVideo: '',
       mediaContent: [],
-      portfolioPdfs: []
+      externalLinks: [],
+      portfolioPdfs: [],
+      additionalDocuments: []
     }
   });
   const [savingProfile, setSavingProfile] = useState(false);
+  const [visibleProgramIds, setVisibleProgramIds] = useState<string[]>(DEFAULT_VISIBLE_PROGRAM_IDS);
+  const [savingProgramSettings, setSavingProgramSettings] = useState(false);
 
   // 엑셀 내보내기 상태 (진행 중인 항목 키: 'jobseekers' | 'employers' | 'selections' | 'all')
   const [exporting, setExporting] = useState<string | null>(null);
@@ -568,8 +594,12 @@ export default function AdminPage() {
     const fetchPortfolios = async () => {
       try {
         setLoading(true);
-        const portfolioData = await getAllPortfolios(true); // 관리자는 숨겨진 포트폴리오도 포함
+        const [portfolioData, programIds] = await Promise.all([
+          getAllPortfolios(true), // 관리자는 숨겨진 포트폴리오도 포함
+          getVisiblePortfolioProgramIds(),
+        ]);
         setPortfolios(portfolioData as Portfolio[]);
+        setVisibleProgramIds(programIds);
       } catch (error) {
         console.error('Error fetching portfolios:', error);
       } finally {
@@ -789,7 +819,9 @@ export default function AdminPage() {
             introVideo: profile.introVideo || portfolio.introVideo || '',
             introVideos: profile.introVideos || portfolio.introVideos || [],
             mediaContent: profile.mediaContent || portfolio.mediaContent || [],
-            portfolioPdfs: profile.portfolioPdfs || portfolio.portfolioPdfs || []
+            externalLinks: profile.externalLinks || portfolio.externalLinks || [],
+            portfolioPdfs: profile.portfolioPdfs || portfolio.portfolioPdfs || [],
+            additionalDocuments: profile.additionalDocuments || (portfolio as any).additionalDocuments || []
           }
         });
       } else {
@@ -824,7 +856,9 @@ export default function AdminPage() {
             introVideo: portfolio.introVideo || '',
             introVideos: portfolio.introVideos || [],
             mediaContent: portfolio.mediaContent || [],
-            portfolioPdfs: portfolio.portfolioPdfs || []
+            externalLinks: portfolio.externalLinks || [],
+            portfolioPdfs: portfolio.portfolioPdfs || [],
+            additionalDocuments: (portfolio as any).additionalDocuments || []
           }
         });
       }
@@ -871,7 +905,9 @@ export default function AdminPage() {
         introVideo: '',
         introVideos: [],
         mediaContent: [],
-        portfolioPdfs: []
+        externalLinks: [],
+        portfolioPdfs: [],
+        additionalDocuments: []
       }
     });
   };
@@ -886,6 +922,39 @@ export default function AdminPage() {
     } catch (error) {
       console.error('포트폴리오 숨김 상태 변경 실패:', error);
       alert('포트폴리오 숨김 상태 변경에 실패했습니다.');
+    }
+  };
+
+  const handleTogglePortfolioContactVisibility = async (portfolioId: string, currentVisible: boolean) => {
+    try {
+      await setPortfolioContactVisibility(portfolioId, !currentVisible, user?.uid);
+      const portfolioData = await getAllPortfolios(true);
+      setPortfolios(portfolioData as Portfolio[]);
+    } catch (error) {
+      console.error('포트폴리오 연락처 공개 상태 변경 실패:', error);
+      alert('연락처 공개 상태 변경에 실패했습니다.');
+    }
+  };
+
+  const handleToggleProgramVisibility = (programId: string) => {
+    setVisibleProgramIds((prev) => {
+      if (prev.includes(programId)) {
+        return prev.filter((id) => id !== programId);
+      }
+      return [...prev, programId];
+    });
+  };
+
+  const handleSaveProgramSettings = async () => {
+    try {
+      setSavingProgramSettings(true);
+      await saveVisiblePortfolioProgramIds(visibleProgramIds);
+      alert('기업에게 노출할 포트폴리오 과정 설정이 저장되었습니다.');
+    } catch (error) {
+      console.error('포트폴리오 과정 노출 설정 저장 실패:', error);
+      alert('과정 노출 설정 저장에 실패했습니다.');
+    } finally {
+      setSavingProgramSettings(false);
     }
   };
 
@@ -964,7 +1033,7 @@ export default function AdminPage() {
       const profileData = {
         phone: profileFormData.basicInfo.phone || '',
         address: profileFormData.basicInfo.address || '',
-        dateOfBirth: profileFormData.basicInfo.dateOfBirth ? new Date(profileFormData.basicInfo.dateOfBirth) : null,
+        dateOfBirth: profileFormData.basicInfo.dateOfBirth || null,
         speciality: profileFormData.basicInfo.speciality || '',
         profileImage: profileFormData.basicInfo.profileImage || '',
         currentCourse: profileFormData.basicInfo.currentCourse || '',
@@ -979,7 +1048,9 @@ export default function AdminPage() {
         introVideo: profileFormData.media.introVideo,
         introVideos: profileFormData.media.introVideos,
         mediaContent: profileFormData.media.mediaContent,
-        portfolioPdfs: profileFormData.media.portfolioPdfs
+        externalLinks: profileFormData.media.externalLinks,
+        portfolioPdfs: profileFormData.media.portfolioPdfs,
+        additionalDocuments: profileFormData.media.additionalDocuments
       };
 
       // Update jobseeker profile
@@ -996,6 +1067,7 @@ export default function AdminPage() {
         experience: profileFormData.experience,
         education: profileFormData.education,
         description: profileFormData.selfIntroduction.motivation || `${profileFormData.basicInfo.speciality || '일반'} 전문가입니다.`,
+        currentCourse: profileFormData.basicInfo.currentCourse || '',
         courseType: profileFormData.basicInfo.courseType || undefined,
 
         // 새로 추가된 필드들
@@ -1003,13 +1075,11 @@ export default function AdminPage() {
         awards: profileFormData.skills.awards,
         introVideo: profileFormData.media.introVideo,
         introVideos: profileFormData.media.introVideos,
-        selfIntroduction: {
-          motivation: profileFormData.selfIntroduction.motivation || '',
-          personality: profileFormData.selfIntroduction.personality || '',
-          experience: profileFormData.selfIntroduction.experience || '',
-          aspiration: profileFormData.selfIntroduction.aspiration || ''
-        },
-        mediaContent: profileFormData.media.mediaContent
+        selfIntroduction: profileFormData.selfIntroduction,
+        mediaContent: profileFormData.media.mediaContent,
+        externalLinks: profileFormData.media.externalLinks,
+        portfolioPdfs: profileFormData.media.portfolioPdfs,
+        additionalDocuments: profileFormData.media.additionalDocuments
       });
 
       alert('프로필이 성공적으로 수정되었습니다!');
@@ -2014,6 +2084,68 @@ export default function AdminPage() {
               </h3>
             </div>
 
+            <GlassCard className="p-5 md:p-6">
+              <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <AcademicCapIcon className="h-5 w-5 text-azure-500" />
+                    <h4 className="font-display text-lg font-bold tracking-tight text-ink-900">
+                      기업 포트폴리오 과정 노출 설정
+                    </h4>
+                  </div>
+                  <p className="mt-2 text-sm leading-relaxed text-ink-500">
+                    기업담당자가 포트폴리오 버튼을 눌렀을 때 선택할 수 있는 과정을 관리합니다. 체크 해제한 과정은 기업 화면의 과정 선택 카드에서 숨겨집니다.
+                  </p>
+                </div>
+                <GlassButton
+                  onClick={handleSaveProgramSettings}
+                  disabled={savingProgramSettings}
+                  size="sm"
+                  className="w-full lg:w-auto"
+                >
+                  {savingProgramSettings ? '저장 중...' : '노출 설정 저장'}
+                </GlassButton>
+              </div>
+
+              <div className="mt-5 grid gap-3 lg:grid-cols-2">
+                {PORTFOLIO_PROGRAMS.map((program) => {
+                  const visible = visibleProgramIds.includes(program.id);
+                  const programCount = portfolios.filter((portfolio) => {
+                    const course = portfolio.currentCourse || '';
+                    return course === program.name || course.includes(program.shortName) || portfolio.courseType === program.courseType;
+                  }).length;
+
+                  return (
+                    <label
+                      key={program.id}
+                      className={`flex cursor-pointer items-start gap-4 rounded-3xl border p-4 transition-all ${
+                        visible
+                          ? 'border-azure-200 bg-azure-50/70 shadow-glass-sm'
+                          : 'border-white/70 bg-white/55 opacity-70'
+                      }`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={visible}
+                        onChange={() => handleToggleProgramVisibility(program.id)}
+                        className="mt-1 h-5 w-5 rounded border-azure-200 text-azure-600 focus:ring-azure-400"
+                      />
+                      <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="font-semibold text-ink-900">{program.name}</span>
+                          <Badge tone={program.courseType === 'foreign' ? 'coral' : 'azure'}>
+                            {program.audience}
+                          </Badge>
+                          <Badge tone="neutral">{programCount}명</Badge>
+                        </div>
+                        <p className="mt-2 text-sm leading-relaxed text-ink-500">{program.summary}</p>
+                      </div>
+                    </label>
+                  );
+                })}
+              </div>
+            </GlassCard>
+
             {loading ? (
               <div className="glass-card text-center py-12">
                 <div className="inline-block animate-spin rounded-full h-8 w-8 border-2 border-azure-200 border-t-azure-500"></div>
@@ -2060,6 +2192,9 @@ export default function AdminPage() {
                                 숨김
                               </Badge>
                             )}
+                            <Badge tone={portfolio.contactInfoVisibleToEmployers ? 'mint' : 'neutral'}>
+                              {portfolio.contactInfoVisibleToEmployers ? '연락처 공개' : '연락처 비공개'}
+                            </Badge>
                           </div>
                           <p className="text-sm text-ink-500 truncate">{portfolio.speciality}</p>
                         </div>
@@ -2089,6 +2224,22 @@ export default function AdminPage() {
                             <EyeIcon className="w-5 h-5" />
                           ) : (
                             <EyeSlashIcon className="w-5 h-5" />
+                          )}
+                        </button>
+                        <button
+                          onClick={() => handleTogglePortfolioContactVisibility(portfolio.id, portfolio.contactInfoVisibleToEmployers || false)}
+                          className={`p-2 rounded-xl transition-colors ${
+                            portfolio.contactInfoVisibleToEmployers
+                              ? 'text-mint-600 hover:bg-mint-50'
+                              : 'text-ink-400 hover:bg-azure-50/60 hover:text-azure-600'
+                          }`}
+                          title={portfolio.contactInfoVisibleToEmployers ? '기업 연락처 공개 차단' : '기업 연락처 공개 승인'}
+                          aria-label={portfolio.contactInfoVisibleToEmployers ? '기업 연락처 공개 차단' : '기업 연락처 공개 승인'}
+                        >
+                          {portfolio.contactInfoVisibleToEmployers ? (
+                            <EnvelopeIcon className="w-5 h-5" />
+                          ) : (
+                            <LockClosedIcon className="w-5 h-5" />
                           )}
                         </button>
                         {/* 수정 버튼 */}

@@ -14,6 +14,9 @@ import {
 } from '@heroicons/react/24/outline';
 import { GlassButton } from '@/components/ui/GlassButton';
 import { Field, GlassInput, GlassTextarea, GlassSelect } from '@/components/ui/GlassField';
+import { GlassDatePicker } from '@/components/ui/GlassDatePicker';
+
+const CURRENT_YEAR = new Date().getFullYear();
 
 interface JobPostingModalProps {
   isOpen: boolean;
@@ -271,10 +274,12 @@ export default function JobPostingModal({ isOpen, onClose, onSubmit }: JobPostin
                     </Field>
 
                     <Field label="지원 마감일">
-                      <GlassInput
-                        type="date"
+                      <GlassDatePicker
                         value={formData.deadline}
-                        onChange={(e) => handleInputChange('deadline', e.target.value)}
+                        onChange={(v) => handleInputChange('deadline', v)}
+                        precision="full-date"
+                        fromYear={CURRENT_YEAR}
+                        toYear={CURRENT_YEAR + 5}
                       />
                     </Field>
                   </div>

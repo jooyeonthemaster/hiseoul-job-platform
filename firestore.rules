@@ -102,6 +102,12 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
+    // ---- 포트폴리오 과정 노출 설정: 누구나 읽기, 관리자만 쓰기 ----
+    match /settings/{settingId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
     // ---- 관리자 전용 catch-all (그 외 모든 경로) ----
     match /{document=**} {
       allow read, write: if isAdmin();

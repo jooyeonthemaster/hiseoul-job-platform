@@ -27,8 +27,8 @@ export default function PortfolioStatusCard({
   const router = useRouter();
 
   return (
-    <ScrollReveal y={24} delay={0.4}>
-      <GlassCard hover className="h-full p-5 md:p-6">
+    <ScrollReveal y={24} delay={0.4} className="h-full">
+      <GlassCard hover className="flex h-full flex-col p-5 md:p-6">
         <div className="mb-5 flex items-center gap-3">
           <span className="inline-flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-br from-azure-400 to-azure-600 text-white shadow-glow ring-1 ring-white/60">
             <DocumentTextIcon className="h-5 w-5" />
@@ -39,7 +39,7 @@ export default function PortfolioStatusCard({
         </div>
 
         {isRegistered ? (
-          <div>
+          <div className="flex flex-1 flex-col">
             <div className="mb-4 flex items-center justify-between">
               <span className="text-sm font-medium text-ink-500">상태</span>
               <Badge tone="mint">등록됨</Badge>
@@ -67,14 +67,14 @@ export default function PortfolioStatusCard({
 
             <GlassButton
               variant="primary"
-              className="w-full"
+              className="mt-auto w-full"
               onClick={() => router.push(userId ? `/portfolios/${userId}` : '/portfolios')}
             >
               포트폴리오 보기
             </GlassButton>
           </div>
         ) : (
-          <div className="py-5 text-center">
+          <div className="flex flex-1 flex-col items-center justify-center py-5 text-center">
             <span className="mx-auto mb-4 inline-flex h-16 w-16 items-center justify-center rounded-3xl border border-white/60 bg-azure-50/60 shadow-glass-sm backdrop-blur-md">
               <DocumentTextIcon className="h-8 w-8 text-azure-400" />
             </span>

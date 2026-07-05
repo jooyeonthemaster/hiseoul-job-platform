@@ -24,9 +24,10 @@ import {
 import { AuroraBackground } from '@/components/ui/AuroraBackground';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { GlassButton } from '@/components/ui/GlassButton';
-import { GlassInput, GlassSelect } from '@/components/ui/GlassField';
+import { GlassDropdown } from '@/components/ui/GlassDropdown';
 import { ScrollReveal } from '@/components/ui/ScrollReveal';
 import { AcademicCapIcon } from '@heroicons/react/24/outline';
+import { PORTFOLIO_PROGRAMS, getProgramByCourseName } from '@/lib/programs';
 
 export default function ProfilePage() {
   const { user, userData, loading: authLoading, refreshUserData } = useAuth();
@@ -228,6 +229,19 @@ export default function ProfilePage() {
       .sort(() => Math.random() - 0.5); // 랜덤 정렬
   };
 
+  const resolveCourseType = (courseName?: string, fallback?: 'domestic' | 'foreign' | '') => {
+    return getProgramByCourseName(courseName)?.courseType || fallback || undefined;
+  };
+
+  const handleCourseSelect = (programId: string) => {
+    const program = PORTFOLIO_PROGRAMS.find((item) => item.id === programId);
+    setFormData((prev: any) => ({
+      ...prev,
+      currentCourse: program?.name || '',
+      courseType: program?.courseType || '',
+    }));
+  };
+
   const handleSaveProfile = async (data: any) => {
     if (!user || !userData) return;
 
@@ -248,7 +262,7 @@ export default function ProfilePage() {
         speciality: data.speciality || '',
         profileImage: data.profileImage || '',
         currentCourse: data.currentCourse || '',
-        courseType: data.courseType || profile?.profile?.courseType || null,
+        courseType: resolveCourseType(data.currentCourse, data.courseType || profile?.profile?.courseType || ''),
         skills: data.skills.split(',').map((s: string) => s.trim()).filter(Boolean),
         languages: data.languages.split(',').map((s: string) => s.trim()).filter(Boolean),
         experience: profile?.profile?.experience || [],
@@ -281,7 +295,18 @@ export default function ProfilePage() {
         experience: profile?.profile?.experience || [],
         education: profile?.profile?.education || [],
         description: `${formData.speciality ? formData.speciality + ' 전문가' : ''}${formData.skills ? '. 보유 스킬: ' + formData.skills : ''}`,
-        profileImage: formData.profileImage
+        currentCourse: formData.currentCourse || '',
+        courseType: resolveCourseType(formData.currentCourse, formData.courseType || ''),
+        profileImage: formData.profileImage,
+        certificates: profile?.profile?.certificates || [],
+        awards: profile?.profile?.awards || [],
+        introVideo: profile?.profile?.introVideo || '',
+        introVideos: profile?.profile?.introVideos || [],
+        selfIntroduction: profile?.profile?.selfIntroduction || undefined,
+        mediaContent: profile?.profile?.mediaContent || [],
+        externalLinks: profile?.profile?.externalLinks || [],
+        portfolioPdfs: profile?.profile?.portfolioPdfs || [],
+        additionalDocuments: profile?.profile?.additionalDocuments || []
       });
 
       setPortfolioRegistered(true);
@@ -381,8 +406,8 @@ export default function ProfilePage() {
             />
           </div>
 
-          <div className="xl:col-span-5">
-            <ScrollReveal>
+          <div className="relative z-20 xl:col-span-5">
+            <ScrollReveal className="h-full">
               <GlassCard className="h-full p-5 md:p-6">
                 <div className="mb-4 flex items-center justify-between gap-4">
                   <div>
@@ -393,46 +418,52 @@ export default function ProfilePage() {
                     <AcademicCapIcon className="h-5 w-5" />
                   </div>
                 </div>
-                <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_180px]">
+                <div className="space-y-4">
+                  {/* 과정 선택 — 전체 너비로 배치해 긴 과정명이 잘리지 않고 줄바꿈되도록 함 */}
                   <div className="space-y-2">
                     <label className="block text-sm font-medium text-ink-700">
                       현재 참여 중인 교육과정이나 프로그램
                     </label>
-                    <GlassInput
-                      type="text"
-                      value={formData.currentCourse || ''}
-                      onChange={(e) => setFormData((prev: any) => ({ ...prev, currentCourse: e.target.value }))}
-                      placeholder="예: 영상콘텐츠 마케터 양성과정 3기, 외국인 유학생 AI 마케터 인턴과정"
+                    <GlassDropdown
+                      value={getProgramByCourseName(formData.currentCourse)?.id || ''}
+                      onChange={(id) => handleCourseSelect(id)}
+                      placeholder="수행 중인 과정을 선택하세요"
+                      options={PORTFOLIO_PROGRAMS.map((program) => ({
+                        value: program.id,
+                        label: program.name,
+                      }))}
                     />
                   </div>
-                  <div className="space-y-2">
-                    <label className="block text-sm font-medium text-ink-700">
-                      과정 구분 (내국인 / 외국인)
-                    </label>
-                    <GlassSelect
-                      value={formData.courseType || ''}
-                      onChange={(e) => setFormData((prev: any) => ({ ...prev, courseType: e.target.value }))}
-                    >
-                      <option value="">선택 안 함</option>
-                      <option value="domestic">내국인</option>
-                      <option value="foreign">외국인</option>
-                    </GlassSelect>
+
+                  {/* 과정 분류 + 저장 */}
+                  <div className="grid gap-4 sm:grid-cols-[minmax(0,240px)_minmax(0,1fr)] sm:items-end">
+                    <div className="space-y-2">
+                      <label className="block text-sm font-medium text-ink-700">
+                        과정 분류
+                      </label>
+                      <div className="flex min-h-[50px] items-center rounded-2xl border border-white/70 bg-white/65 px-4 py-3 text-sm font-semibold text-ink-700 shadow-glass-sm">
+                        {getProgramByCourseName(formData.currentCourse)
+                          ? `${getProgramByCourseName(formData.currentCourse)?.audience} · ${getProgramByCourseName(formData.currentCourse)?.hours}`
+                          : '과정 선택 후 자동 분류'}
+                      </div>
+                    </div>
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                      <p className="text-xs leading-relaxed text-ink-400">
+                        기업이 과정별로 포트폴리오를 탐색할 때 사용됩니다.
+                      </p>
+                      <GlassButton
+                        onClick={() => handleSaveProfile(formData)}
+                        disabled={loading}
+                        className="w-full sm:w-auto"
+                        size="sm"
+                      >
+                        {loading ? '저장 중...' : '과정 정보 저장'}
+                      </GlassButton>
+                    </div>
                   </div>
-                  <div className="flex flex-col gap-3 lg:col-span-2 lg:flex-row lg:items-center lg:justify-between">
-                    <p className="text-xs leading-relaxed text-ink-400">
-                      기업이 내국인/외국인 과정별로 포트폴리오를 탐색할 때 사용됩니다.
-                    </p>
-                    <GlassButton
-                      onClick={() => handleSaveProfile(formData)}
-                      disabled={loading}
-                      className="w-full lg:w-auto"
-                      size="sm"
-                    >
-                      {loading ? '저장 중...' : '과정 정보 저장'}
-                    </GlassButton>
-                  </div>
+
                   {formData.currentCourse && (
-                    <div className="glass rounded-2xl border border-mint-400/40 bg-mint-100/60 p-3 lg:col-span-2">
+                    <div className="glass rounded-2xl border border-mint-400/40 bg-mint-100/60 p-3">
                       <p className="text-sm text-mint-600">
                         <span className="font-semibold">현재 과정:</span> {formData.currentCourse}
                       </p>

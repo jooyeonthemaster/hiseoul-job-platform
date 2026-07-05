@@ -25,7 +25,7 @@ export interface JobSeeker extends User {
 export interface JobSeekerProfile {
   phone?: string;
   address?: string;
-  dateOfBirth?: string | Date | any;
+  dateOfBirth?: string;
   skills: string[];
   experience: ExperienceItem[];
   education: EducationItem[];
@@ -42,28 +42,29 @@ export interface JobSeekerProfile {
   introVideo?: string; // YouTube URL
   selfIntroduction?: SelfIntroduction;
   mediaContent?: MediaContent[];
+  externalLinks?: ExternalPortfolioLink[];
 }
 
 export interface CertificateItem {
   name: string;
   issuer: string;
-  issueDate: string | Date | any;
-  expiryDate?: string | Date | any;
+  issueDate: string;
+  expiryDate?: string;
   certificateNumber?: string;
 }
 
 export interface AwardItem {
   title: string;
   organization: string;
-  date: string | Date | any;
+  date: string;
   description?: string;
 }
 
 export interface ProjectItem {
   title: string;
   role: string;
-  startDate: string | Date | any;
-  endDate?: string | Date | any;
+  startDate: string;
+  endDate?: string;
   description: string;
   skills: string[];
   links?: string[];
@@ -101,6 +102,15 @@ export interface MediaContent {
   publishedDate?: Date;
 }
 
+export interface ExternalPortfolioLink {
+  type: 'webapp' | 'notion' | 'website' | 'github' | 'other';
+  url: string;
+  title: string;
+  description?: string;
+  embed?: boolean;
+  addedAt?: Date | string | any;
+}
+
 export interface Portfolio {
   id: string;
   userId: string;
@@ -125,8 +135,8 @@ export interface PortfolioLink {
 export interface ExperienceItem {
   company: string;
   position: string;
-  startDate: string | Date | any;
-  endDate?: string | Date | any;
+  startDate: string;
+  endDate?: string;
   isCurrent: boolean;
   description: string;
 }
@@ -135,8 +145,8 @@ export interface EducationItem {
   institution: string;
   degree: string;
   field: string;
-  startDate: string | Date | any;
-  endDate?: string | Date | any;
+  startDate: string;
+  endDate?: string;
   grade?: string;
 }
 

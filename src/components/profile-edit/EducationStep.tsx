@@ -6,8 +6,11 @@ import { AcademicCapIcon, PlusIcon, TrashIcon } from '@heroicons/react/24/outlin
 import { EducationItem } from '@/types';
 import { GlassButton } from '@/components/ui/GlassButton';
 import { Field, GlassInput, GlassSelect } from '@/components/ui/GlassField';
+import { GlassDatePicker } from '@/components/ui/GlassDatePicker';
 import { Badge } from '@/components/ui/Badge';
 import { ScrollReveal } from '@/components/ui/ScrollReveal';
+
+const CURRENT_YEAR = new Date().getFullYear();
 
 interface EducationStepProps {
   data: EducationItem[];
@@ -164,20 +167,22 @@ export default function EducationStep({ data, onChange }: EducationStepProps) {
                   </Field>
 
                   <Field label="입학일">
-                    <GlassInput
-                      type="text"
+                    <GlassDatePicker
                       value={edu.startDate || ''}
-                      onChange={(e) => updateEducation(index, 'startDate', e.target.value)}
-                      placeholder="YYYY-MM 형식으로 입력 (예: 2018-03)"
+                      onChange={(v) => updateEducation(index, 'startDate', v)}
+                      precision="year-month"
+                      fromYear={1970}
+                      toYear={CURRENT_YEAR + 6}
                     />
                   </Field>
 
                   <Field label="졸업일">
-                    <GlassInput
-                      type="text"
+                    <GlassDatePicker
                       value={edu.endDate || ''}
-                      onChange={(e) => updateEducation(index, 'endDate', e.target.value)}
-                      placeholder="YYYY-MM 형식으로 입력 (예: 2022-02)"
+                      onChange={(v) => updateEducation(index, 'endDate', v)}
+                      precision="year-month"
+                      fromYear={1970}
+                      toYear={CURRENT_YEAR + 6}
                     />
                   </Field>
                 </div>

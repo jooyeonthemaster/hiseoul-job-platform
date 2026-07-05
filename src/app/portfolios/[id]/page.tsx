@@ -1,5 +1,6 @@
 'use client';
 import { useParams } from 'next/navigation';
+import { useAuth } from '@/contexts/AuthContext';
 
 // 커스텀 훅
 import { usePortfolioAccess } from './hooks/usePortfolioAccess';
@@ -11,6 +12,7 @@ import PortfolioHeader from './components/PortfolioHeader';
 import PortfolioProfile from './components/PortfolioProfile';
 import IntroVideo from './components/PortfolioContent/IntroVideo';
 import SelfIntroduction from './components/PortfolioContent/SelfIntroduction';
+import ExternalPortfolioLinks from './components/PortfolioContent/ExternalPortfolioLinks';
 import PDFImageViewer from '@/components/PDFImageViewer';
 import { DocumentList } from '@/components/DocumentUpload';
 
@@ -33,6 +35,7 @@ import {
 export default function PortfolioDetailPage() {
   const params = useParams();
   const portfolioId = params?.id as string;
+  const { userData } = useAuth();
 
   // 커스텀 훅 사용
   const { hasAccess, accessChecked, showAccessModal, employerStatus } = usePortfolioAccess(portfolioId);
@@ -101,6 +104,11 @@ export default function PortfolioDetailPage() {
   }
 
   const hasIntroVideo = Boolean(portfolio.introVideo || portfolio.introVideos?.length);
+  const hasAdminAccess = userData?.role === 'admin' || userData?.isAdmin === true;
+  const canViewContact =
+    hasAdminAccess ||
+    userData?.role === 'jobseeker' ||
+    (userData?.role === 'employer' && portfolio.contactInfoVisibleToEmployers === true);
 
   // 정상적인 포트폴리오 렌더링
   return (
@@ -112,12 +120,18 @@ export default function PortfolioDetailPage() {
 
         <div className="mx-auto w-full max-w-[1680px] px-4 sm:px-6 lg:px-8 xl:px-10 2xl:px-12 py-12 md:py-16 lg:py-20">
           <ScrollReveal>
-            <PortfolioProfile portfolio={portfolio} />
+            <PortfolioProfile portfolio={portfolio} canViewContact={canViewContact} />
           </ScrollReveal>
 
           {portfolio.selfIntroduction && (
             <ScrollReveal className="mt-6 xl:mt-8">
               <SelfIntroduction selfIntroduction={portfolio.selfIntroduction} />
+            </ScrollReveal>
+          )}
+
+          {portfolio.externalLinks && portfolio.externalLinks.length > 0 && (
+            <ScrollReveal className="mt-6 xl:mt-8">
+              <ExternalPortfolioLinks links={portfolio.externalLinks} />
             </ScrollReveal>
           )}
 
@@ -354,10 +368,10 @@ export default function PortfolioDetailPage() {
                     </div>
                   </div>
                 </div>
-                <div className="grid grid-cols-1 gap-5 xl:grid-cols-2">
+                <div className="grid grid-cols-1 gap-8">
                   {portfolio.portfolioPdfs.map((pdf, index) => (
                     <div key={index} className="min-w-0">
-                      <PDFImageViewer pdfUrl={pdf.url} fileName={pdf.fileName} className="w-full" />
+                      <PDFImageViewer pdfUrl={pdf.url} fileName={pdf.fileName} className="w-full" large />
                     </div>
                   ))}
                 </div>

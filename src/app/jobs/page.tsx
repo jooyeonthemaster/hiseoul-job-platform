@@ -24,6 +24,7 @@ import { Badge } from '@/components/ui/Badge';
 import { GlassInput, GlassSelect, Field } from '@/components/ui/GlassField';
 import { ScrollReveal } from '@/components/ui/ScrollReveal';
 import { staggerContainer, fadeUp } from '@/components/ui/motion';
+import { formatKoreanDate } from '@/lib/dateUtils';
 
 export default function JobsPage() {
   const [jobs, setJobs] = useState<JobPosting[]>([]);
@@ -125,22 +126,6 @@ export default function JobsPage() {
       'intern': '인턴'
     };
     return labels[workType] || workType;
-  };
-
-  const formatDate = (date: Date | string | undefined) => {
-    if (!date) return '상시모집';
-
-    // 문자열인 경우 Date 객체로 변환
-    const dateObj = typeof date === 'string' ? new Date(date) : date;
-
-    // 유효한 날짜인지 확인
-    if (isNaN(dateObj.getTime())) return '상시모집';
-
-    return dateObj.toLocaleDateString('ko-KR', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
-    });
   };
 
   if (loading) {
@@ -400,7 +385,7 @@ export default function JobsPage() {
                       )}
                       <div className="flex items-center">
                         <CalendarIcon className="w-4 h-4 mr-2 flex-shrink-0 text-azure-400" />
-                        <span>마감: {formatDate(job.deadline)}</span>
+                        <span>마감: {formatKoreanDate(job.deadline, { fallback: '상시모집' })}</span>
                       </div>
                       {job.workingHours && (
                         <div className="flex items-center">

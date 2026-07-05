@@ -15,6 +15,7 @@ interface PDFImageViewerProps {
   pdfUrl: string;
   fileName?: string;
   className?: string;
+  large?: boolean;
 }
 
 interface PageImage {
@@ -35,10 +36,10 @@ const getFitScaleForAspectRatio = (aspectRatio: number) => {
   return 0.72;
 };
 
-export default function PDFImageViewer({ pdfUrl, fileName = 'PDF', className = '' }: PDFImageViewerProps) {
+export default function PDFImageViewer({ pdfUrl, fileName = 'PDF', className = '', large = false }: PDFImageViewerProps) {
   const [pages, setPages] = useState<PageImage[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
-  const [scale, setScale] = useState(0.72);
+  const [scale, setScale] = useState(large ? 0.9 : 0.72);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [viewMode, setViewMode] = useState<ViewMode>('focus');
@@ -56,7 +57,7 @@ export default function PDFImageViewer({ pdfUrl, fileName = 'PDF', className = '
       setPages([]);
       setCurrentPage(1);
       setViewMode('focus');
-      setScale(0.72);
+      setScale(large ? 0.9 : 0.72);
       setFailedImages({});
       setFocusLoadedImages({});
       setPageDimensions({});
@@ -93,7 +94,7 @@ export default function PDFImageViewer({ pdfUrl, fileName = 'PDF', className = '
     }
 
     return () => controller.abort();
-  }, [pdfUrl, fileName]);
+  }, [pdfUrl, fileName, large]);
 
   const currentImage = useMemo(
     () => pages.find((page) => page.pageNumber === currentPage) || pages[0],
@@ -107,8 +108,8 @@ export default function PDFImageViewer({ pdfUrl, fileName = 'PDF', className = '
 
   useEffect(() => {
     if (!currentDimensions || hasUserAdjustedScale) return;
-    setScale(getFitScaleForAspectRatio(currentAspectRatio));
-  }, [currentAspectRatio, currentDimensions, hasUserAdjustedScale]);
+    setScale(Math.min(large ? getFitScaleForAspectRatio(currentAspectRatio) + 0.18 : getFitScaleForAspectRatio(currentAspectRatio), 1.05));
+  }, [currentAspectRatio, currentDimensions, hasUserAdjustedScale, large]);
 
   const rememberImageDimensions = (pageNumber: number, event: SyntheticEvent<HTMLImageElement>) => {
     const { naturalWidth, naturalHeight } = event.currentTarget;
@@ -155,6 +156,17 @@ export default function PDFImageViewer({ pdfUrl, fileName = 'PDF', className = '
     setHasUserAdjustedScale(true);
     setScale((prev) => Math.max(prev - 0.08, 0.5));
   };
+
+  const gridViewportClass = large ? 'max-h-[52rem] min-h-[24rem]' : 'max-h-[34rem] min-h-[18rem]';
+  const portraitFocusClass = large
+    ? 'grid h-[58rem] min-h-[36rem] max-h-[72rem] grid-cols-1 gap-3 overflow-hidden bg-gradient-to-b from-white/35 to-azure-50/30 p-3 lg:grid-cols-[minmax(0,1fr)_8rem]'
+    : 'grid h-[34rem] min-h-[24rem] max-h-[34rem] grid-cols-1 gap-3 overflow-hidden bg-gradient-to-b from-white/35 to-azure-50/30 p-3 lg:grid-cols-[minmax(0,1fr)_7rem]';
+  const landscapeFocusClass = large
+    ? 'flex max-h-[58rem] min-h-[30rem] flex-col gap-3 overflow-hidden bg-gradient-to-b from-white/35 to-azure-50/30 p-3'
+    : 'flex max-h-[34rem] min-h-[18rem] flex-col gap-3 overflow-hidden bg-gradient-to-b from-white/35 to-azure-50/30 p-3';
+  const focusImageMaxClass = large
+    ? isLandscapePage ? 'max-h-[42rem]' : 'max-h-[54rem]'
+    : isLandscapePage ? 'max-h-[22rem]' : 'max-h-[31rem]';
 
   if (loading) {
     return (
@@ -277,7 +289,7 @@ export default function PDFImageViewer({ pdfUrl, fileName = 'PDF', className = '
       </div>
 
       {viewMode === 'grid' ? (
-        <div className="max-h-[34rem] min-h-[18rem] overflow-y-auto bg-gradient-to-b from-white/35 to-azure-50/30 p-3">
+        <div className={`${gridViewportClass} overflow-y-auto bg-gradient-to-b from-white/35 to-azure-50/30 p-3`}>
           <div className="grid grid-cols-2 gap-3">
             {pages.map((page) => (
               <button
@@ -318,9 +330,7 @@ export default function PDFImageViewer({ pdfUrl, fileName = 'PDF', className = '
       ) : (
         <div
           className={
-            isLandscapePage
-              ? 'flex max-h-[34rem] min-h-[18rem] flex-col gap-3 overflow-hidden bg-gradient-to-b from-white/35 to-azure-50/30 p-3'
-              : 'grid h-[34rem] min-h-[24rem] max-h-[34rem] grid-cols-1 gap-3 overflow-hidden bg-gradient-to-b from-white/35 to-azure-50/30 p-3 lg:grid-cols-[minmax(0,1fr)_7rem]'
+            isLandscapePage ? landscapeFocusClass : portraitFocusClass
           }
         >
           <div
@@ -342,7 +352,7 @@ export default function PDFImageViewer({ pdfUrl, fileName = 'PDF', className = '
                   src={currentImage.thumbnailUrl || currentImage.url}
                   alt={`${fileName} ${currentImage.pageNumber}페이지 미리보기`}
                   className={`block h-auto w-full rounded-xl border border-ink-100 bg-white object-contain shadow-glass transition-opacity duration-200 ${
-                    isLandscapePage ? 'max-h-[22rem]' : 'max-h-[31rem]'
+                    focusImageMaxClass
                   } ${
                     focusLoadedImages[currentImage.pageNumber] ? 'opacity-0' : 'opacity-100'
                   }`}
@@ -354,7 +364,7 @@ export default function PDFImageViewer({ pdfUrl, fileName = 'PDF', className = '
                   src={currentImage.url}
                   alt={`${fileName} ${currentImage.pageNumber}페이지`}
                   className={`absolute inset-0 h-auto w-full rounded-xl border border-ink-100 bg-white object-contain shadow-glass transition-opacity duration-200 ${
-                    isLandscapePage ? 'max-h-[22rem]' : 'max-h-[31rem]'
+                    focusImageMaxClass
                   } ${
                     focusLoadedImages[currentImage.pageNumber] ? 'opacity-100' : 'opacity-0'
                   }`}

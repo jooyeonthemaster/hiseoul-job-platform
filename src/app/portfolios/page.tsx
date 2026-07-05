@@ -1,19 +1,43 @@
 'use client';
-import { useState, useEffect } from 'react';
+
+import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { ArrowLeftIcon, MagnifyingGlassIcon, FunnelIcon, LockClosedIcon, CheckCircleIcon, ClockIcon, AcademicCapIcon } from '@heroicons/react/24/outline';
+import { motion, useReducedMotion } from 'framer-motion';
+import {
+  AcademicCapIcon,
+  ArrowLeftIcon,
+  CheckCircleIcon,
+  ClockIcon,
+  FunnelIcon,
+  LockClosedIcon,
+  MagnifyingGlassIcon,
+  PlayCircleIcon,
+  TrophyIcon,
+  UserGroupIcon,
+} from '@heroicons/react/24/outline';
 import { useAuth } from '@/contexts/AuthContext';
-import { getAllPortfolios, canAccessPortfolio, getEmployerWithApprovalStatus } from '@/lib/auth';
+import { canAccessPortfolio, getAllPortfolios, getEmployerWithApprovalStatus } from '@/lib/auth';
 import PortfolioAccessModal from '@/components/PortfolioAccessModal';
+import { AuroraBackground } from '@/components/ui/AuroraBackground';
+import { Badge } from '@/components/ui/Badge';
 import { GlassButton } from '@/components/ui/GlassButton';
 import { GlassCard } from '@/components/ui/GlassCard';
-import { Badge } from '@/components/ui/Badge';
 import { GlassInput, GlassSelect } from '@/components/ui/GlassField';
-import { AuroraBackground } from '@/components/ui/AuroraBackground';
 import { ScrollReveal } from '@/components/ui/ScrollReveal';
-import { motion, useReducedMotion } from 'framer-motion';
-import { staggerContainer, fadeUp } from '@/components/ui/motion';
+import { fadeUp, staggerContainer } from '@/components/ui/motion';
+import {
+  DEFAULT_VISIBLE_PROGRAM_IDS,
+  PORTFOLIO_PROGRAMS,
+  SPECIALITY_ICON_MAP,
+  getPrimarySpeciality,
+  getProgramById,
+  getProgramForPortfolio,
+  portfolioMatchesProgram,
+  splitSpecialities,
+  type PortfolioProgram,
+  type ProgramCourseType,
+} from '@/lib/programs';
+import { getVisiblePortfolioProgramIds } from '@/lib/programSettings';
 
 interface Portfolio {
   id: string;
@@ -34,43 +58,349 @@ interface Portfolio {
   isPublic: boolean;
   profileImage?: string;
   currentCourse?: string;
-  courseType?: 'domestic' | 'foreign';
+  courseType?: ProgramCourseType | null;
   createdAt?: Date;
   updatedAt?: Date;
 }
 
-// 아바타 매핑
-const getAvatarBySpeciality = (speciality: string) => {
-  const avatarMap: { [key: string]: string } = {
-    'SNS마케팅': '👩',
-    '키워드광고': '👨',
-    '브랜드마케팅': '🎨',
-    '퍼포먼스마케팅': '📊',
-    '콘텐츠마케팅': '🎬',
-    '마케팅기획': '💼',
-    '이커머스마케팅': '🛒',
-    '데이터마케팅': '🔬',
-    '웹개발': '💻',
-    '앱개발': '📱',
-    '디자인': '🎨',
-    '기타': '👤'
-  };
-  return avatarMap[speciality] || '👤';
-};
+function ProgramTags({ program }: { program: PortfolioProgram }) {
+  return (
+    <div className="flex flex-wrap gap-2">
+      {program.tags.map((tag) => (
+        <Badge key={tag} tone={program.courseType === 'foreign' ? 'coral' : 'azure'}>
+          {tag}
+        </Badge>
+      ))}
+    </div>
+  );
+}
 
-const specialities = ['전체', 'SNS마케팅', '키워드광고', '브랜드마케팅', '퍼포먼스마케팅', '콘텐츠마케팅', '마케팅기획', '이커머스마케팅', '데이터마케팅', '웹개발', '앱개발', '디자인', '기타'];
+function AccessStatusBanner({ employerStatus }: { employerStatus: any }) {
+  if (!employerStatus) return null;
 
-const courseTypes = ['전체', '내국인', '외국인'];
+  if (employerStatus.approvalStatus === 'pending') {
+    return (
+      <ScrollReveal className="mb-7">
+        <div className="glass-strong rounded-3xl border-honey-400/40 p-5 shadow-glass">
+          <div className="flex items-start gap-4">
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-honey-100">
+              <ClockIcon className="h-6 w-6 text-honey-600" />
+            </div>
+            <div>
+              <h3 className="text-lg font-semibold text-ink-900">승인 대기 중</h3>
+              <p className="mt-1 text-sm leading-relaxed text-ink-500">
+                기업 승인 완료 후 과정별 포트폴리오를 열람할 수 있습니다.
+              </p>
+            </div>
+          </div>
+        </div>
+      </ScrollReveal>
+    );
+  }
 
+  return null;
+}
 
+function ProgramChooser({
+  programs,
+  portfolios,
+  onSelectProgram,
+}: {
+  programs: PortfolioProgram[];
+  portfolios: Portfolio[];
+  onSelectProgram: (programId: string) => void;
+}) {
+  return (
+    <div className="space-y-8">
+      <ScrollReveal>
+        <GlassCard strong className="overflow-hidden p-7 md:p-10">
+          <div className="grid gap-8 lg:grid-cols-[minmax(0,1.1fr)_minmax(320px,0.9fr)] lg:items-end">
+            <div>
+              <Badge tone="azure" icon={<AcademicCapIcon className="h-4 w-4" />}>
+                과정별 포트폴리오
+              </Badge>
+              <h1 className="mt-5 font-display text-3xl font-bold tracking-tight text-ink-900 md:text-5xl">
+                어떤 과정의 교육생을 확인할까요?
+              </h1>
+              <p className="mt-4 max-w-3xl text-base leading-relaxed text-ink-500 md:text-lg">
+                과정마다 배운 내용, 실습 범위, 채용 활용도가 다릅니다. 먼저 과정 설명과 전체 소개 영상을 확인한 뒤 개인 포트폴리오 목록으로 이동하세요.
+              </p>
+            </div>
+            <div className="grid grid-cols-3 gap-3">
+              {[
+                { value: `${programs.length}개`, label: '노출 과정' },
+                { value: `${portfolios.length}명`, label: '등록 교육생' },
+                { value: '영상+포트폴리오', label: '검토 방식' },
+              ].map((item) => (
+                <div key={item.label} className="rounded-3xl border border-white/70 bg-white/60 p-4 text-center shadow-glass-sm">
+                  <div className="font-display text-xl font-bold text-ink-900 md:text-2xl">{item.value}</div>
+                  <div className="mt-1 text-xs font-semibold text-ink-400">{item.label}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </GlassCard>
+      </ScrollReveal>
+
+      <div className="grid gap-5 lg:grid-cols-2">
+        {programs.map((program) => {
+          const count = portfolios.filter((portfolio) => portfolioMatchesProgram(portfolio, program.id)).length;
+          return (
+            <ScrollReveal key={program.id}>
+              <GlassCard hover className="flex h-full flex-col p-6 md:p-7">
+                <div className="mb-5 flex flex-wrap items-start justify-between gap-4">
+                  <div>
+                    <Badge tone={program.courseType === 'foreign' ? 'coral' : 'azure'}>
+                      {program.audience} · {program.hours}
+                    </Badge>
+                    <h2 className="mt-4 font-display text-2xl font-bold tracking-tight text-ink-900">
+                      {program.name}
+                    </h2>
+                  </div>
+                  <div className="rounded-2xl border border-white/70 bg-white/70 px-4 py-3 text-center shadow-glass-sm">
+                    <div className="font-display text-2xl font-bold text-azure-700">{count}</div>
+                    <div className="text-xs font-semibold text-ink-400">교육생</div>
+                  </div>
+                </div>
+
+                <p className="text-sm leading-relaxed text-ink-500">{program.summary}</p>
+                <div className="mt-5">
+                  <ProgramTags program={program} />
+                </div>
+
+                <div className="mt-6 grid gap-3 sm:grid-cols-3">
+                  {program.curriculum.slice(0, 3).map((item) => (
+                    <div key={item.step} className="rounded-2xl border border-azure-100 bg-azure-50/60 p-3">
+                      <div className="text-[11px] font-bold uppercase tracking-wide text-azure-600">{item.step}</div>
+                      <div className="mt-1 text-sm font-semibold text-ink-900">{item.title}</div>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="mt-auto pt-6">
+                  <GlassButton onClick={() => onSelectProgram(program.id)} className="w-full">
+                    과정 설명과 영상 보기
+                  </GlassButton>
+                </div>
+              </GlassCard>
+            </ScrollReveal>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function ProgramIntro({
+  program,
+  portfolios,
+  onBack,
+  onShowTalents,
+}: {
+  program: PortfolioProgram;
+  portfolios: Portfolio[];
+  onBack: () => void;
+  onShowTalents: () => void;
+}) {
+  const count = portfolios.filter((portfolio) => portfolioMatchesProgram(portfolio, program.id)).length;
+
+  return (
+    <div className="space-y-8">
+      <button
+        type="button"
+        onClick={onBack}
+        className="inline-flex items-center gap-2 rounded-2xl px-3 py-2 text-sm font-semibold text-ink-500 transition hover:bg-white/70 hover:text-azure-700"
+      >
+        <ArrowLeftIcon className="h-4 w-4" />
+        과정 선택으로
+      </button>
+
+      <GlassCard strong className="overflow-hidden p-0">
+        <div className="grid gap-0 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
+          <div className="p-6 md:p-9">
+            <Badge tone={program.courseType === 'foreign' ? 'coral' : 'azure'} icon={<AcademicCapIcon className="h-4 w-4" />}>
+              {program.audience} · {program.hours}
+            </Badge>
+            <h1 className="mt-5 font-display text-3xl font-bold leading-tight tracking-tight text-ink-900 md:text-5xl">
+              {program.heroTitle}
+            </h1>
+            <p className="mt-5 text-base leading-relaxed text-ink-600">{program.overview}</p>
+            <p className="mt-3 text-sm leading-relaxed text-ink-500">{program.talentNote}</p>
+            <div className="mt-6">
+              <ProgramTags program={program} />
+            </div>
+            <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+              <GlassButton onClick={onShowTalents} size="lg">
+                구직자 개인 포트폴리오 확인
+              </GlassButton>
+              <div className="inline-flex items-center justify-center rounded-2xl border border-white/70 bg-white/65 px-5 py-3 text-sm font-semibold text-ink-600 shadow-glass-sm">
+                현재 {count}명 표시
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-ink-900 p-4 md:p-6">
+            <div className="relative aspect-video overflow-hidden rounded-3xl border border-white/10 bg-black shadow-glass-lg">
+              <iframe
+                src={`https://www.youtube.com/embed/${program.youtubeId}?rel=0&modestbranding=1`}
+                title={`${program.name} 전체 소개 영상`}
+                className="absolute inset-0 h-full w-full"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+              />
+            </div>
+            <div className="mt-4 flex items-center gap-3 text-white/80">
+              <PlayCircleIcon className="h-5 w-5 text-azure-300" />
+              <p className="text-sm font-medium">과정 전체 소개 영상과 교육생 검토 전 확인용 콘텐츠입니다.</p>
+            </div>
+          </div>
+        </div>
+      </GlassCard>
+
+      <ScrollReveal>
+        <GlassCard strong className="overflow-hidden p-6 md:p-8">
+          <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-[0.18em] text-azure-600">Curriculum</p>
+              <h2 className="mt-1 font-display text-2xl font-bold tracking-tight text-ink-900 md:text-3xl">
+                {program.curriculumLabel}
+              </h2>
+              <p className="mt-2 max-w-2xl text-sm leading-relaxed text-ink-500">{program.curriculumIntro}</p>
+            </div>
+            <div className="flex shrink-0 flex-wrap gap-3">
+              {[
+                { value: program.hours, label: '총 교육시간' },
+                {
+                  value: `${program.curriculum.length}${program.courseType === 'foreign' ? '파트' : '단계'}`,
+                  label: '실전 구성',
+                },
+                { value: '채용연계', label: '과정 유형' },
+              ].map((stat) => (
+                <div
+                  key={stat.label}
+                  className="min-w-[104px] rounded-2xl border border-white/70 bg-white/65 px-4 py-3 text-center shadow-glass-sm"
+                >
+                  <div className="font-display text-lg font-bold text-azure-700">{stat.value}</div>
+                  <div className="mt-0.5 text-[11px] font-semibold text-ink-400">{stat.label}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div
+            className={`mt-6 grid divide-y divide-white/70 overflow-hidden rounded-3xl border border-white/70 bg-white/55 shadow-glass-sm ${
+              program.curriculum.length >= 5
+                ? 'xl:grid-cols-5 xl:divide-x xl:divide-y-0'
+                : 'lg:grid-cols-3 lg:divide-x lg:divide-y-0'
+            }`}
+          >
+            {program.curriculum.map((item, index) => (
+              <div
+                key={item.step}
+                className={`group relative flex gap-4 p-5 transition-colors hover:bg-azure-50/50 md:p-6 ${
+                  program.curriculum.length >= 5 ? 'xl:flex-col' : 'lg:flex-col'
+                }`}
+              >
+                <div
+                  aria-hidden
+                  className="pointer-events-none absolute -top-4 right-2 select-none font-display text-[88px] font-bold leading-none text-azure-500/[0.08]"
+                >
+                  {String(index + 1).padStart(2, '0')}
+                </div>
+                <div className="relative shrink-0">
+                  <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-azure-400 to-azure-600 font-display text-lg font-bold text-white shadow-glow">
+                    {index + 1}
+                  </div>
+                </div>
+                <div className="relative min-w-0">
+                  <div className="text-[11px] font-bold uppercase tracking-wide text-azure-600">{item.step}</div>
+                  <h3 className="mt-1 text-lg font-bold text-ink-900">{item.title}</h3>
+                  <p className="mt-1.5 text-sm leading-relaxed text-ink-500">{item.description}</p>
+                  <div className="mt-3 flex flex-wrap gap-1.5">
+                    {item.topics.map((topic) => (
+                      <span
+                        key={topic}
+                        className="rounded-lg border border-azure-100 bg-azure-50/80 px-2 py-1 text-xs font-medium text-azure-700"
+                      >
+                        {topic}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="mt-5 flex flex-col gap-4 rounded-3xl bg-gradient-to-r from-azure-500 via-sky-cool-400 to-azure-600 p-5 text-white shadow-glass sm:flex-row sm:items-center md:px-7">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-white/20">
+              <TrophyIcon className="h-6 w-6" />
+            </div>
+            <div className="min-w-0">
+              <div className="text-sm font-bold">{program.curriculumOutcome.title}</div>
+              <p className="mt-0.5 text-sm leading-relaxed text-white/90">{program.curriculumOutcome.description}</p>
+            </div>
+          </div>
+        </GlassCard>
+      </ScrollReveal>
+
+      <ScrollReveal>
+        <GlassCard className="p-6 md:p-8">
+          <div className="flex flex-wrap items-end justify-between gap-4">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-[0.18em] text-azure-600">What They Learned</p>
+              <h2 className="mt-1 font-display text-2xl font-bold tracking-tight text-ink-900 md:text-3xl">
+                핵심 실무 역량
+              </h2>
+            </div>
+            <Badge tone="azure" className="px-4 py-1.5">
+              {program.skills.length}개 실무 역량
+            </Badge>
+          </div>
+          <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+            {program.skills.map((skill) => (
+              <div
+                key={skill.title}
+                className="flex gap-4 rounded-3xl border border-white/70 bg-white/65 p-5 shadow-glass-sm transition-colors hover:bg-white/85"
+              >
+                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-azure-100 bg-azure-50 text-xl">
+                  {skill.icon}
+                </div>
+                <div className="min-w-0">
+                  <h3 className="text-base font-bold text-ink-900">{skill.title}</h3>
+                  <p className="mt-1 text-sm leading-relaxed text-ink-500">{skill.description}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </GlassCard>
+      </ScrollReveal>
+
+      {program.workHoursNote && (
+        <GlassCard className="p-6 md:p-7">
+          <h2 className="font-display text-2xl font-bold tracking-tight text-ink-900">{program.workHoursNote.title}</h2>
+          <p className="mt-2 text-sm leading-relaxed text-ink-500">{program.workHoursNote.description}</p>
+          <div className="mt-5 grid gap-3 md:grid-cols-2">
+            {program.workHoursNote.table.map((row) => (
+              <div key={row.period} className="rounded-2xl border border-white/70 bg-white/65 p-4">
+                <div className="text-sm font-semibold text-ink-900">{row.period}</div>
+                <div className="mt-1 text-sm text-azure-700">{row.hours}</div>
+              </div>
+            ))}
+          </div>
+          <p className="mt-4 text-xs leading-relaxed text-ink-400">{program.workHoursNote.note}</p>
+        </GlassCard>
+      )}
+    </div>
+  );
+}
 
 export default function PortfoliosPage() {
   const { user, userData } = useAuth();
-  const router = useRouter();
+  const reduceMotion = useReducedMotion();
   const hasAdminAccess = userData?.role === 'admin' || userData?.isAdmin === true;
+
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedSpeciality, setSelectedSpeciality] = useState('전체');
-  const [selectedCourseType, setSelectedCourseType] = useState('전체');
+  const [selectedSpeciality, setSelectedSpeciality] = useState('all');
   const [sortBy, setSortBy] = useState('projects');
   const [portfolios, setPortfolios] = useState<Portfolio[]>([]);
   const [loading, setLoading] = useState(true);
@@ -78,14 +408,15 @@ export default function PortfoliosPage() {
   const [employerStatus, setEmployerStatus] = useState<any>(null);
   const [accessChecked, setAccessChecked] = useState(false);
   const [showAccessModal, setShowAccessModal] = useState(false);
+  const [visibleProgramIds, setVisibleProgramIds] = useState<string[]>(DEFAULT_VISIBLE_PROGRAM_IDS);
+  const [selectedProgramId, setSelectedProgramId] = useState<string | null>(null);
+  const [showTalentGrid, setShowTalentGrid] = useState(false);
 
-  // 접근 권한 확인
   useEffect(() => {
     const checkAccess = async () => {
       if (!user) {
         setHasAccess(false);
         setAccessChecked(true);
-        // 로그인하지 않은 사용자는 모달 표시
         setShowAccessModal(true);
         return;
       }
@@ -94,22 +425,18 @@ export default function PortfoliosPage() {
         const access = await canAccessPortfolio(user.uid);
         setHasAccess(access);
 
-        // 기업 회원인 경우 승인 상태 확인
         if (userData?.role === 'employer') {
           const status = await getEmployerWithApprovalStatus(user.uid);
           setEmployerStatus(status);
         }
 
-        // 접근 권한이 없는 경우 모달 표시
         if (!access) {
           setShowAccessModal(true);
-          return;
         }
       } catch (error) {
-        console.error('Error checking access:', error);
+        console.error('Error checking portfolio access:', error);
         setHasAccess(false);
         setShowAccessModal(true);
-        return;
       } finally {
         setAccessChecked(true);
       }
@@ -118,79 +445,123 @@ export default function PortfoliosPage() {
     if (user !== undefined) {
       checkAccess();
     }
-  }, [user, userData, router]);
+  }, [user, userData]);
 
   useEffect(() => {
+    const loadSettings = async () => {
+      if (!accessChecked || !hasAccess) return;
+
+      const ids = await getVisiblePortfolioProgramIds();
+      setVisibleProgramIds(ids);
+    };
+
+    loadSettings();
+  }, [accessChecked, hasAccess]);
+
+  useEffect(() => {
+    const loadPortfolios = async () => {
+      if (!accessChecked) return;
+
+      if (!hasAccess) {
+        setPortfolios([]);
+        setLoading(false);
+        return;
+      }
+
+      try {
+        setLoading(true);
+        const data = await getAllPortfolios(false);
+        setPortfolios(data as Portfolio[]);
+      } catch (error) {
+        console.error('Error loading portfolios:', error);
+        setPortfolios([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
     loadPortfolios();
-  }, []);
+  }, [accessChecked, hasAccess]);
 
-  const loadPortfolios = async () => {
-    try {
-      setLoading(true);
-      const data = await getAllPortfolios(false); // 일반 사용자는 숨겨진 포트폴리오 제외
-      console.log('🎯 포트폴리오 목록 로드됨:', data);
+  const visiblePrograms = useMemo(
+    () => PORTFOLIO_PROGRAMS.filter((program) => visibleProgramIds.includes(program.id)),
+    [visibleProgramIds],
+  );
+  const selectedProgram = getProgramById(selectedProgramId);
+  const selectedProgramPortfolios = selectedProgram
+    ? portfolios.filter((portfolio) => portfolioMatchesProgram(portfolio, selectedProgram.id))
+    : [];
 
-      // 실제 데이터만 사용
-      setPortfolios(data as Portfolio[]);
-    } catch (error) {
-      console.error('Error loading portfolios:', error);
-      // 에러 발생 시 빈 배열로 설정
-      setPortfolios([]);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const availableSpecialities = useMemo(() => {
+    const values = selectedProgramPortfolios.flatMap((portfolio) => splitSpecialities(portfolio.speciality));
+    return Array.from(new Set(values)).sort((a, b) => a.localeCompare(b, 'ko'));
+  }, [selectedProgramPortfolios]);
 
-  const reduceMotion = useReducedMotion();
+  const filteredPortfolios = selectedProgramPortfolios
+    .filter((portfolio) => {
+      const profileProgram = getProgramForPortfolio(portfolio);
+      const fields = [
+        portfolio.name,
+        portfolio.speciality,
+        portfolio.description,
+        portfolio.currentCourse,
+        profileProgram?.shortName,
+        ...(portfolio.skills || []),
+      ]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase();
+      const matchesSearch = fields.includes(searchTerm.toLowerCase());
+      const matchesSpeciality =
+        selectedSpeciality === 'all' || splitSpecialities(portfolio.speciality).includes(selectedSpeciality);
 
-  const filteredPortfolios = portfolios
-    .filter((portfolio: Portfolio) => {
-      const matchesSearch = portfolio.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                          portfolio.speciality.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                          portfolio.skills.some((skill: string) => skill.toLowerCase().includes(searchTerm.toLowerCase()));
-      const matchesSpeciality = selectedSpeciality === '전체' || portfolio.speciality === selectedSpeciality;
-      const courseTypeValue = selectedCourseType === '내국인' ? 'domestic' : selectedCourseType === '외국인' ? 'foreign' : null;
-      const matchesCourseType = selectedCourseType === '전체' || portfolio.courseType === courseTypeValue;
-      return matchesSearch && matchesSpeciality && matchesCourseType;
+      return matchesSearch && matchesSpeciality;
     })
-    .sort((a: Portfolio, b: Portfolio) => {
+    .sort((a, b) => {
       switch (sortBy) {
-        case 'projects':
-          return b.projects - a.projects;
         case 'name':
-          return a.name.localeCompare(b.name);
+          return a.name.localeCompare(b.name, 'ko');
         case 'recent':
           return (b.createdAt?.getTime() || 0) - (a.createdAt?.getTime() || 0);
+        case 'projects':
         default:
-          return 0;
+          return (b.projects || 0) - (a.projects || 0);
       }
     });
 
-  // 접근 권한 확인 중일 때 로딩 화면 표시
+  const handleSelectProgram = (programId: string) => {
+    setSelectedProgramId(programId);
+    setShowTalentGrid(false);
+    setSearchTerm('');
+    setSelectedSpeciality('all');
+    setSortBy('projects');
+  };
+
   if (!accessChecked) {
     return (
-      <div className="relative min-h-screen overflow-hidden bg-azure-aurora flex items-center justify-center">
+      <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-azure-aurora">
         <AuroraBackground />
         <GlassCard strong className="relative z-10 px-10 py-12 text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-2 border-azure-200 border-b-azure-500 mx-auto mb-5"></div>
-          <p className="text-ink-500">접근 권한을 확인하고 있습니다...</p>
+          <div className="mx-auto mb-5 h-12 w-12 animate-spin rounded-full border-2 border-azure-200 border-b-azure-500" />
+          <p className="font-medium text-ink-500">접근 권한을 확인하고 있습니다...</p>
         </GlassCard>
       </div>
     );
   }
 
-  // 접근 권한이 없는 경우 모달과 함께 기본 레이아웃 표시
   if (!hasAccess) {
     return (
       <>
-        <div className="relative min-h-screen overflow-hidden bg-azure-aurora flex items-center justify-center px-5">
+        <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-azure-aurora px-5">
           <AuroraBackground variant="vivid" />
-          <GlassCard strong className="relative z-10 px-10 py-14 text-center max-w-lg">
-            <div className="w-20 h-20 mx-auto mb-6 rounded-4xl bg-azure-50 border border-azure-100 flex items-center justify-center shadow-glass-sm">
+          <GlassCard strong className="relative z-10 max-w-lg px-10 py-14 text-center">
+            <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-4xl border border-azure-100 bg-azure-50 shadow-glass-sm">
               <LockClosedIcon className="h-10 w-10 text-azure-500" />
             </div>
-            <h1 className="font-display text-2xl md:text-3xl font-bold tracking-tight text-ink-900 mb-3">접근 권한이 필요합니다</h1>
-            <p className="text-ink-500 leading-relaxed">승인된 기업 회원만 포트폴리오를 열람할 수 있습니다.</p>
+            <h1 className="mb-3 font-display text-2xl font-bold tracking-tight text-ink-900 md:text-3xl">
+              접근 권한이 필요합니다
+            </h1>
+            <p className="leading-relaxed text-ink-500">승인된 기업 회원만 과정별 포트폴리오를 열람할 수 있습니다.</p>
           </GlassCard>
         </div>
         <PortfolioAccessModal
@@ -208,391 +579,267 @@ export default function PortfoliosPage() {
       <div aria-hidden className="pointer-events-none fixed inset-0 bg-azure-aurora opacity-75" />
       <div aria-hidden className="pointer-events-none fixed inset-y-0 left-0 w-28 bg-gradient-to-r from-azure-100/70 via-azure-100/25 to-transparent" />
       <div aria-hidden className="pointer-events-none fixed inset-y-0 right-0 w-28 bg-gradient-to-l from-azure-100/70 via-azure-100/25 to-transparent" />
-      {/* Header */}
+
       <div className="glass-nav sticky top-16 z-40 border-b border-white/50">
-        <div className="mx-auto w-full max-w-[1760px] px-4 sm:px-6 lg:px-8 xl:px-10 py-5">
+        <div className="mx-auto w-full max-w-[1760px] px-4 py-5 sm:px-6 lg:px-8 xl:px-10">
           <div className="flex items-center justify-between gap-4">
-            <div className="flex items-center gap-4">
-              <Link href="/" className="flex items-center gap-2 text-ink-500 hover:text-azure-700 transition-colors font-medium">
+            <div className="flex min-w-0 items-center gap-4">
+              <Link href="/" className="flex items-center gap-2 font-medium text-ink-500 transition-colors hover:text-azure-700">
                 <ArrowLeftIcon className="h-5 w-5" />
                 <span>홈으로</span>
               </Link>
-              <div className="h-6 w-px bg-ink-200"></div>
-              <h1 className="font-display text-2xl md:text-3xl font-bold tracking-tight text-gradient-azure">
+              <div className="h-6 w-px bg-ink-200" />
+              <h1 className="truncate font-display text-2xl font-bold tracking-tight text-gradient-azure md:text-3xl">
                 포트폴리오
               </h1>
             </div>
-            <Badge tone="azure" className="px-4 py-1.5">
-              총 {filteredPortfolios.length}명의 전문가
-            </Badge>
-          </div>
-        </div>
-      </div>
-
-      <div className="relative mx-auto w-full max-w-[1760px] px-4 sm:px-6 lg:px-8 xl:px-10 py-10 lg:py-14">
-        <div className="relative z-10">
-        {/* 접근 권한 안내 */}
-        {user && userData?.role === 'employer' && employerStatus && (
-          <ScrollReveal className="mb-7">
-            {employerStatus.approvalStatus === 'pending' ? (
-              <div className="glass-strong rounded-4xl p-6 border-honey-400/40 shadow-glass">
-                <div className="flex items-start gap-4">
-                  <div className="w-11 h-11 shrink-0 rounded-2xl bg-honey-100 flex items-center justify-center">
-                    <ClockIcon className="h-6 w-6 text-honey-600" />
-                  </div>
-                  <div>
-                    <h3 className="text-lg font-semibold text-ink-900 mb-1">
-                      승인 대기 중
-                    </h3>
-                    <p className="text-ink-500 leading-relaxed">
-                      귀하의 기업 회원가입이 승인 대기 중입니다. 승인이 완료되면 구직자 포트폴리오를 열람하실 수 있습니다.
-                    </p>
-                  </div>
-                </div>
-              </div>
-            ) : employerStatus.approvalStatus === 'rejected' ? (
-              <div className="glass-strong rounded-4xl p-6 border-coral-400/40 shadow-glass">
-                <div className="flex items-start gap-4">
-                  <div className="w-11 h-11 shrink-0 rounded-2xl bg-coral-100 flex items-center justify-center">
-                    <LockClosedIcon className="h-6 w-6 text-coral-600" />
-                  </div>
-                  <div>
-                    <h3 className="text-lg font-semibold text-ink-900 mb-1">
-                      가입 거절됨
-                    </h3>
-                    <p className="text-ink-500 mb-2 leading-relaxed">
-                      귀하의 기업 회원가입이 거절되었습니다.
-                    </p>
-                    {employerStatus.rejectedReason && (
-                      <p className="text-sm text-coral-600">
-                        거절 사유: {employerStatus.rejectedReason}
-                      </p>
-                    )}
-                  </div>
-                </div>
-              </div>
-            ) : (
-              <div className="glass-strong rounded-3xl p-5 border-mint-400/40 shadow-glass">
-                <div className="flex items-start gap-4">
-                  <div className="w-11 h-11 shrink-0 rounded-2xl bg-mint-100 flex items-center justify-center">
-                    <CheckCircleIcon className="h-6 w-6 text-mint-600" />
-                  </div>
-                  <div>
-                    <h3 className="text-lg font-semibold text-ink-900 mb-1">
-                      정회원 승인 완료
-                    </h3>
-                    <p className="text-ink-500 leading-relaxed">
-                      귀하는 승인된 정회원입니다. 모든 구직자 포트폴리오를 열람하실 수 있습니다.
-                    </p>
-                  </div>
-                </div>
-              </div>
-            )}
-          </ScrollReveal>
-        )}
-
-        {/* Search and Filter Section */}
-        <ScrollReveal className="mb-8">
-          <div className="glass-strong rounded-3xl p-4 sm:p-5 shadow-glass">
-            <div className="flex flex-col lg:flex-row gap-4">
-              {/* Search */}
-              <div className="flex-1">
-                <div className="relative">
-                  <MagnifyingGlassIcon className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-azure-500 pointer-events-none z-10" />
-                  <GlassInput
-                    type="text"
-                    placeholder="이름, 전문분야, 스킬로 검색..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-12 py-3"
-                  />
-                </div>
-              </div>
-
-              {/* Speciality Filter */}
-              <div className="flex items-center gap-3">
-                <FunnelIcon className="h-5 w-5 text-azure-500 shrink-0" />
-                <GlassSelect
-                  value={selectedSpeciality}
-                  onChange={(e) => setSelectedSpeciality(e.target.value)}
-                  className="py-3"
-                >
-                  {specialities.map(speciality => (
-                    <option key={speciality} value={speciality}>{speciality}</option>
-                  ))}
-                </GlassSelect>
-              </div>
-
-              {/* Course Type Filter (내국인/외국인) */}
-              <div className="flex items-center gap-3">
-                <AcademicCapIcon className="h-5 w-5 text-azure-500 shrink-0" />
-                <GlassSelect
-                  value={selectedCourseType}
-                  onChange={(e) => setSelectedCourseType(e.target.value)}
-                  className="py-3"
-                >
-                  {courseTypes.map(courseType => (
-                    <option key={courseType} value={courseType}>{courseType}</option>
-                  ))}
-                </GlassSelect>
-              </div>
-
-              {/* Sort */}
-              <div>
-                <GlassSelect
-                  value={sortBy}
-                  onChange={(e) => setSortBy(e.target.value)}
-                  className="py-3"
-                >
-                  <option value="projects">프로젝트순</option>
-                  <option value="recent">최신순</option>
-                  <option value="name">이름순</option>
-                </GlassSelect>
-              </div>
+            <div className="flex shrink-0 items-center gap-2.5">
+              {employerStatus?.approvalStatus === 'approved' && (
+                <>
+                  <p className="hidden whitespace-nowrap text-right text-xs leading-snug text-ink-400 xl:block">
+                    과정별 교육 내용과 소개 영상을 확인한 뒤, 해당 과정 교육생의 개인 포트폴리오를 검토할 수 있습니다
+                  </p>
+                  <Badge tone="mint" icon={<CheckCircleIcon className="h-4 w-4" />} className="hidden px-4 py-1.5 sm:inline-flex">
+                    승인 기업 전용
+                  </Badge>
+                </>
+              )}
+              <Badge tone="azure" className="px-4 py-1.5">
+                총 {portfolios.length}명의 교육생
+              </Badge>
             </div>
           </div>
-        </ScrollReveal>
-
-        {/* Portfolio Grid */}
-        {loading ? (
-          <div className="flex justify-center items-center py-24">
-            <div className="animate-spin rounded-full h-12 w-12 border-2 border-azure-200 border-b-azure-500"></div>
-          </div>
-        ) : (
-          <motion.div
-            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-5"
-            variants={reduceMotion ? undefined : staggerContainer()}
-            initial={reduceMotion ? false : 'hidden'}
-            animate={reduceMotion ? false : 'show'}
-          >
-            {filteredPortfolios.map((portfolio: Portfolio) => (
-              <motion.div key={portfolio.id} variants={reduceMotion ? undefined : fadeUp} className="h-full">
-                <GlassCard hover className="group relative h-full overflow-hidden flex flex-col rounded-3xl">
-                {/* Verification Badge - Positioned absolutely */}
-                {portfolio.verified && (
-                  <div className="absolute top-3 right-3 z-20">
-                    <Badge tone="mint" className="shadow-glass-sm" icon={
-                      <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                      </svg>
-                    }>
-                      인증
-                    </Badge>
-                  </div>
-                )}
-
-                {/* Profile Image Header - Gallery Style */}
-                <div className="relative h-44 overflow-hidden rounded-t-3xl bg-gradient-to-br from-azure-100 via-sky-cool-200 to-azure-200 sm:h-48 2xl:h-52">
-                  {portfolio.profileImage ? (
-                    <img
-                      src={portfolio.profileImage}
-                      alt={`${portfolio.name}의 프로필`}
-                      className="w-full h-full object-cover object-center group-hover:scale-110 transition-transform duration-500"
-                    />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center">
-                      <div className="text-6xl opacity-80 group-hover:scale-110 transition-transform duration-300">
-                        {getAvatarBySpeciality(portfolio.speciality)}
-                      </div>
-                    </div>
-                  )}
-                  {/* Gradient Overlay */}
-                  <div className="absolute inset-0 bg-gradient-to-t from-ink-900/45 via-ink-900/5 to-transparent"></div>
-
-                  {/* Name Overlay */}
-                  <div className="absolute bottom-3 left-4 right-4">
-                    <h3 className="font-display text-lg font-bold tracking-tight text-white drop-shadow-lg group-hover:text-azure-100 transition-colors">
-                      {portfolio.name}
-                    </h3>
-                  </div>
-                </div>
-
-                {/* Content Section */}
-                <div className="p-4 flex flex-col flex-1">
-                  {/* Speciality Badge */}
-                  <div className="mb-3">
-                    <span className="inline-flex max-w-full items-center rounded-full bg-gradient-to-r from-azure-500 to-azure-600 px-3 py-1 text-xs font-semibold text-white shadow-glow">
-                      {portfolio.speciality}
-                    </span>
-                  </div>
-
-                {hasAccess ? (
-                  <>
-                    {/* Description */}
-                    <p className="text-sm text-ink-500 mb-4 leading-relaxed line-clamp-2">
-                      {portfolio.description || `${portfolio.speciality} 전문가입니다.`}
-                    </p>
-
-                    {/* Location and Contact */}
-                    {(portfolio.address || (portfolio.phone && (hasAdminAccess || userData?.role === 'jobseeker'))) && (
-                      <div className="mb-3 space-y-1.5">
-                        {portfolio.address && (
-                           <div className="flex items-center text-xs text-ink-400">
-                            <svg className="h-4 w-4 mr-2 text-azure-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                            </svg>
-                            {portfolio.address}
-                          </div>
-                        )}
-                        {/* 관리자와 구직자에게만 전화번호 표시 (기업 회원에게는 완전 숨김) */}
-                        {portfolio.phone && (hasAdminAccess || userData?.role === 'jobseeker') && (
-                           <div className="flex items-center text-xs text-ink-400">
-                            <svg className="h-4 w-4 mr-2 text-azure-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-                            </svg>
-                            {portfolio.phone}
-                          </div>
-                        )}
-                      </div>
-                    )}
-
-                    {/* Languages */}
-                    {portfolio.languages && portfolio.languages.length > 0 && (
-                       <div className="mb-3">
-                         <h4 className="text-xs font-semibold text-ink-700 mb-2">언어</h4>
-                        <div className="flex flex-wrap gap-1.5">
-                          {portfolio.languages.slice(0, 3).map((language: string, index: number) => (
-                            <Badge key={index} tone="mint">
-                              {language}
-                            </Badge>
-                          ))}
-                          {portfolio.languages.length > 3 && (
-                            <span className="text-ink-400 text-xs self-center">+{portfolio.languages.length - 3}</span>
-                          )}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Skills */}
-                    <div className="mb-4">
-                      <h4 className="text-xs font-semibold text-ink-700 mb-2">주요 스킬</h4>
-                      <div className="flex flex-wrap gap-1.5">
-                        {portfolio.skills.slice(0, 3).map((skill: string, index: number) => (
-                          <span
-                            key={index}
-                            className="max-w-full rounded-lg border border-azure-100 bg-azure-50 px-2 py-1 text-xs text-azure-700 transition-colors hover:bg-azure-100"
-                          >
-                            {skill}
-                          </span>
-                        ))}
-                        {portfolio.skills.length > 3 && (
-                          <span className="text-ink-400 text-xs self-center">+{portfolio.skills.length - 3}개</span>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Current Course */}
-                    <div className="flex flex-col items-center justify-center mb-4 p-3 glass rounded-2xl mt-auto">
-                      <div className="text-center">
-                        <div className="text-xs font-bold text-ink-900 mb-1">수행 중인 과정</div>
-                        <div className="line-clamp-2 text-xs text-ink-500">
-                          {portfolio.currentCourse || '등록된 과정이 없습니다'}
-                        </div>
-                      </div>
-                      {portfolio.courseType && (
-                        <Badge
-                          tone={portfolio.courseType === 'foreign' ? 'coral' : 'azure'}
-                          className="mt-2"
-                          icon={<AcademicCapIcon className="h-3.5 w-3.5" />}
-                        >
-                          {portfolio.courseType === 'foreign' ? '외국인' : '내국인'}
-                        </Badge>
-                      )}
-                    </div>
-                  </>
-                ) : (
-                  /* Limited Access View - Name Only */
-                  <div className="flex-1 flex flex-col items-center justify-center py-8 mb-6">
-                    <div className="w-16 h-16 mb-4 rounded-3xl bg-azure-50 border border-azure-100 flex items-center justify-center">
-                      <LockClosedIcon className="h-9 w-9 text-azure-400" />
-                    </div>
-                    <p className="text-ink-500 text-center text-sm mb-2">
-                      상세 정보는 기업 승인 후 확인 가능합니다
-                    </p>
-                    <p className="text-ink-400 text-xs">
-                      {userData?.role === 'employer' && employerStatus?.approvalStatus === 'pending'
-                        ? '승인 대기 중입니다'
-                        : '정회원 승인이 필요합니다'}
-                    </p>
-                  </div>
-                )}
-
-                {/* Action Buttons */}
-                <div className="flex gap-2 mt-auto">
-                  {hasAccess ? (
-                    <GlassButton
-                      href={`/portfolios/${portfolio.id}`}
-                      className="flex-1 !rounded-xl !px-3 !py-2 !text-sm"
-                    >
-                      포트폴리오 보기
-                    </GlassButton>
-                  ) : (
-                    <GlassButton
-                      disabled
-                      variant="secondary"
-                      className="flex-1 !rounded-xl !px-3 !py-2 !text-sm !text-ink-400"
-                    >
-                      <LockClosedIcon className="h-5 w-5" />
-                      {userData?.role === 'employer' && employerStatus?.approvalStatus === 'pending'
-                        ? '승인 대기 중'
-                        : '열람 불가'}
-                    </GlassButton>
-                  )}
-                  {hasAccess && userData?.role === 'employer' ? (
-                    <GlassButton
-                      href={`/employer-dashboard/contact/${portfolio.id}`}
-                      variant="outline"
-                      className="!rounded-xl !px-3 !py-2"
-                      title="채용 제안서 보내기"
-                    >
-                      <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                      </svg>
-                    </GlassButton>
-                  ) : (
-                    <GlassButton
-                      disabled
-                      variant="secondary"
-                      className="!rounded-xl !px-3 !py-2 !text-ink-400"
-                      title="기업 승인 후 이용 가능"
-                    >
-                      <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                      </svg>
-                    </GlassButton>
-                  )}
-                </div>
-                </div>
-                </GlassCard>
-              </motion.div>
-            ))}
-
-            {/* Empty State */}
-            {filteredPortfolios.length === 0 && !loading && (
-              <div className="col-span-full">
-                <GlassCard strong className="text-center py-20 px-8">
-                  <div className="w-20 h-20 mx-auto mb-6 rounded-4xl bg-azure-50 border border-azure-100 flex items-center justify-center shadow-glass-sm">
-                    <MagnifyingGlassIcon className="h-10 w-10 text-azure-500" />
-                  </div>
-                  <h3 className="font-display text-2xl font-bold tracking-tight text-ink-900 mb-3">검색 결과가 없습니다</h3>
-                  <p className="text-ink-500 mb-8">다른 키워드로 검색해보세요.</p>
-                  <GlassButton
-                    onClick={() => {
-                      setSearchTerm('');
-                      setSelectedSpeciality('전체');
-                      setSelectedCourseType('전체');
-                    }}
-                  >
-                    전체 보기
-                  </GlassButton>
-                </GlassCard>
-              </div>
-            )}
-          </motion.div>
-        )}
         </div>
       </div>
+
+      <main className="relative mx-auto w-full max-w-[1760px] px-4 py-10 sm:px-6 lg:px-8 lg:py-14 xl:px-10">
+        <div className="relative z-10">
+          {userData?.role === 'employer' && <AccessStatusBanner employerStatus={employerStatus} />}
+
+          {loading ? (
+            <div className="flex items-center justify-center py-24">
+              <div className="h-12 w-12 animate-spin rounded-full border-2 border-azure-200 border-b-azure-500" />
+            </div>
+          ) : visiblePrograms.length === 0 ? (
+            <GlassCard strong className="px-8 py-16 text-center">
+              <AcademicCapIcon className="mx-auto h-12 w-12 text-azure-500" />
+              <h2 className="mt-4 font-display text-2xl font-bold tracking-tight text-ink-900">
+                현재 공개된 과정이 없습니다
+              </h2>
+              <p className="mt-2 text-ink-500">관리자 메뉴에서 기업에게 노출할 포트폴리오 과정을 선택해주세요.</p>
+            </GlassCard>
+          ) : !selectedProgram ? (
+            <ProgramChooser programs={visiblePrograms} portfolios={portfolios} onSelectProgram={handleSelectProgram} />
+          ) : !showTalentGrid ? (
+            <ProgramIntro
+              program={selectedProgram}
+              portfolios={portfolios}
+              onBack={() => {
+                setSelectedProgramId(null);
+                setShowTalentGrid(false);
+              }}
+              onShowTalents={() => setShowTalentGrid(true)}
+            />
+          ) : (
+            <div className="space-y-8">
+              <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+                <div>
+                  <button
+                    type="button"
+                    onClick={() => setShowTalentGrid(false)}
+                    className="mb-4 inline-flex items-center gap-2 rounded-2xl px-3 py-2 text-sm font-semibold text-ink-500 transition hover:bg-white/70 hover:text-azure-700"
+                  >
+                    <ArrowLeftIcon className="h-4 w-4" />
+                    과정 설명으로
+                  </button>
+                  <Badge tone={selectedProgram.courseType === 'foreign' ? 'coral' : 'azure'}>
+                    {selectedProgram.audience} · {selectedProgram.hours}
+                  </Badge>
+                  <h2 className="mt-3 font-display text-3xl font-bold tracking-tight text-ink-900 md:text-4xl">
+                    {selectedProgram.shortName} 교육생
+                  </h2>
+                  <p className="mt-2 max-w-3xl text-sm leading-relaxed text-ink-500">
+                    사진과 핵심 역량을 먼저 확인한 뒤, 개인 포트폴리오에서 자기소개·영상·프로젝트 문서를 자세히 검토하세요.
+                  </p>
+                </div>
+                {hasAdminAccess && (
+                  <Badge tone="neutral" className="self-start lg:self-auto">
+                    관리자 열람
+                  </Badge>
+                )}
+              </div>
+
+              <ScrollReveal>
+                <div className="glass-strong rounded-3xl p-4 shadow-glass sm:p-5">
+                  <div className="flex flex-col gap-4 lg:flex-row">
+                    <div className="flex-1">
+                      <div className="relative">
+                        <MagnifyingGlassIcon className="pointer-events-none absolute left-4 top-1/2 z-10 h-5 w-5 -translate-y-1/2 text-azure-500" />
+                        <GlassInput
+                          type="text"
+                          placeholder="이름, 전문분야, 스킬로 검색..."
+                          value={searchTerm}
+                          onChange={(event) => setSearchTerm(event.target.value)}
+                          className="py-3 pl-12"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-3">
+                      <FunnelIcon className="h-5 w-5 shrink-0 text-azure-500" />
+                      <GlassSelect
+                        value={selectedSpeciality}
+                        onChange={(event) => setSelectedSpeciality(event.target.value)}
+                        className="py-3"
+                      >
+                        <option value="all">전체 전문분야</option>
+                        {availableSpecialities.map((speciality) => (
+                          <option key={speciality} value={speciality}>
+                            {speciality}
+                          </option>
+                        ))}
+                      </GlassSelect>
+                    </div>
+
+                    <GlassSelect value={sortBy} onChange={(event) => setSortBy(event.target.value)} className="py-3">
+                      <option value="projects">프로젝트순</option>
+                      <option value="recent">최신순</option>
+                      <option value="name">이름순</option>
+                    </GlassSelect>
+                  </div>
+                </div>
+              </ScrollReveal>
+
+              <motion.div
+                className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5"
+                variants={reduceMotion ? undefined : staggerContainer()}
+                initial={reduceMotion ? false : 'hidden'}
+                animate={reduceMotion ? false : 'show'}
+              >
+                {filteredPortfolios.map((portfolio) => {
+                  const specialities = splitSpecialities(portfolio.speciality);
+                  const primarySpeciality = getPrimarySpeciality(portfolio.speciality);
+                  return (
+                    <motion.div key={portfolio.id} variants={reduceMotion ? undefined : fadeUp} className="h-full">
+                      <GlassCard hover className="group relative flex h-full flex-col overflow-hidden rounded-3xl">
+                        <div className="relative h-52 overflow-hidden rounded-t-3xl bg-gradient-to-br from-azure-100 via-sky-cool-200 to-azure-200">
+                          {portfolio.profileImage ? (
+                            <img
+                              src={portfolio.profileImage}
+                              alt={`${portfolio.name} 프로필`}
+                              className="h-full w-full object-cover object-center transition-transform duration-500 group-hover:scale-105"
+                            />
+                          ) : (
+                            <div className="flex h-full w-full items-center justify-center">
+                              <div className="flex h-24 w-24 items-center justify-center rounded-4xl bg-white/70 text-5xl shadow-glass-sm">
+                                {SPECIALITY_ICON_MAP[primarySpeciality] || '👤'}
+                              </div>
+                            </div>
+                          )}
+                          <div className="absolute inset-0 bg-gradient-to-t from-ink-900/55 via-ink-900/10 to-transparent" />
+                          <div className="absolute bottom-4 left-4 right-4">
+                            <h3 className="font-display text-lg font-bold tracking-tight text-white drop-shadow-lg">
+                              {portfolio.name}
+                            </h3>
+                          </div>
+                        </div>
+
+                        <div className="flex flex-1 flex-col p-4">
+                          <div className="mb-3 flex flex-wrap gap-1.5">
+                            {(specialities.length > 0 ? specialities : [primarySpeciality]).slice(0, 2).map((speciality) => (
+                              <span
+                                key={speciality}
+                                className="inline-flex max-w-full items-center rounded-full bg-gradient-to-r from-azure-500 to-azure-600 px-3 py-1 text-xs font-semibold text-white shadow-glow"
+                              >
+                                {speciality}
+                              </span>
+                            ))}
+                            {specialities.length > 2 && (
+                              <Badge tone="neutral">+{specialities.length - 2}</Badge>
+                            )}
+                          </div>
+
+                          <p className="mb-4 line-clamp-2 text-sm leading-relaxed text-ink-500">
+                            {portfolio.description || `${primarySpeciality} 전문가입니다.`}
+                          </p>
+
+                          {portfolio.languages?.length > 0 && (
+                            <div className="mb-3">
+                              <h4 className="mb-2 text-xs font-semibold text-ink-700">언어</h4>
+                              <div className="flex flex-wrap gap-1.5">
+                                {portfolio.languages.slice(0, 3).map((language) => (
+                                  <Badge key={language} tone="mint">
+                                    {language}
+                                  </Badge>
+                                ))}
+                                {portfolio.languages.length > 3 && (
+                                  <span className="self-center text-xs text-ink-400">+{portfolio.languages.length - 3}</span>
+                                )}
+                              </div>
+                            </div>
+                          )}
+
+                          <div className="mb-4">
+                            <h4 className="mb-2 text-xs font-semibold text-ink-700">주요 스킬</h4>
+                            <div className="flex flex-wrap gap-1.5">
+                              {(portfolio.skills || []).slice(0, 3).map((skill) => (
+                                <span
+                                  key={skill}
+                                  className="max-w-full rounded-lg border border-azure-100 bg-azure-50 px-2 py-1 text-xs text-azure-700"
+                                >
+                                  {skill}
+                                </span>
+                              ))}
+                              {(portfolio.skills || []).length > 3 && (
+                                <span className="self-center text-xs text-ink-400">+{portfolio.skills.length - 3}개</span>
+                              )}
+                            </div>
+                          </div>
+
+                          <div className="mt-auto rounded-2xl border border-white/70 bg-white/65 p-3 text-center shadow-glass-sm">
+                            <div className="text-xs font-bold text-ink-900">수행 중인 과정</div>
+                            <div className="mt-1 line-clamp-2 text-xs text-ink-500">
+                              {portfolio.currentCourse || selectedProgram.name}
+                            </div>
+                          </div>
+
+                          <div className="mt-4">
+                            <GlassButton href={`/portfolios/${portfolio.id}`} className="w-full !rounded-xl !px-3 !py-2 !text-sm">
+                              포트폴리오 보기
+                            </GlassButton>
+                          </div>
+                        </div>
+                      </GlassCard>
+                    </motion.div>
+                  );
+                })}
+
+                {filteredPortfolios.length === 0 && (
+                  <div className="col-span-full">
+                    <GlassCard strong className="px-8 py-20 text-center">
+                      <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-4xl border border-azure-100 bg-azure-50 shadow-glass-sm">
+                        <UserGroupIcon className="h-10 w-10 text-azure-500" />
+                      </div>
+                      <h3 className="mb-3 font-display text-2xl font-bold tracking-tight text-ink-900">
+                        표시할 교육생이 없습니다
+                      </h3>
+                      <p className="mb-8 text-ink-500">검색어나 전문분야 필터를 조정해보세요.</p>
+                      <GlassButton
+                        onClick={() => {
+                          setSearchTerm('');
+                          setSelectedSpeciality('all');
+                        }}
+                      >
+                        전체 보기
+                      </GlassButton>
+                    </GlassCard>
+                  </div>
+                )}
+              </motion.div>
+            </div>
+          )}
+        </div>
+      </main>
     </div>
   );
 }

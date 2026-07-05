@@ -5,6 +5,15 @@ export interface VideoLink {
   addedAt: Date;
 }
 
+export interface ExternalPortfolioLink {
+  url: string;
+  title: string;
+  type: 'webapp' | 'notion' | 'website' | 'github' | 'other';
+  description?: string;
+  embed?: boolean;
+  addedAt?: Date | string | any;
+}
+
 export interface Portfolio {
   id: string;
   name: string;
@@ -19,6 +28,7 @@ export interface Portfolio {
   location: string;
   email: string;
   phone: string;
+  contactInfoVisibleToEmployers?: boolean;
   education: string;
   introduction: string;
   achievements: string[];
@@ -31,6 +41,7 @@ export interface Portfolio {
   introVideos?: VideoLink[];
   selfIntroduction?: SelfIntroduction;
   mediaContent?: MediaContent[];
+  externalLinks?: ExternalPortfolioLink[];
   portfolioPdfs?: PortfolioPdf[];
   additionalDocuments?: AdditionalDocument[];
   certificates?: Certificate[];

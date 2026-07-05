@@ -198,11 +198,14 @@ export default function CompaniesPage() {
     <div className="min-h-screen overflow-x-clip">
       <Navigation />
 
-      {/* Search and Filter Section */}
-      <section className="relative pt-10 lg:pt-14 pb-10 overflow-hidden">
-        <div className="relative z-10 container-wide">
-          <ScrollReveal>
-            <GlassCard strong className="p-6 sm:p-8">
+      {/* Search + Companies — 하나의 섹션으로 묶어 sticky 툴바가 목록 전체 구간에서 유지되도록 함.
+          overflow-hidden 을 두지 않아야 position:sticky 가 동작한다 (AuroraBackground 는 자체 clip). */}
+      <section className="relative pb-24">
+        <AuroraBackground />
+        <div className="relative z-10 mx-auto w-full max-w-[1760px] px-4 sm:px-6 lg:px-10 pt-24">
+          {/* Sticky 검색·필터 툴바 (fixed 네비 64px 아래에 고정) */}
+          <div className="sticky top-[72px] z-30 pb-5">
+            <GlassCard strong className="p-5 sm:p-6">
               <div className="flex flex-col lg:flex-row gap-5">
                 {/* Search */}
                 <div className="flex-1">
@@ -252,14 +255,8 @@ export default function CompaniesPage() {
                 </p>
               </div>
             </GlassCard>
-          </ScrollReveal>
-        </div>
-      </section>
+          </div>
 
-      {/* Companies Grid */}
-      <section className="relative pb-24 overflow-hidden">
-        <AuroraBackground />
-        <div className="relative z-10 container-wide">
           {filteredCompanies.length === 0 ? (
             <ScrollReveal>
               <GlassCard className="text-center py-20 px-6">
@@ -274,7 +271,7 @@ export default function CompaniesPage() {
             // 마운트 기반 animate: 필터로 다시 추가되는 카드도 즉시 나타남
             // (whileInView+once는 재추가 카드를 opacity:0에 가둬 필터가 걸린 것처럼 보이는 버그였음)
             <motion.div
-              className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-7 lg:gap-8"
+              className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 xl:gap-7"
               variants={reduceMotion ? undefined : staggerContainer()}
               initial={reduceMotion ? false : 'hidden'}
               animate={reduceMotion ? false : 'show'}

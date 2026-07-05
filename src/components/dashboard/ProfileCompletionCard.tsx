@@ -18,9 +18,9 @@ export default function ProfileCompletionCard({
   missingFields = []
 }: ProfileCompletionCardProps) {
   return (
-    <ScrollReveal y={24}>
+    <ScrollReveal y={24} className="h-full">
       <GlassCard strong className="h-full rounded-3xl p-5 md:p-6">
-        <div className="flex flex-col gap-5 md:flex-row md:items-end md:justify-between md:gap-8">
+        <div className="flex h-full flex-col justify-center gap-5 md:flex-row md:items-center md:justify-between md:gap-8">
           {/* 진행 정보 + 진행바 */}
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-3">

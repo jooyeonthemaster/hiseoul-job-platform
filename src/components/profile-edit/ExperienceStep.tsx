@@ -7,7 +7,10 @@ import { GlassButton } from '@/components/ui/GlassButton';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { Badge } from '@/components/ui/Badge';
 import { Field, GlassInput, GlassTextarea } from '@/components/ui/GlassField';
+import { GlassDatePicker } from '@/components/ui/GlassDatePicker';
 import { ScrollReveal } from '@/components/ui/ScrollReveal';
+
+const CURRENT_YEAR = new Date().getFullYear();
 
 interface ExperienceStepProps {
   data: ExperienceItem[];
@@ -123,21 +126,23 @@ export default function ExperienceStep({ data, onChange }: ExperienceStepProps) 
                     </Field>
 
                     <Field label="시작일">
-                      <GlassInput
-                        type="text"
+                      <GlassDatePicker
                         value={exp.startDate || ''}
-                        onChange={(e) => updateExperience(index, 'startDate', e.target.value)}
-                        placeholder="YYYY-MM 형식으로 입력 (예: 2020-03)"
+                        onChange={(v) => updateExperience(index, 'startDate', v)}
+                        precision="year-month"
+                        fromYear={1970}
+                        toYear={CURRENT_YEAR}
                       />
                     </Field>
 
                     <Field label="종료일">
-                      <GlassInput
-                        type="text"
+                      <GlassDatePicker
                         value={exp.endDate || ''}
-                        onChange={(e) => updateExperience(index, 'endDate', e.target.value)}
+                        onChange={(v) => updateExperience(index, 'endDate', v)}
+                        precision="year-month"
+                        fromYear={1970}
+                        toYear={CURRENT_YEAR}
                         disabled={exp.isCurrent}
-                        placeholder="YYYY-MM 형식으로 입력 (예: 2022-12)"
                       />
                     </Field>
 

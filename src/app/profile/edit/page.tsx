@@ -21,6 +21,7 @@ import {
 } from '@/lib/auth';
 import { formatDateForInput } from '@/lib/dateUtils';
 import type { ExperienceItem, EducationItem, CertificateItem, AwardItem, SelfIntroduction } from '@/types';
+import type { ExternalPortfolioLink } from '@/lib/externalPortfolioLinks';
 import { AuroraBackground } from '@/components/ui/AuroraBackground';
 import { GlassButton } from '@/components/ui/GlassButton';
 import { GlassCard } from '@/components/ui/GlassCard';
@@ -65,6 +66,7 @@ interface FormData {
       addedAt: Date;
     }>;
     mediaContent: any[];
+    externalLinks?: ExternalPortfolioLink[];
     portfolioPdfs?: Array<{
       url: string;
       fileName: string;
@@ -124,6 +126,7 @@ export default function ProfileEditPage() {
       introVideo: '',
       introVideos: [],
       mediaContent: [],
+      externalLinks: [],
       portfolioPdfs: []
     }
   });
@@ -209,6 +212,7 @@ export default function ProfileEditPage() {
             introVideo: profile.introVideo || '',
             introVideos: profile.introVideos || [],
             mediaContent: profile.mediaContent || [],
+            externalLinks: profile.externalLinks || [],
             portfolioPdfs: profile.portfolioPdfs || [],
             additionalDocuments: profile.additionalDocuments || []
           }
@@ -312,6 +316,7 @@ export default function ProfileEditPage() {
         introVideo: formData.media.introVideo,
         introVideos: formData.media.introVideos,
         mediaContent: formData.media.mediaContent,
+        externalLinks: formData.media.externalLinks,
         portfolioPdfs: formData.media.portfolioPdfs,
         additionalDocuments: formData.media.additionalDocuments
       };
@@ -323,6 +328,7 @@ export default function ProfileEditPage() {
       await registerPortfolio(user.uid, {
         name: formData.basicInfo.name,
         speciality: formData.basicInfo.speciality || '일반',
+        currentCourse: formData.basicInfo.currentCourse || '',
         courseType: formData.basicInfo.courseType || undefined,
         phone: formData.basicInfo.phone,
         address: formData.basicInfo.address,
@@ -337,13 +343,9 @@ export default function ProfileEditPage() {
         awards: processedAwards,
         introVideo: formData.media.introVideo,
         introVideos: formData.media.introVideos,
-        selfIntroduction: {
-          motivation: formData.selfIntroduction.motivation || '',
-          personality: formData.selfIntroduction.personality || '',
-          experience: formData.selfIntroduction.experience || '',
-          aspiration: formData.selfIntroduction.aspiration || ''
-        },
+        selfIntroduction: formData.selfIntroduction,
         mediaContent: formData.media.mediaContent,
+        externalLinks: formData.media.externalLinks,
         portfolioPdfs: formData.media.portfolioPdfs,
         additionalDocuments: formData.media.additionalDocuments
       });

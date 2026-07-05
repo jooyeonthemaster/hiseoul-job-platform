@@ -2,15 +2,32 @@
 
 import { useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { DocumentIcon, TrashIcon, VideoCameraIcon, DocumentArrowUpIcon, FolderArrowDownIcon } from '@heroicons/react/24/outline';
+import {
+  ArrowTopRightOnSquareIcon,
+  DocumentArrowUpIcon,
+  DocumentIcon,
+  FolderArrowDownIcon,
+  LinkIcon,
+  TrashIcon,
+  VideoCameraIcon,
+} from '@heroicons/react/24/outline';
 import { PlusIcon, PlayIcon } from '@heroicons/react/24/solid';
 import PDFUpload from '@/components/PDFUpload';
 import PDFImageViewer from '@/components/PDFImageViewer';
 import DocumentUpload, { DocumentList } from '@/components/DocumentUpload';
 import { GlassButton } from '@/components/ui/GlassButton';
-import { GlassInput, Field } from '@/components/ui/GlassField';
+import { GlassInput, GlassSelect, GlassTextarea, Field } from '@/components/ui/GlassField';
 import { Badge } from '@/components/ui/Badge';
 import { ScrollReveal } from '@/components/ui/ScrollReveal';
+import {
+  EXTERNAL_PORTFOLIO_LINK_TYPES,
+  type ExternalPortfolioLink,
+  type ExternalPortfolioLinkType,
+  getHostnameLabel,
+  normalizeExternalPortfolioLinks,
+  normalizeUrl,
+} from '@/lib/externalPortfolioLinks';
+import { formatKoreanDate } from '@/lib/dateUtils';
 
 interface UploadedDocument {
   url: string;
@@ -31,6 +48,7 @@ interface MediaStepProps {
   data: {
     introVideo?: string;
     introVideos?: VideoLink[];
+    externalLinks?: ExternalPortfolioLink[];
     portfolioPdfs?: Array<{
       url: string;
       fileName: string;
@@ -45,55 +63,14 @@ export default function MediaStep({ data, onChange }: MediaStepProps) {
   const [showPreview, setShowPreview] = useState<{ [key: number]: boolean }>({});
   const [newVideoUrl, setNewVideoUrl] = useState('');
   const [newVideoTitle, setNewVideoTitle] = useState('');
+  const [newLinkTitle, setNewLinkTitle] = useState('');
+  const [newLinkUrl, setNewLinkUrl] = useState('');
+  const [newLinkType, setNewLinkType] = useState<ExternalPortfolioLinkType>('webapp');
+  const [newLinkDescription, setNewLinkDescription] = useState('');
+  const [newLinkEmbed, setNewLinkEmbed] = useState(true);
 
-  const formatDate = (dateValue: any): string => {
-    try {
-      let date: Date;
-
-      // Date 객체인 경우
-      if (dateValue instanceof Date) {
-        date = dateValue;
-      }
-      // Firebase Timestamp 객체인 경우
-      else if (dateValue && typeof dateValue === 'object' && 'toDate' in dateValue) {
-        try {
-          date = dateValue.toDate();
-        } catch (error) {
-          console.warn('Failed to convert Timestamp to Date:', error);
-          return '날짜 정보 없음';
-        }
-      }
-      // 문자열인 경우
-      else if (typeof dateValue === 'string') {
-        if (dateValue.trim() === '') return '날짜 정보 없음';
-        date = new Date(dateValue);
-      }
-      // 숫자(timestamp)인 경우
-      else if (typeof dateValue === 'number') {
-        date = new Date(dateValue);
-      }
-      // 기타 객체인 경우 (빈 객체 등)
-      else if (typeof dateValue === 'object') {
-        // Date 객체가 아닌 일반 객체는 현재 시간으로 처리하지 않고 에러로 처리
-        console.warn('Invalid date object:', dateValue);
-        return '날짜 정보 없음';
-      }
-      else {
-        console.warn('Unknown date format:', dateValue);
-        return '날짜 정보 없음';
-      }
-
-      if (isNaN(date.getTime())) {
-        console.warn('Invalid date:', dateValue);
-        return '날짜 정보 없음';
-      }
-
-      return date.toLocaleDateString('ko-KR');
-    } catch (error) {
-      console.error('Date formatting error:', error, 'Value:', dateValue);
-      return '날짜 정보 없음';
-    }
-  };
+  const formatDate = (dateValue: any): string =>
+    formatKoreanDate(dateValue, { fallback: '날짜 정보 없음' });
 
   // 기존 단일 영상을 배열로 마이그레이션
   const getVideoList = (): VideoLink[] => {
@@ -139,6 +116,45 @@ export default function MediaStep({ data, onChange }: MediaStepProps) {
       ...data,
       introVideos: updatedVideos,
       introVideo: undefined // 기존 단일 영상 필드 제거
+    });
+  };
+
+  const externalLinks = normalizeExternalPortfolioLinks(data.externalLinks);
+
+  const handleLinkTypeChange = (type: ExternalPortfolioLinkType) => {
+    setNewLinkType(type);
+    setNewLinkEmbed(type !== 'github');
+  };
+
+  const handleAddExternalLink = () => {
+    const url = normalizeUrl(newLinkUrl);
+    if (!url) return;
+
+    const nextLink: ExternalPortfolioLink = {
+      url,
+      title: newLinkTitle.trim() || getHostnameLabel(url),
+      type: newLinkType,
+      description: newLinkDescription.trim(),
+      embed: newLinkType === 'github' ? false : newLinkEmbed,
+      addedAt: new Date(),
+    };
+
+    onChange({
+      ...data,
+      externalLinks: normalizeExternalPortfolioLinks([...externalLinks, nextLink]),
+    });
+
+    setNewLinkTitle('');
+    setNewLinkUrl('');
+    setNewLinkType('webapp');
+    setNewLinkDescription('');
+    setNewLinkEmbed(true);
+  };
+
+  const handleRemoveExternalLink = (index: number) => {
+    onChange({
+      ...data,
+      externalLinks: externalLinks.filter((_, itemIndex) => itemIndex !== index),
     });
   };
 
@@ -322,6 +338,124 @@ export default function MediaStep({ data, onChange }: MediaStepProps) {
             <p className="text-ink-500">
               아직 추가된 영상이 없습니다. 첫 번째 영상을 추가해보세요!
             </p>
+          </div>
+        )}
+      </ScrollReveal>
+
+      <ScrollReveal as="section" delay={0.04} className="space-y-4 xl:col-span-2">
+        <div className="flex items-start gap-4">
+          <span className="inline-flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-azure-400 to-azure-600 text-white shadow-glow">
+            <LinkIcon className="h-5 w-5" />
+          </span>
+          <div>
+            <div className="flex items-center gap-3">
+              <h3 className="font-display text-xl font-bold tracking-tight text-ink-900">웹 작업물 링크</h3>
+              {externalLinks.length > 0 && <Badge tone="azure">{externalLinks.length}개</Badge>}
+            </div>
+            <p className="mt-1.5 text-sm leading-relaxed text-ink-500">
+              바이브코딩으로 만든 웹 프로그램, 노션 포트폴리오, GitHub 저장소 등 외부 산출물 링크를 추가하세요.
+            </p>
+          </div>
+        </div>
+
+        <div className="glass-card p-5">
+          <div className="grid gap-4 lg:grid-cols-[1fr_1.25fr]">
+            <Field label="작업물 제목">
+              <GlassInput
+                type="text"
+                value={newLinkTitle}
+                onChange={(event) => setNewLinkTitle(event.target.value)}
+                placeholder="예: AI 학습 관리 웹앱"
+              />
+            </Field>
+            <Field label="URL">
+              <GlassInput
+                type="url"
+                value={newLinkUrl}
+                onChange={(event) => setNewLinkUrl(event.target.value)}
+                placeholder="https://example.vercel.app"
+              />
+            </Field>
+            <Field label="링크 유형">
+              <GlassSelect
+                value={newLinkType}
+                onChange={(event) => handleLinkTypeChange(event.target.value as ExternalPortfolioLinkType)}
+              >
+                {EXTERNAL_PORTFOLIO_LINK_TYPES.map((type) => (
+                  <option key={type.value} value={type.value}>
+                    {type.label}
+                  </option>
+                ))}
+              </GlassSelect>
+            </Field>
+            <Field label="간단 설명">
+              <GlassTextarea
+                value={newLinkDescription}
+                onChange={(event) => setNewLinkDescription(event.target.value)}
+                placeholder="무엇을 만들었고 어떤 역할을 했는지 짧게 적어주세요."
+                className="min-h-[52px]"
+              />
+            </Field>
+          </div>
+
+          <div className="mt-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <label className="inline-flex items-center gap-3 text-sm font-semibold text-ink-700">
+              <input
+                type="checkbox"
+                checked={newLinkEmbed}
+                onChange={(event) => setNewLinkEmbed(event.target.checked)}
+                disabled={newLinkType === 'github'}
+                className="h-5 w-5 rounded border-azure-200 text-azure-600 focus:ring-azure-400 disabled:opacity-40"
+              />
+              포트폴리오 상세에 임베드 표시
+            </label>
+            <GlassButton type="button" onClick={handleAddExternalLink} disabled={!newLinkUrl.trim()}>
+              <PlusIcon className="h-4 w-4" />
+              링크 추가
+            </GlassButton>
+          </div>
+        </div>
+
+        {externalLinks.length > 0 && (
+          <div className="grid gap-4 md:grid-cols-2">
+            {externalLinks.map((link, index) => (
+              <div key={`${link.url}-${index}`} className="glass rounded-3xl p-4 shadow-glass-sm">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h4 className="font-semibold text-ink-900 break-words">{link.title}</h4>
+                      <Badge tone={link.type === 'webapp' ? 'azure' : link.type === 'notion' ? 'mint' : 'neutral'}>
+                        {EXTERNAL_PORTFOLIO_LINK_TYPES.find((type) => type.value === link.type)?.label || '링크'}
+                      </Badge>
+                      {link.embed !== false && <Badge tone="mint">임베드</Badge>}
+                    </div>
+                    <p className="mt-1 break-all text-sm text-ink-500">{link.url}</p>
+                    {link.description && (
+                      <p className="mt-2 whitespace-pre-wrap break-words text-sm leading-relaxed text-ink-600">
+                        {link.description}
+                      </p>
+                    )}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveExternalLink(index)}
+                    className="flex-shrink-0 inline-flex h-9 w-9 items-center justify-center rounded-xl text-coral-500 hover:bg-coral-100 hover:text-coral-600 transition-colors duration-200"
+                    aria-label="링크 삭제"
+                  >
+                    <TrashIcon className="h-5 w-5" />
+                  </button>
+                </div>
+                <a
+                  href={link.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-azure-600 hover:text-azure-700"
+                >
+                  <ArrowTopRightOnSquareIcon className="h-4 w-4" />
+                  새 창에서 확인
+                </a>
+              </div>
+            ))}
           </div>
         )}
       </ScrollReveal>

@@ -58,16 +58,16 @@ export default function SelfIntroduction({ selfIntroduction }: SelfIntroductionP
         </h2>
       </div>
 
-      <div className={sections.length > 1 ? 'grid grid-cols-1 xl:grid-cols-2 gap-3 md:gap-4' : 'grid grid-cols-1 gap-3'}>
+      <div className="grid grid-cols-1 gap-4 md:gap-5">
         {sections.map((section, index) => (
           <div
             key={`${section.title}-${index}`}
             className={`rounded-2xl border-l-4 ${section.color} bg-azure-50/50 pl-5 pr-4 py-4`}
           >
-            <h3 className="text-base md:text-lg font-semibold text-ink-900 mb-2 break-words">
+            <h3 className="text-lg md:text-xl font-semibold text-ink-900 mb-3 break-words">
               {section.title}
             </h3>
-            <p className="text-sm md:text-base text-ink-600 leading-relaxed whitespace-pre-wrap break-words">
+            <p className="text-base md:text-lg text-ink-600 leading-8 whitespace-pre-wrap break-words">
               {section.content}
             </p>
           </div>

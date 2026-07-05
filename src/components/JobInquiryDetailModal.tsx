@@ -10,6 +10,7 @@ import {
 } from '@heroicons/react/24/outline';
 import { GlassButton } from '@/components/ui/GlassButton';
 import { Badge } from '@/components/ui/Badge';
+import { formatKoreanDate } from '@/lib/dateUtils';
 
 interface JobInquiry {
   id: string;
@@ -81,27 +82,6 @@ const StatusBadge = ({ status }: { status: string }) => {
       {statusInfo.text}
     </Badge>
   );
-};
-
-const formatDate = (timestamp: any) => {
-  if (!timestamp) return '';
-
-  let date: Date;
-  if (timestamp?.toDate) {
-    date = timestamp.toDate();
-  } else if (timestamp instanceof Date) {
-    date = timestamp;
-  } else {
-    date = new Date(timestamp);
-  }
-
-  return date.toLocaleDateString('ko-KR', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit'
-  });
 };
 
 // 글래스 정보 행 — 라벨/값 페어
@@ -206,7 +186,7 @@ export default function JobInquiryDetailModal({
             <div className="mt-5 flex flex-wrap items-center gap-x-4 gap-y-2">
               <StatusBadge status={inquiry.status} />
               <span className="text-sm text-ink-400">
-                발송일: {formatDate(inquiry.sentAt)}
+                발송일: {formatKoreanDate(inquiry.sentAt, { withTime: true })}
               </span>
             </div>
           </div>

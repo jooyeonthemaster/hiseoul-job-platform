@@ -15,7 +15,10 @@ import { GlassButton } from '@/components/ui/GlassButton';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { Badge } from '@/components/ui/Badge';
 import { Field, GlassInput } from '@/components/ui/GlassField';
+import { GlassDatePicker } from '@/components/ui/GlassDatePicker';
 import { ScrollReveal } from '@/components/ui/ScrollReveal';
+
+const CURRENT_YEAR = new Date().getFullYear();
 
 interface SkillsStepProps {
   data: {
@@ -309,11 +312,12 @@ export default function SkillsStep({ data, onChange }: SkillsStepProps) {
                         </Field>
 
                         <Field label="발급일">
-                          <GlassInput
-                            type="text"
+                          <GlassDatePicker
                             value={cert.issueDate || ''}
-                            onChange={(e) => updateCertificate(index, 'issueDate', e.target.value)}
-                            placeholder="YYYY-MM 형식으로 입력 (예: 2023-05)"
+                            onChange={(v) => updateCertificate(index, 'issueDate', v)}
+                            precision="year-month"
+                            fromYear={1970}
+                            toYear={CURRENT_YEAR}
                           />
                         </Field>
                       </div>
@@ -406,11 +410,12 @@ export default function SkillsStep({ data, onChange }: SkillsStepProps) {
                         </Field>
 
                         <Field label="수상일">
-                          <GlassInput
-                            type="text"
+                          <GlassDatePicker
                             value={award.date || ''}
-                            onChange={(e) => updateAward(index, 'date', e.target.value)}
-                            placeholder="YYYY-MM 형식으로 입력 (예: 2023-05)"
+                            onChange={(v) => updateAward(index, 'date', v)}
+                            precision="year-month"
+                            fromYear={1970}
+                            toYear={CURRENT_YEAR}
                           />
                         </Field>
                       </div>
