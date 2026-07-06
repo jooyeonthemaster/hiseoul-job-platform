@@ -275,7 +275,7 @@ export default function PrivacyPage() {
         <div className="relative container-wide py-14 text-center">
           <Link href="/" className="inline-flex items-center gap-3 mb-6 group">
             <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-glass p-1 group-hover:scale-105 transition-transform duration-300">
-              <img src="/images/logo.png" alt="면접심사 매칭 플랫폼 Logo" className="w-full h-full object-contain" />
+              <img src="/images/logo.png" alt="구직자 · 구인기업 면접심사 매칭 플랫폼 Logo" className="w-full h-full object-contain" />
             </div>
             <span className="text-xl font-bold">면접심사 매칭 플랫폼</span>
           </Link>

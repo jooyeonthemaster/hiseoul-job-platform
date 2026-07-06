@@ -28,6 +28,8 @@ import {
   ClockIcon,
   SparklesIcon,
   PencilSquareIcon,
+  MapPinIcon,
+  CalendarDaysIcon,
 } from '@heroicons/react/24/outline';
 import {
   CheckCircleIcon,
@@ -36,6 +38,7 @@ import {
 } from '@heroicons/react/24/solid';
 import { ArrowUpRight, PlayCircle, Sparkles, CheckCircle2 } from 'lucide-react';
 import TutorialOverlay from '@/components/TutorialOverlay';
+import { Badge } from '@/components/ui/Badge';
 import { GlassButton } from '@/components/ui/GlassButton';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { SectionHeading } from '@/components/ui/SectionHeading';
@@ -265,16 +268,23 @@ export default function HomePage() {
   const employerSteps = [
     { num: '01', title: '자기소개 영상 확인', desc: ['참가자들의 1분 자기소개 영상을 확인하고', '귀사에 맞는 인재들을 선별하세요'], bullets: ['전체 영상 한번에 확인', '인재 스크리닝 완료'], Icon: VideoIcon },
     { num: '02', title: '포트폴리오 확인', desc: ['상단의 포트폴리오 버튼을 눌러서', '지원자의 상세 포트폴리오를 확인하세요'], bullets: ['실무 프로젝트 확인', '스킬셋 검증'], Icon: BriefcaseIcon },
-    { num: '03', title: '채용 신청서 작성', desc: ['선별된 인재에게 채용 신청서를', '작성하여 전송하세요'], bullets: ['간편한 신청서 양식', '마감: 6월 19일'], Icon: DocIcon },
-    { num: '04', title: '인턴 매칭', desc: ['6월 20일에 기업별로', '면접 안내를 드립니다'], bullets: ['면접 일정 자동 배정', '최종 매칭 완료'], Icon: UserGroupIcon },
+    { num: '03', title: '채용 신청서 작성', desc: ['선별된 인재에게 채용 신청서를', '작성하여 전송하세요'], bullets: ['간편한 신청서 양식', '마감: 7월 15일'], Icon: DocIcon },
+    { num: '04', title: '인턴 매칭', desc: ['7월 20일에 기업별로 면접 안내를 드리고,', '7월 22일(수) 매칭데이 행사에서 대면 면접을 진행합니다'], bullets: ['면접 일정 자동 배정', '7월 22일 매칭데이 면접'], Icon: UserGroupIcon },
   ];
   const jobseekerSteps = [
     { num: '01', title: '포트폴리오 & 영상 제작', desc: ['전문적인 포트폴리오와', '1분 자기소개 영상을 제작하세요'], bullets: ['포트폴리오 템플릿 제공', '영상 가이드라인 제공'], Icon: BriefcaseIcon },
     { num: '02', title: '플랫폼 등록', desc: ['플랫폼에 프로필을 등록하고', '포트폴리오를 업로드하세요'], bullets: ['프로필 검증 완료', '포트폴리오 공개'], Icon: UserIcon },
     { num: '03', title: '기업 매칭 대기', desc: ['기업들이 포트폴리오를 확인하고', '채용 신청을 할 때까지 대기하세요'], bullets: ['실시간 관심 기업 알림', '매칭 현황 확인'], Icon: ClockIcon },
-    { num: '04', title: '면접 & 최종 선발', desc: ['6월 20일 면접 안내를 받고', '최종 선발 과정을 진행하세요'], bullets: ['면접 일정 안내', '인턴십 기회 확정'], Icon: TeamIcon },
+    { num: '04', title: '면접 & 최종 선발', desc: ['7월 20일 면접 안내를 받고, 7월 22일(수) 매칭데이에서', '대면 면접을 진행해 최종 선발됩니다'], bullets: ['7월 22일 매칭데이 면접', '인턴십 기회 확정'], Icon: TeamIcon },
   ];
   const steps = activeTab === 'employer' ? employerSteps : jobseekerSteps;
+
+  // ── 주요 일정 (클라이언트 확정 일정) ──
+  const scheduleItems: { date: string; day: string; title: string; desc: string; place?: string }[] = [
+    { date: '07.15', day: '수', title: '채용신청서 마감', desc: '기업의 채용 신청서 제출 마감일입니다' },
+    { date: '07.20', day: '월', title: '면접 안내', desc: '기업별로 면접 일정을 개별 안내드립니다' },
+    { date: '07.22', day: '수', title: '매칭데이 행사', desc: '대면 면접이 진행되는 매칭데이 당일입니다', place: '서울특별시 영등포구 영등포로 33, 5층 스타트런 행사장' },
+  ];
 
   const aiToolGroups = [
     {
@@ -560,6 +570,37 @@ export default function HomePage() {
               </ScrollRevealItem>
             ))}
           </ScrollRevealStagger>
+
+          {/* ── 주요 일정 스트립 ── */}
+          <div className="mt-20 lg:mt-24">
+            <ScrollReveal className="flex flex-col items-center gap-3 text-center">
+              <Badge tone="azure" icon={<CalendarDaysIcon className="w-4 h-4" />}>주요 일정</Badge>
+              <h3 className="font-display text-2xl md:text-3xl font-bold tracking-tight text-ink-900">
+                놓치면 안 되는 <span className="text-gradient-azure">3개의 날짜</span>
+              </h3>
+            </ScrollReveal>
+
+            <ScrollRevealStagger className="mt-8 grid gap-5 sm:grid-cols-3">
+              {scheduleItems.map((item) => (
+                <ScrollRevealItem key={item.date}>
+                  <GlassCard hover className="h-full p-6 text-center">
+                    <div className="inline-flex items-baseline gap-1 font-display font-bold tracking-tight text-ink-900">
+                      <span className="text-3xl md:text-4xl tabular-nums">{item.date}</span>
+                      <span className="text-base font-semibold text-azure-600">({item.day})</span>
+                    </div>
+                    <h4 className="mt-3 text-lg font-bold text-ink-900">{item.title}</h4>
+                    <p className="mt-2 text-sm leading-relaxed text-ink-500 text-pretty break-keep">{item.desc}</p>
+                    {item.place && (
+                      <div className="mt-4 flex items-start justify-center gap-2 rounded-2xl border border-azure-100 bg-azure-50/60 px-4 py-3 text-left">
+                        <MapPinIcon className="mt-0.5 h-4 w-4 shrink-0 text-azure-600" />
+                        <span className="text-xs font-medium leading-relaxed text-ink-600 break-keep">{item.place}</span>
+                      </div>
+                    )}
+                  </GlassCard>
+                </ScrollRevealItem>
+              ))}
+            </ScrollRevealStagger>
+          </div>
 
           {/* Bottom CTA */}
           <ScrollReveal className="mt-16 text-center">
@@ -942,7 +983,7 @@ export default function HomePage() {
             <div>
               <div className="flex items-center gap-3 mb-7">
                 <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-glass p-1">
-                  <img src="/images/logo.png" alt="면접심사 매칭 플랫폼 Logo" className="w-full h-full object-contain" />
+                  <img src="/images/logo.png" alt="구직자 · 구인기업 면접심사 매칭 플랫폼 Logo" className="w-full h-full object-contain" />
                 </div>
                 <span className="text-base font-bold">(사)기술벤처스타트업협회</span>
               </div>

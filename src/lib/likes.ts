@@ -11,7 +11,6 @@ import {
   addDoc
 } from 'firebase/firestore';
 import { db } from './firebase';
-import { createNotification } from './auth';
 
 // 좋아요 추가
 export const addLike = async (
@@ -34,14 +33,10 @@ export const addLike = async (
       createdAt: serverTimestamp()
     });
 
-    // 구직자에게 알림 발송
-    await createNotification({
-      userId: jobSeekerId,
-      type: 'like',
-      title: '새로운 좋아요!',
-      message: `${companyName}에서 회원님의 포트폴리오에 관심을 표현했습니다.`,
-      actionUrl: `/portfolios/${portfolioId}`
-    });
+    // REQ2 (완전 관리자 중개형): 좋아요(기업의 선택) 시 구직자에게 가는 알림 발송을 중단한다.
+    // 구직자가 '특정 기업이 나의 포트폴리오를 선택했다'는 사실을 알림으로 알 수 없어야 하며,
+    // 상호선택 결과는 관리자만 열람한다. 따라서 아래 createNotification 호출을 전면 제거한다.
+    // 단, 위의 likes Firestore 기록(setDoc)은 관리자 열람/엑셀용으로 유지한다.
 
     return true;
   } catch (error) {

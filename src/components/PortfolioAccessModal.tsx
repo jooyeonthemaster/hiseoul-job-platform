@@ -151,7 +151,7 @@ export default function PortfolioAccessModal({
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
         transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
-        className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-ink-900/30 backdrop-blur-sm"
+        className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-ink-900/30 backdrop-blur-sm"
         onClick={handleBackdropClick}
       >
         <motion.div

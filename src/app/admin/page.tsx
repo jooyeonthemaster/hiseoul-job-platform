@@ -13,7 +13,7 @@ import { AuroraBackground } from '@/components/ui/AuroraBackground';
 import { ScrollReveal } from '@/components/ui/ScrollReveal';
 import { getAllPortfolios, updateJobSeekerProfile, getJobSeekerProfile, updateUserProfile, registerPortfolio, togglePortfolioVisibility, setPortfolioContactVisibility, toggleEmployerVisibility, getAllEmployers, logOut } from '@/lib/auth';
 import { exportJobseekersToExcel, exportEmployersToExcel, exportSelectionsToExcel, exportAllToExcel } from '@/lib/excelExport';
-import { DEFAULT_VISIBLE_PROGRAM_IDS, PORTFOLIO_PROGRAMS } from '@/lib/programs';
+import { DEFAULT_VISIBLE_PROGRAM_IDS, PORTFOLIO_PROGRAMS, splitSpecialities, portfolioMatchesProgram } from '@/lib/programs';
 import { getVisiblePortfolioProgramIds, saveVisiblePortfolioProgramIds } from '@/lib/programSettings';
 import {
   StepNavigation,
@@ -1330,7 +1330,9 @@ export default function AdminPage() {
   return (
       <div className="relative min-h-screen overflow-hidden bg-sky-cool-50/40 py-10 lg:py-16">
         <AuroraBackground />
-      <div className="relative z-10 mx-auto w-full max-w-[1720px] px-4 sm:px-6 lg:px-8 xl:px-10">
+      {/* 주의: 이 래퍼에 z-10 을 주면 스택 컨텍스트가 생겨 내부의 fixed 모달이
+          전역 네비(z-50) 아래에 갇힌다. Aurora 는 DOM 순서만으로 뒤에 깔리므로 z 불필요. */}
+      <div className="relative mx-auto w-full max-w-[1720px] px-4 sm:px-6 lg:px-8 xl:px-10">
         <ScrollReveal className="mb-10">
           <div className="flex flex-col sm:flex-row sm:justify-between sm:items-end gap-5">
             <div>
@@ -2110,10 +2112,9 @@ export default function AdminPage() {
               <div className="mt-5 grid gap-3 lg:grid-cols-2">
                 {PORTFOLIO_PROGRAMS.map((program) => {
                   const visible = visibleProgramIds.includes(program.id);
-                  const programCount = portfolios.filter((portfolio) => {
-                    const course = portfolio.currentCourse || '';
-                    return course === program.name || course.includes(program.shortName) || portfolio.courseType === program.courseType;
-                  }).length;
+                  const programCount = portfolios.filter((portfolio) =>
+                    portfolioMatchesProgram(portfolio, program.id)
+                  ).length;
 
                   return (
                     <label
@@ -2196,7 +2197,11 @@ export default function AdminPage() {
                               {portfolio.contactInfoVisibleToEmployers ? '연락처 공개' : '연락처 비공개'}
                             </Badge>
                           </div>
-                          <p className="text-sm text-ink-500 truncate">{portfolio.speciality}</p>
+                          <div className="mt-1 flex flex-wrap gap-1">
+                            {splitSpecialities(portfolio.speciality).map((speciality) => (
+                              <Badge key={speciality} tone="azure">{speciality}</Badge>
+                            ))}
+                          </div>
                         </div>
                       </div>
                       <div className="flex shrink-0 space-x-1">
@@ -2256,7 +2261,7 @@ export default function AdminPage() {
                     <div className="space-y-2">
                       <div>
                         <span className="text-sm font-medium text-ink-700">전문 분야:</span>
-                        <span className="ml-2 text-sm text-ink-900">{portfolio.speciality}</span>
+                        <span className="ml-2 text-sm text-ink-900">{splitSpecialities(portfolio.speciality).join(', ')}</span>
                       </div>
                       <div>
                         <span className="text-sm font-medium text-ink-700">연락처:</span>
@@ -2324,7 +2329,7 @@ export default function AdminPage() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               transition={{ duration: 0.2 }}
-              className="fixed inset-0 bg-ink-900/30 backdrop-blur-sm flex items-center justify-center p-4 z-50"
+              className="fixed inset-0 bg-ink-900/30 backdrop-blur-sm flex items-center justify-center p-4 z-[100]"
             >
               <motion.div
                 initial={{ opacity: 0, scale: 0.96, y: 16 }}

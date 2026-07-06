@@ -45,7 +45,7 @@ export default function TutorialOverlay({ isVisible, onComplete }: TutorialOverl
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-ink-900/30 backdrop-blur-sm z-40"
+            className="fixed inset-0 bg-ink-900/30 backdrop-blur-sm z-[100]"
           />
 
           {/* 메인 환영 모달 */}
@@ -54,7 +54,7 @@ export default function TutorialOverlay({ isVisible, onComplete }: TutorialOverl
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.9, y: 20 }}
             transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-            className="fixed inset-0 flex items-center justify-center z-50 p-2 sm:p-4"
+            className="fixed inset-0 flex items-center justify-center z-[100] p-2 sm:p-4"
           >
             <div className="glass-strong rounded-4xl shadow-glass-lg p-0 max-w-lg sm:max-w-xl md:max-w-2xl w-full mx-1 sm:mx-4 overflow-hidden relative max-h-[98vh] overflow-y-auto">
               {/* 상단 azure 글래스 헤더 글로우 */}

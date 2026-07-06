@@ -28,6 +28,7 @@ import {
   normalizeUrl,
 } from '@/lib/externalPortfolioLinks';
 import { formatKoreanDate } from '@/lib/dateUtils';
+import { getYouTubeId } from '@/lib/youtube';
 
 interface UploadedDocument {
   url: string;
@@ -89,11 +90,12 @@ export default function MediaStep({ data, onChange }: MediaStepProps) {
   };
 
   const handleAddVideo = () => {
-    if (!newVideoUrl.trim()) return;
+    const url = normalizeUrl(newVideoUrl);
+    if (!url) return;
 
     const videoList = getVideoList();
     const newVideo: VideoLink = {
-      url: newVideoUrl.trim(),
+      url,
       title: newVideoTitle.trim() || '영상',
       addedAt: new Date()
     };
@@ -196,12 +198,6 @@ export default function MediaStep({ data, onChange }: MediaStepProps) {
   const removeDocument = (publicId: string) => {
     const updated = data.additionalDocuments?.filter(doc => doc.publicId !== publicId) || [];
     onChange({ ...data, additionalDocuments: updated });
-  };
-
-  const getYouTubeId = (url: string) => {
-    const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
-    const match = url.match(regExp);
-    return match && match[2].length === 11 ? match[2] : null;
   };
 
   const videoList = getVideoList();

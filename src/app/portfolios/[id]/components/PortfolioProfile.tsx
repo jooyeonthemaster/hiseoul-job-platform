@@ -8,6 +8,7 @@ import {
 import { Portfolio } from '../types/portfolio.types';
 import { Badge } from '@/components/ui/Badge';
 import { useAuth } from '@/contexts/AuthContext';
+import { splitSpecialities, getPrimarySpeciality } from '@/lib/programs';
 
 interface PortfolioProfileProps {
   portfolio: Portfolio;
@@ -16,6 +17,7 @@ interface PortfolioProfileProps {
 
 export default function PortfolioProfile({ portfolio, canViewContact = false }: PortfolioProfileProps) {
   const { userData } = useAuth();
+  const specialities = splitSpecialities(portfolio.speciality);
 
   return (
     <div className="bg-white/80 backdrop-blur-lg rounded-2xl p-8 shadow-xl border border-white/20 mb-8">
@@ -49,8 +51,25 @@ export default function PortfolioProfile({ portfolio, canViewContact = false }: 
                 <CheckBadgeIcon className="h-6 w-6 text-blue-600" />
               )}
             </div>
-            <p className="text-xl text-blue-600 font-semibold mb-2">{portfolio.speciality} 전문가</p>
-            <p className="text-gray-600 mb-3">{portfolio.experience} 경력</p>
+            {specialities.length > 1 ? (
+              <div className="mb-2 flex flex-wrap gap-1.5">
+                {specialities.map((speciality) => (
+                  <Badge key={speciality} tone="azure">{speciality}</Badge>
+                ))}
+              </div>
+            ) : (
+              <p className="text-xl text-blue-600 font-semibold mb-2">
+                {getPrimarySpeciality(portfolio.speciality)} 전문가
+              </p>
+            )}
+            {/* 값 자체가 '경력'/'신입' 같은 라벨인 경우 '경력 경력' 중복 표기를 방지 */}
+            {portfolio.experience && (
+              <p className="text-gray-600 mb-3">
+                {String(portfolio.experience).endsWith('경력') || String(portfolio.experience) === '신입'
+                  ? portfolio.experience
+                  : `${portfolio.experience} 경력`}
+              </p>
+            )}
             
             {/* 연락처 정보 */}
             <div className="flex flex-wrap gap-4 text-sm text-gray-600">
@@ -80,13 +99,16 @@ export default function PortfolioProfile({ portfolio, canViewContact = false }: 
           </div>
         </div>
 
-        {/* 프로젝트 수 (관리자 중개형: 상대 선택을 시사하는 관심 인재 버튼은 표시하지 않음) */}
-        <div className="flex flex-col items-end space-y-4">
-          <div className="text-center">
-            <div className="text-2xl font-bold text-blue-600">{portfolio.projects}</div>
-            <div className="text-sm text-gray-600">완료 프로젝트</div>
+        {/* 프로젝트 수 — 0건이면 표시하지 않는다(의미 없는 숫자 노출 방지).
+            관리자 중개형: 상대 선택을 시사하는 관심 인재 버튼은 표시하지 않음 */}
+        {portfolio.projects > 0 && (
+          <div className="flex flex-col items-end space-y-4">
+            <div className="text-center">
+              <div className="text-2xl font-bold text-blue-600">{portfolio.projects}</div>
+              <div className="text-sm text-gray-600">완료 프로젝트</div>
+            </div>
           </div>
-        </div>
+        )}
       </div>
 
       {/* 소개 */}

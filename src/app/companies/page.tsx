@@ -415,7 +415,7 @@ export default function CompaniesPage() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
-            className="fixed inset-0 bg-ink-900/30 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+            className="fixed inset-0 bg-ink-900/30 backdrop-blur-sm flex items-center justify-center z-[100] p-4"
             onClick={() => setShowLoginModal(false)}
           >
             <motion.div
@@ -462,7 +462,7 @@ export default function CompaniesPage() {
                 <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-glass p-1">
                   <img
                     src="/images/logo.png"
-                    alt="면접심사 매칭 플랫폼 Logo"
+                    alt="구직자 · 구인기업 면접심사 매칭 플랫폼 Logo"
                     className="w-full h-full object-contain"
                   />
                 </div>
@@ -476,7 +476,6 @@ export default function CompaniesPage() {
             <div>
               <h3 className="font-bold mb-6 text-lg text-white">서비스</h3>
               <ul className="space-y-3 text-ink-300">
-                <li><Link href="/portfolios" className="hover:text-azure-300 transition-colors text-lg">포트폴리오</Link></li>
                 <li><Link href="/companies" className="hover:text-azure-300 transition-colors text-lg">기업정보</Link></li>
                 <li><span className="text-ink-400 text-lg cursor-not-allowed">AI 매칭 (준비중)</span></li>
               </ul>

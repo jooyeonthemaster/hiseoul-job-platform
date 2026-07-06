@@ -33,53 +33,30 @@ export default function Navigation() {
 
   useEffect(() => {
     const loadApprovalStatus = async () => {
-      console.log('🔍 Navigation - loadApprovalStatus 시작');
-      console.log('📋 Navigation - user:', !!user);
-      console.log('📋 Navigation - userData:', userData);
-      console.log('📋 Navigation - authLoading:', authLoading);
-
       if (!authLoading && userData) {
-        console.log('👤 Navigation - userRole:', userData.role);
-
         // 기업 사용자인 경우 승인 상태도 로드
         if (userData.role === 'employer') {
-          console.log('🏢 Navigation - 기업 사용자 감지, 승인 상태 확인 중');
           try {
             const status = await checkEmployerApprovalStatus(user!.uid);
-            console.log('🏢 Navigation - 승인 상태:', status);
             setApprovalStatus(status);
           } catch (error) {
-            console.error('❌ Navigation - Error loading approval status:', error);
+            console.error('Navigation - Error loading approval status:', error);
             setApprovalStatus(null);
           }
         } else {
           setApprovalStatus(null);
         }
       } else {
-        console.log('🚫 Navigation - 사용자 데이터 없음 또는 로딩 중');
         setApprovalStatus(null);
       }
 
       setLoading(false);
-      console.log('✅ Navigation - loadApprovalStatus 완료');
     };
 
     loadApprovalStatus();
   }, [user, userData, authLoading]);
 
-  // 추가 디버깅 로그
-  console.log('🎯 Navigation 렌더링 상태:', {
-    user: !!user,
-    userData,
-    userRole: userData?.role,
-    hasAdminAccess,
-    approvalStatus,
-    authLoading,
-    loading
-  });
-
   if (authLoading || loading) {
-    console.log('⏳ Navigation - 로딩 중');
     return null;
   }
 
@@ -113,17 +90,20 @@ export default function Navigation() {
           <Link href="/" className="flex min-w-0 items-center group">
             <img
               src="/images/logo.png"
-              alt="면접심사 매칭 플랫폼 Logo"
+              alt="구직자 · 구인기업 면접심사 매칭 플랫폼 Logo"
               className="h-8 w-auto max-w-[10.75rem] object-contain group-hover:scale-105 transition-all duration-300 sm:h-10 sm:max-w-none"
             />
           </Link>
 
           {/* 데스크톱 메인 네비게이션 */}
           <nav className="hidden md:flex items-center gap-1">
-            <Link href="/portfolios" className={navLinkClass}>
-              <DocumentTextIcon className="w-5 h-5 group-hover:scale-110 transition-transform duration-200" />
-              <span>포트폴리오</span>
-            </Link>
+            {/* 포트폴리오 둘러보기는 기업회원·관리자만 (비로그인/구직자에게는 미노출) */}
+            {(userData?.role === 'employer' || hasAdminAccess) && (
+              <Link href="/portfolios" className={navLinkClass}>
+                <DocumentTextIcon className="w-5 h-5 group-hover:scale-110 transition-transform duration-200" />
+                <span>포트폴리오</span>
+              </Link>
+            )}
             <Link href="/companies" className={navLinkClass}>
               <BuildingOffice2Icon className="w-5 h-5 group-hover:scale-110 transition-transform duration-200" />
               <span>기업정보</span>
@@ -254,14 +234,17 @@ export default function Navigation() {
               transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
               className="md:hidden overflow-hidden border-t border-white/50 mt-2 space-y-2 pb-4 pt-3"
             >
-              <Link
-                href="/portfolios"
-                className="flex items-center gap-3 px-4 py-3 text-ink-600 hover:bg-azure-50/70 hover:text-azure-700 rounded-xl transition-colors"
-                onClick={() => setIsMobileMenuOpen(false)}
-              >
-                <DocumentTextIcon className="w-5 h-5" />
-                <span>포트폴리오</span>
-              </Link>
+              {/* 포트폴리오 둘러보기는 기업회원·관리자만 (비로그인/구직자에게는 미노출) */}
+              {(userData?.role === 'employer' || hasAdminAccess) && (
+                <Link
+                  href="/portfolios"
+                  className="flex items-center gap-3 px-4 py-3 text-ink-600 hover:bg-azure-50/70 hover:text-azure-700 rounded-xl transition-colors"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
+                  <DocumentTextIcon className="w-5 h-5" />
+                  <span>포트폴리오</span>
+                </Link>
+              )}
               <Link
                 href="/companies"
                 className="flex items-center gap-3 px-4 py-3 text-ink-600 hover:bg-azure-50/70 hover:text-azure-700 rounded-xl transition-colors"

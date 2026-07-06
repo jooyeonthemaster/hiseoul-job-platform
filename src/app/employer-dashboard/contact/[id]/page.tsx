@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
-import { getUserData, getEmployerInfo, getPortfolio } from '@/lib/auth';
+import { getUserData, getEmployerWithApprovalStatus, getPortfolio } from '@/lib/auth';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { motion } from 'framer-motion';
@@ -15,7 +15,10 @@ import {
   BriefcaseIcon,
   CurrencyDollarIcon,
   DocumentTextIcon,
-  CheckCircleIcon
+  CheckCircleIcon,
+  CalendarDaysIcon,
+  MapPinIcon,
+  XCircleIcon
 } from '@heroicons/react/24/outline';
 import { handleJobInquiryCreate } from '@/lib/googleSheetsIntegration';
 import { AuroraBackground } from '@/components/ui/AuroraBackground';
@@ -24,6 +27,7 @@ import { GlassButton } from '@/components/ui/GlassButton';
 import { GlassInput, GlassTextarea, GlassSelect } from '@/components/ui/GlassField';
 import { Badge } from '@/components/ui/Badge';
 import { ScrollReveal } from '@/components/ui/ScrollReveal';
+import { splitSpecialities } from '@/lib/programs';
 
 interface InquiryForm {
   proposedPosition: string;
@@ -37,6 +41,7 @@ interface InquiryForm {
   recruiterPosition: string;
   recruiterPhone: string;
   recruiterEmail: string;
+  matchingDayAttendance: 'attend' | 'unavailable';
 }
 
 export default function ContactJobSeeker() {
@@ -51,6 +56,7 @@ export default function ContactJobSeeker() {
   const [error, setError] = useState('');
   const [portfolio, setPortfolio] = useState<any>(null);
   const [companyInfo, setCompanyInfo] = useState<any>(null);
+  const [approvalBlocked, setApprovalBlocked] = useState(false);
 
   const [form, setForm] = useState<InquiryForm>({
     proposedPosition: '',
@@ -63,7 +69,8 @@ export default function ContactJobSeeker() {
     recruiterName: '',
     recruiterPosition: '',
     recruiterPhone: '',
-    recruiterEmail: ''
+    recruiterEmail: '',
+    matchingDayAttendance: 'attend'
   });
 
   useEffect(() => {
@@ -82,13 +89,19 @@ export default function ContactJobSeeker() {
           return;
         }
 
-        // 기업 정보 가져오기
-        const employerData = await getEmployerInfo(user.uid);
-        if (!employerData || !employerData.company?.name) {
+        // 기업 정보 + 승인 상태 확인
+        const employerData = await getEmployerWithApprovalStatus(user.uid);
+        if (!employerData || !(employerData as any).company?.name) {
           router.push('/employer-setup');
           return;
         }
-        setCompanyInfo(employerData.company);
+        // 승인 게이트: 미승인 기업은 채용 신청서를 작성할 수 없다 (포트폴리오 열람 정책과 동일)
+        if (employerData.approvalStatus !== 'approved') {
+          setApprovalBlocked(true);
+          setLoading(false);
+          return;
+        }
+        setCompanyInfo((employerData as any).company);
 
         // 포트폴리오 정보 가져오기
         const portfolioData = await getPortfolio(portfolioId);
@@ -150,6 +163,9 @@ export default function ContactJobSeeker() {
         workType: form.workType,
         benefits: form.benefits,
 
+        // 매칭데이(7/22) 참석 여부
+        matchingDayAttendance: form.matchingDayAttendance,
+
         // 기업 정보 스냅샷
         companyInfo: {
           name: companyInfo.name,
@@ -192,6 +208,7 @@ export default function ContactJobSeeker() {
           workingHours: form.workingHours,
           workType: form.workType,
           benefits: form.benefits,
+          matchingDayAttendance: form.matchingDayAttendance,
           recruiterName: form.recruiterName,
           recruiterPosition: form.recruiterPosition,
           recruiterPhone: form.recruiterPhone,
@@ -281,6 +298,34 @@ export default function ContactJobSeeker() {
     );
   }
 
+  if (approvalBlocked) {
+    return (
+      <div className="relative min-h-screen flex items-center justify-center overflow-hidden px-5">
+        <AuroraBackground />
+        <GlassCard strong className="relative w-full max-w-md p-10 text-center">
+          <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-3xl border border-honey-400/40 bg-honey-100">
+            <CalendarDaysIcon className="h-8 w-8 text-honey-600" />
+          </div>
+          <h2 className="font-display text-2xl font-bold tracking-tight text-ink-900">
+            기업 승인 후 작성할 수 있습니다
+          </h2>
+          <p className="mt-3 text-sm leading-relaxed text-ink-500">
+            채용 신청서는 관리자의 기업 승인이 완료된 뒤 제출할 수 있습니다. 승인이 완료되면 다시 시도해주세요.
+          </p>
+          <GlassButton
+            type="button"
+            variant="primary"
+            size="md"
+            className="mt-6 w-full"
+            onClick={() => router.push('/employer-dashboard')}
+          >
+            대시보드로 돌아가기
+          </GlassButton>
+        </GlassCard>
+      </div>
+    );
+  }
+
   if (!portfolio || !companyInfo) {
     return (
       <div className="relative min-h-screen flex items-center justify-center overflow-hidden px-5">
@@ -321,10 +366,10 @@ export default function ContactJobSeeker() {
               <CheckCircleIcon className="w-12 h-12 text-mint-500" />
             </span>
             <h2 className="font-display font-bold tracking-tight text-2xl md:text-3xl text-ink-900 mb-3">
-              채용 제안이 발송되었습니다!
+              채용 신청서가 접수되었습니다
             </h2>
             <p className="text-ink-500 leading-relaxed mb-5">
-              {portfolio.name}님에게 채용 제안이 전송되었습니다.
+              관리자 검토 후 7월 20일 면접 안내와 7월 22일(수) 매칭데이 일정을 조율해 드립니다.
             </p>
             <p className="text-sm text-ink-400">
               잠시 후 대시보드로 이동합니다...
@@ -346,10 +391,10 @@ export default function ContactJobSeeker() {
               <div>
                 <span className="mb-3 inline-flex items-center gap-2 rounded-full border border-white/70 bg-white/60 px-4 py-1.5 text-xs font-semibold tracking-wide text-azure-700 shadow-glass-sm backdrop-blur-md">
                   <span className="w-1.5 h-1.5 rounded-full bg-azure-500 animate-pulse" />
-                  채용 제안
+                  채용 신청서
                 </span>
                 <h1 className="mb-3 font-display text-3xl font-bold tracking-tight text-ink-900 md:text-4xl">
-                  채용 제안하기
+                  채용 신청서 작성
                 </h1>
                 <div className="flex flex-wrap items-center gap-3 text-ink-500">
                   <span className="inline-flex items-center gap-2">
@@ -358,9 +403,9 @@ export default function ContactJobSeeker() {
                     </span>
                     <span className="font-medium text-ink-700">{portfolio.name}</span>
                   </span>
-                  {portfolio.speciality && (
-                    <Badge tone="azure">{portfolio.speciality}</Badge>
-                  )}
+                  {splitSpecialities(portfolio.speciality).map((speciality) => (
+                    <Badge key={speciality} tone="azure">{speciality}</Badge>
+                  ))}
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-3 text-sm sm:flex sm:items-center">
@@ -370,7 +415,7 @@ export default function ContactJobSeeker() {
                 </div>
                 <div className="rounded-2xl border border-white/70 bg-white/55 px-4 py-3 shadow-glass-sm">
                   <div className="text-xs font-semibold text-ink-400">전문분야</div>
-                  <div className="mt-1 max-w-[12rem] truncate font-bold text-ink-900">{portfolio.speciality || '-'}</div>
+                  <div className="mt-1 max-w-[12rem] truncate font-bold text-ink-900">{splitSpecialities(portfolio.speciality).join(', ') || '-'}</div>
                 </div>
               </div>
             </div>
@@ -418,27 +463,39 @@ export default function ContactJobSeeker() {
                 <span className="flex h-9 w-9 items-center justify-center rounded-2xl bg-azure-500 text-white shadow-glow">
                   <UserIcon className="w-5 h-5" />
                 </span>
-                제안 대상
+                신청 대상
               </h3>
               <div className="space-y-4">
                 <div>
                   <div className="text-2xl font-bold tracking-tight text-ink-900">{portfolio.name}</div>
                   <div className="mt-2 flex flex-wrap gap-2">
-                    {portfolio.speciality && <Badge tone="azure">{portfolio.speciality}</Badge>}
+                    {splitSpecialities(portfolio.speciality).map((speciality) => (
+                      <Badge key={speciality} tone="azure">{speciality}</Badge>
+                    ))}
                     {portfolio.currentCourse && <Badge tone="mint">{portfolio.currentCourse}</Badge>}
                   </div>
                 </div>
                 <div className="grid gap-2 border-t border-ink-100 pt-4 text-sm text-ink-500">
-                  {portfolio.email && (
-                    <div className="flex min-w-0 items-center gap-2">
-                      <EnvelopeIcon className="h-4 w-4 flex-shrink-0 text-azure-500" />
-                      <span className="truncate">{portfolio.email}</span>
-                    </div>
-                  )}
-                  {portfolio.phone && (
-                    <div className="flex min-w-0 items-center gap-2">
-                      <PhoneIcon className="h-4 w-4 flex-shrink-0 text-azure-500" />
-                      <span className="truncate">{portfolio.phone}</span>
+                  {/* REQ2 (관리자 중개형): 관리자 승인 전에는 기업에게 구직자 연락처를 비공개한다. */}
+                  {portfolio.contactInfoVisibleToEmployers === true ? (
+                    <>
+                      {portfolio.email && (
+                        <div className="flex min-w-0 items-center gap-2">
+                          <EnvelopeIcon className="h-4 w-4 flex-shrink-0 text-azure-500" />
+                          <span className="truncate">{portfolio.email}</span>
+                        </div>
+                      )}
+                      {portfolio.phone && (
+                        <div className="flex min-w-0 items-center gap-2">
+                          <PhoneIcon className="h-4 w-4 flex-shrink-0 text-azure-500" />
+                          <span className="truncate">{portfolio.phone}</span>
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <div className="inline-flex w-fit items-center gap-1.5 rounded-full border border-ink-100 bg-white/70 px-3 py-1 text-ink-500">
+                      <EnvelopeIcon className="h-4 w-4 flex-shrink-0" />
+                      <span>관리자 승인 전 연락처 비공개</span>
                     </div>
                   )}
                 </div>
@@ -453,6 +510,111 @@ export default function ContactJobSeeker() {
                 {error}
               </div>
             )}
+
+            {/* 매칭데이 안내 + 참석 여부 */}
+            <GlassCard className="p-5 md:p-6 xl:col-span-2">
+              <div className="space-y-5">
+                <h3 className="flex items-center gap-2.5 text-lg font-semibold text-ink-900">
+                  <span className="flex h-9 w-9 items-center justify-center rounded-2xl bg-azure-500 text-white shadow-glow">
+                    <CalendarDaysIcon className="w-5 h-5" />
+                  </span>
+                  매칭데이 안내
+                </h3>
+
+                <div className="space-y-3 rounded-2xl border border-azure-100 bg-azure-50/40 p-5">
+                  <p className="text-[15px] leading-7 text-ink-600 break-keep">
+                    채용 기업과 구직자 간의 뜻깊은 만남이 이루어지는{' '}
+                    <strong className="font-bold text-azure-700">&lsquo;매칭데이&rsquo;</strong> 행사가 개최됩니다.
+                    <br className="hidden md:block" />
+                    {' '}원활한 면접 진행을 위해 바쁘시더라도 행사장에 직접 방문하시어 자리를 빛내주시기를 부탁드립니다.
+                  </p>
+                  <p className="text-[15px] leading-7 text-ink-600 break-keep">
+                    부득이한 사정으로 <strong className="font-bold text-ink-900">7월 22일(수)</strong> 행사 참석이
+                    어려우신 경우, 원활한 일정 조율을 위해 아래의{' '}
+                    <strong className="rounded-md bg-coral-100/80 px-1.5 py-0.5 font-bold text-coral-600">참석 불가</strong>{' '}
+                    항목에 체크해 주시기 바랍니다.
+                  </p>
+                </div>
+
+                {/* 일정 / 장소 */}
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="flex items-start gap-3 rounded-2xl bg-azure-50/50 px-4 py-3">
+                    <CalendarDaysIcon className="mt-0.5 h-5 w-5 flex-shrink-0 text-azure-500" />
+                    <div className="min-w-0">
+                      <div className="text-xs font-medium text-ink-400">일정</div>
+                      <div className="mt-0.5 font-semibold text-ink-900">7월 22일(수)</div>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-3 rounded-2xl bg-azure-50/50 px-4 py-3">
+                    <MapPinIcon className="mt-0.5 h-5 w-5 flex-shrink-0 text-azure-500" />
+                    <div className="min-w-0">
+                      <div className="text-xs font-medium text-ink-400">장소</div>
+                      <div className="mt-0.5 font-semibold text-ink-900">서울특별시 영등포구 영등포로 33, 5층 스타트런 행사장</div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 참석 여부 선택 (필수) — 라디오 성격의 단일 선택 */}
+                <div>
+                  <label className="block text-sm font-medium text-ink-700 mb-2">
+                    매칭데이(7/22) 참석 여부 *
+                  </label>
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    <motion.button
+                      type="button"
+                      onClick={() => setForm({ ...form, matchingDayAttendance: 'attend' })}
+                      whileTap={{ scale: 0.98 }}
+                      aria-pressed={form.matchingDayAttendance === 'attend'}
+                      className={`flex items-start gap-3 rounded-2xl border p-4 text-left transition-all duration-200 ${
+                        form.matchingDayAttendance === 'attend'
+                          ? 'border-mint-400 bg-mint-100/50 shadow-glass-sm'
+                          : 'border-white/70 bg-white/55 backdrop-blur-md hover:bg-white/80'
+                      }`}
+                    >
+                      <CheckCircleIcon
+                        className={`mt-0.5 h-6 w-6 flex-shrink-0 ${
+                          form.matchingDayAttendance === 'attend' ? 'text-mint-500' : 'text-ink-300'
+                        }`}
+                      />
+                      <div>
+                        <div className={`font-semibold ${form.matchingDayAttendance === 'attend' ? 'text-mint-600' : 'text-ink-700'}`}>
+                          참석 가능
+                        </div>
+                        <div className="mt-1 text-xs leading-relaxed text-ink-500">
+                          7월 22일(수) 행사장에 방문해 면접을 진행하겠습니다
+                        </div>
+                      </div>
+                    </motion.button>
+
+                    <motion.button
+                      type="button"
+                      onClick={() => setForm({ ...form, matchingDayAttendance: 'unavailable' })}
+                      whileTap={{ scale: 0.98 }}
+                      aria-pressed={form.matchingDayAttendance === 'unavailable'}
+                      className={`flex items-start gap-3 rounded-2xl border p-4 text-left transition-all duration-200 ${
+                        form.matchingDayAttendance === 'unavailable'
+                          ? 'border-coral-400 bg-coral-100/60 shadow-glass-sm'
+                          : 'border-white/70 bg-white/55 backdrop-blur-md hover:bg-white/80'
+                      }`}
+                    >
+                      <XCircleIcon
+                        className={`mt-0.5 h-6 w-6 flex-shrink-0 ${
+                          form.matchingDayAttendance === 'unavailable' ? 'text-coral-500' : 'text-ink-300'
+                        }`}
+                      />
+                      <div>
+                        <div className={`font-semibold ${form.matchingDayAttendance === 'unavailable' ? 'text-coral-600' : 'text-ink-700'}`}>
+                          참석 불가
+                        </div>
+                        <div className="mt-1 text-xs leading-relaxed text-ink-500">
+                          부득이한 사정으로 참석이 어려워 일정 조율이 필요합니다
+                        </div>
+                      </div>
+                    </motion.button>
+                  </div>
+                </div>
+              </div>
+            </GlassCard>
 
             {/* 채용 정보 */}
             <GlassCard className="p-5 md:p-6 xl:col-span-2">
@@ -633,7 +795,7 @@ export default function ContactJobSeeker() {
                   <span className="flex h-9 w-9 items-center justify-center rounded-2xl bg-azure-500 text-white shadow-glow">
                     <DocumentTextIcon className="w-5 h-5" />
                   </span>
-                  채용 제안 메시지
+                  채용 신청 메시지
                 </h3>
 
                 <div className="flex min-h-0 flex-1 flex-col">
@@ -658,8 +820,13 @@ ${portfolio.name}님의 경험과 역량이 저희 회사에서 큰 역할을 �
               </div>
             </GlassCard>
 
-            {/* 제출 버튼 */}
-            <div className="flex justify-end gap-3 rounded-3xl border border-white/70 bg-white/70 p-3 shadow-glass backdrop-blur-xl xl:col-span-2">
+            {/* 제출 바 — 좌측 안내 + 우측 액션, 폼 그리드 전폭에 정렬 */}
+            <div className="flex flex-col gap-4 rounded-3xl border border-white/70 bg-white/70 px-5 py-4 shadow-glass backdrop-blur-xl sm:flex-row sm:items-center sm:justify-between xl:col-span-2">
+              <p className="flex items-center gap-2 text-sm text-ink-500 break-keep">
+                <CalendarDaysIcon className="h-4 w-4 shrink-0 text-azure-500" />
+                제출된 신청서는 관리자 검토 후 <strong className="font-semibold text-ink-700">7월 22일(수) 매칭데이</strong> 면접 일정으로 조율됩니다
+              </p>
+              <div className="flex shrink-0 justify-end gap-3">
               <GlassButton
                 type="button"
                 variant="secondary"
@@ -677,15 +844,16 @@ ${portfolio.name}님의 경험과 역량이 저희 회사에서 큰 역할을 �
                 {sending ? (
                   <>
                     <div className="animate-spin rounded-full h-5 w-5 border-2 border-white/40 border-t-white" />
-                    발송 중...
+                    제출 중...
                   </>
                 ) : (
                   <>
                     <EnvelopeIcon className="w-5 h-5" />
-                    채용 제안 발송
+                    채용 신청서 제출
                   </>
                 )}
               </GlassButton>
+              </div>
             </div>
           </div>
         </motion.form>

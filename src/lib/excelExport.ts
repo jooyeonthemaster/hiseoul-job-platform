@@ -5,6 +5,8 @@
 //    isAdmin() catch-all 로 전체 컬렉션 조회가 허용된다.
 //  - 선택 기록 = 기업→구직자(채용제안 jobInquiries, 관심인재 likes/favoriteTalents)
 //                + 구직자→기업(관심기업 favoriteCompanies)
+//  - 주의: likes 컬렉션은 현재 UI 미사용(레거시). 관심인재의 실제 소스는
+//          users.favoriteTalents 이며, likes 는 하위 호환 보완용으로만 병합한다.
 // ════════════════════════════════════════════════════════════════
 import * as XLSX from 'xlsx';
 import { collection, getDocs } from 'firebase/firestore';
@@ -53,6 +55,32 @@ function courseTypeLabel(courseType: any): string {
   if (courseType === 'domestic') return '내국인';
   if (courseType === 'foreign') return '외국인';
   return '';
+}
+
+/**
+ * 자기소개를 '제목: 내용' 개행 형식의 단일 문자열로 합침.
+ * - 커스텀 섹션 모드: sections 를 order 순 정렬 후 join
+ * - 레거시 모드: 4개 필드(지원동기/성격/경험/포부)를 동일 형식으로 합침
+ */
+function buildSelfIntroFull(intro: any): string {
+  if (!intro || typeof intro !== 'object') return '';
+  if (intro.useCustomSections && Array.isArray(intro.sections) && intro.sections.length > 0) {
+    return [...intro.sections]
+      .sort((a: any, b: any) => (a?.order ?? 0) - (b?.order ?? 0))
+      .filter((s: any) => (s?.title && String(s.title).trim()) || (s?.content && String(s.content).trim()))
+      .map((s: any) => `${String(s?.title || '').trim()}: ${String(s?.content || '').trim()}`)
+      .join('\n');
+  }
+  // 레거시 4필드를 동일 형식으로 합침
+  return ([
+    ['지원동기', intro.motivation],
+    ['성격의 장단점', intro.personality],
+    ['경험', intro.experience],
+    ['입사 후 포부', intro.aspiration],
+  ] as Array<[string, any]>)
+    .filter(([, v]) => v && String(v).trim())
+    .map(([label, v]) => `${label}: ${String(v).trim()}`)
+    .join('\n');
 }
 
 async function snapshotToMap(collectionName: string): Promise<Map<string, any>> {
@@ -108,6 +136,7 @@ function buildJobseekerRows(data: Awaited<ReturnType<typeof fetchAll>>) {
       '자기소개_성격': intro.personality || '',
       '자기소개_경험': intro.experience || '',
       '자기소개_포부': intro.aspiration || '',
+      '자기소개_전체': buildSelfIntroFull(intro),
       '자기소개영상': joinArr(p.introVideos || portfolio?.introVideos) || p.introVideo || portfolio?.introVideo || '',
       '포트폴리오PDF': joinArr((p.portfolioPdfs || portfolio?.portfolioPdfs || []).map((f: any) => f.fileName)),
       '공개여부': portfolio ? (portfolio.isHidden ? '숨김' : '공개') : '',
@@ -179,6 +208,7 @@ function buildSelectionRows(data: Awaited<ReturnType<typeof fetchAll>>) {
   const statusLabel: Record<string, string> = {
     sent: '발송됨', read: '읽음', responded: '응답함', accepted: '수락됨', rejected: '거절됨',
   };
+  const attendanceLabel: Record<string, string> = { attend: '참석 가능', unavailable: '참석 불가' };
 
   // 회사명 조회 헬퍼 (employerId 는 users 문서ID == employers.userId)
   const companyNameByUserId = new Map<string, string>();
@@ -199,6 +229,7 @@ function buildSelectionRows(data: Awaited<ReturnType<typeof fetchAll>>) {
       '제안직무': iq.proposedPosition || '',
       '제안급여': iq.proposedSalary || '',
       '상태': statusLabel[iq.status] || iq.status || '',
+      '매칭데이참석': attendanceLabel[iq.matchingDayAttendance] || '',
       '메시지': (iq.message || '').slice(0, 500),
       '일시': fmtDate(iq.sentAt),
     });
@@ -215,6 +246,7 @@ function buildSelectionRows(data: Awaited<ReturnType<typeof fetchAll>>) {
       '제안직무': '',
       '제안급여': '',
       '상태': '',
+      '매칭데이참석': '',
       '메시지': '',
       '일시': fmtDate(lk.createdAt),
     });
@@ -229,7 +261,7 @@ function buildSelectionRows(data: Awaited<ReturnType<typeof fetchAll>>) {
         '기업담당자': u.name || '',
         '구직자명': userName(talentId),
         '구직자이메일': userEmail(talentId),
-        '제안직무': '', '제안급여': '', '상태': '', '메시지': '',
+        '제안직무': '', '제안급여': '', '상태': '', '매칭데이참석': '', '메시지': '',
         '일시': '',
       });
     });
@@ -240,7 +272,7 @@ function buildSelectionRows(data: Awaited<ReturnType<typeof fetchAll>>) {
         '기업담당자': '',
         '구직자명': u.name || userName(uid),
         '구직자이메일': u.email || userEmail(uid),
-        '제안직무': '', '제안급여': '', '상태': '', '메시지': '',
+        '제안직무': '', '제안급여': '', '상태': '', '매칭데이참석': '', '메시지': '',
         '일시': '',
       });
     });

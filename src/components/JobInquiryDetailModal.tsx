@@ -24,6 +24,7 @@ interface JobInquiry {
   workingHours: string;
   workType: string;
   benefits: string[];
+  matchingDayAttendance?: 'attend' | 'unavailable';
   companyInfo: {
     name: string;
     ceoName: string;
@@ -139,7 +140,7 @@ export default function JobInquiryDetailModal({
   return (
     <AnimatePresence>
       <motion.div
-        className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-ink-900/30 backdrop-blur-sm"
+        className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 bg-ink-900/30 backdrop-blur-sm"
         initial={reduce ? undefined : { opacity: 0 }}
         animate={reduce ? undefined : { opacity: 1 }}
         exit={reduce ? undefined : { opacity: 0 }}
@@ -267,6 +268,19 @@ export default function JobInquiryDetailModal({
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <FactCard label="제안 급여" value={inquiry.proposedSalary} emphasis />
                         <FactCard label="근무 시간" value={inquiry.workingHours} />
+                      </div>
+                      {/* 매칭데이(7/22) 참석 여부 — 관리자 열람용 */}
+                      <div className="rounded-2xl border border-white/70 bg-white/65 backdrop-blur-md px-4 py-3 shadow-glass-sm">
+                        <p className="text-xs font-semibold text-ink-400">매칭데이(7/22) 참석</p>
+                        <div className="mt-1.5">
+                          {inquiry.matchingDayAttendance === 'attend' ? (
+                            <Badge tone="mint">참석 가능</Badge>
+                          ) : inquiry.matchingDayAttendance === 'unavailable' ? (
+                            <Badge tone="coral">참석 불가</Badge>
+                          ) : (
+                            <Badge tone="neutral">미응답(구버전 신청서)</Badge>
+                          )}
+                        </div>
                       </div>
                     </div>
                   </div>

@@ -15,6 +15,7 @@ import SelfIntroduction from './components/PortfolioContent/SelfIntroduction';
 import ExternalPortfolioLinks from './components/PortfolioContent/ExternalPortfolioLinks';
 import PDFImageViewer from '@/components/PDFImageViewer';
 import { DocumentList } from '@/components/DocumentUpload';
+import { getYouTubeId } from '@/lib/youtube';
 
 // UI 프리미티브
 import { GlassButton } from '@/components/ui/GlassButton';
@@ -111,12 +112,17 @@ export default function PortfolioDetailPage() {
     (userData?.role === 'employer' && portfolio.contactInfoVisibleToEmployers === true);
 
   // 정상적인 포트폴리오 렌더링
+  // overflow-hidden 은 sticky 헤더를 무력화하므로 x축 clip 만 적용
   return (
-    <div className="relative min-h-screen overflow-hidden bg-azure-mist">
+    <div className="relative min-h-screen overflow-x-clip bg-azure-mist">
       <AuroraBackground />
 
       <div className="relative z-10">
-        <PortfolioHeader portfolioName={portfolio.name} />
+        <PortfolioHeader
+          portfolioName={portfolio.name}
+          portfolioId={portfolioId}
+          canApply={userData?.role === 'employer'}
+        />
 
         <div className="mx-auto w-full max-w-[1680px] px-4 sm:px-6 lg:px-8 xl:px-10 2xl:px-12 py-12 md:py-16 lg:py-20">
           <ScrollReveal>
@@ -159,12 +165,6 @@ export default function PortfolioDetailPage() {
                     </div>
                     <div className="space-y-6">
                       {portfolio.mediaContent.map((media, index) => {
-                        const getYouTubeId = (url: string) => {
-                          const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
-                          const match = url.match(regExp);
-                          return match && match[2].length === 11 ? match[2] : null;
-                        };
-
                         const youtubeId = getYouTubeId(media.url);
 
                         return (

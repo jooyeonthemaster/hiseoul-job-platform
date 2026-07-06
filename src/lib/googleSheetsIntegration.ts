@@ -97,6 +97,7 @@ export async function handleJobInquiryCreate(inquiryData: any) {
       workingHours: inquiryData.workingHours,
       workType: inquiryData.workType || inquiryData.employmentType,
       benefits: inquiryData.benefits || [], // 배열 그대로 전송
+      matchingDayAttendance: inquiryData.matchingDayAttendance || '', // 매칭데이 참석 여부('attend'|'unavailable'|'')
       recruiterName: inquiryData.recruiterInfo?.name || inquiryData.recruiterName || '',
       recruiterPosition: inquiryData.recruiterInfo?.position || inquiryData.recruiterPosition || '',
       recruiterPhone: inquiryData.recruiterInfo?.phone || inquiryData.recruiterPhone || '',

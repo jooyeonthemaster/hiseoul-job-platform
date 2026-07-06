@@ -46,7 +46,7 @@ export default function ProfileEditModal({
   return (
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-50 overflow-y-auto">
+        <div className="fixed inset-0 z-[100] overflow-y-auto">
           <div className="flex min-h-full items-center justify-center p-4 sm:p-6">
             {/* 오버레이 */}
             <motion.div

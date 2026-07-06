@@ -365,15 +365,15 @@ const createEmailTemplate = (data: any) => {
                     위 연락처로 직접 연락하시거나, 면접심사 매칭 플랫폼을 통해 응답해주세요.
                 </p>
                 <a href="${process.env.NEXT_PUBLIC_SITE_URL || 'https://techventure-job-matching.vercel.app'}" class="cta-button">
-                    HiSeoul에서 응답하기
+                    면접심사 매칭 플랫폼에서 응답하기
                 </a>
             </div>
         </div>
 
         <!-- 푸터 -->
         <div class="footer">
-            <div class="footer-logo">HiSeoul Job Platform</div>
-            <p>이 이메일은 HiSeoul Job Platform 자동 알림 시스템에서 발송되었습니다.</p>
+            <div class="footer-logo">면접심사 매칭 플랫폼</div>
+            <p>이 이메일은 면접심사 매칭 플랫폼 자동 알림 시스템에서 발송되었습니다.</p>
             <p style="font-size: 12px; margin-top: 15px;">
                 시간: ${new Date().toLocaleString('ko-KR', { 
                     year: 'numeric', 
@@ -417,7 +417,7 @@ export async function POST(request: NextRequest) {
     } = body;
 
     // 이메일 제목 생성
-    const emailSubject = subject || `[HiSeoul] ${companyName}에서 ${jobSeekerName}님께 채용 제안을 드립니다`;
+    const emailSubject = subject || `[면접심사 매칭 플랫폼] ${companyName}에서 ${jobSeekerName}님께 채용 제안을 드립니다`;
 
     // HTML 이메일 템플릿 생성
     const htmlContent = createEmailTemplate({
@@ -469,7 +469,7 @@ ${recruiterEmail ? `- 이메일: ${recruiterEmail}` : ''}
 관심이 있으시다면 언제든 연락주세요!
 
 --
-이 이메일은 HiSeoul Job Platform 자동 알림 시스템에서 발송되었습니다.
+이 이메일은 면접심사 매칭 플랫폼 자동 알림 시스템에서 발송되었습니다.
 시간: ${new Date().toLocaleString('ko-KR', { 
       year: 'numeric', 
       month: 'long', 

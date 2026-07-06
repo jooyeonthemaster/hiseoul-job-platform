@@ -13,6 +13,9 @@ import {
   UserIcon,
   BuildingOfficeIcon,
   ArrowRightIcon,
+  CalendarDaysIcon,
+  ClockIcon,
+  MapPinIcon,
 } from '@heroicons/react/24/outline';
 import { AuroraBackground } from '@/components/ui/AuroraBackground';
 import { GlassButton } from '@/components/ui/GlassButton';
@@ -260,6 +263,40 @@ function AuthContent() {
               {mode === 'reset' && '돌아가기'}
             </span>
           </p>
+
+          {/* 기업 회원가입 시 매칭데이 행사 안내 */}
+          {mode === 'signup' && role === 'employer' && (
+            <motion.div
+              initial={{ opacity: 0, y: -8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
+              className="mt-4 rounded-2xl bg-azure-50/80 border border-azure-200/70 backdrop-blur-md p-4 shadow-glass-sm"
+            >
+              <div className="flex items-start gap-2.5">
+                <CalendarDaysIcon className="h-5 w-5 text-azure-600 shrink-0 mt-0.5" />
+                <div className="min-w-0">
+                  <h3 className="text-sm font-bold text-azure-700">매칭데이 행사 안내</h3>
+                  <p className="mt-1.5 text-xs leading-relaxed text-ink-600 break-keep">
+                    채용 기업과 구직자 간의 뜻깊은 만남이 이루어지는 &lsquo;매칭데이&rsquo; 행사가 개최됩니다.
+                    원활한 면접 진행을 위해 바쁘시더라도 행사장에 직접 방문하시어 자리를 빛내주시기를 부탁드립니다.
+                    부득이한 사정으로 7월 22일(수) 행사 참석이 어려우신 경우, 채용 신청서 작성 시 [참석 불가] 항목에 체크해 주시기 바랍니다.
+                  </p>
+                  <div className="mt-3 flex flex-col gap-1.5 border-t border-azure-200/60 pt-3">
+                    <div className="flex items-center gap-2 text-xs text-ink-700">
+                      <ClockIcon className="h-4 w-4 shrink-0 text-azure-600" />
+                      <span className="font-semibold shrink-0">일정</span>
+                      <span className="text-ink-600">7월 22일(수)</span>
+                    </div>
+                    <div className="flex items-start gap-2 text-xs text-ink-700">
+                      <MapPinIcon className="h-4 w-4 shrink-0 text-azure-600 mt-0.5" />
+                      <span className="font-semibold shrink-0">장소</span>
+                      <span className="text-ink-600 break-keep">서울특별시 영등포구 영등포로 33, 5층 스타트런 행사장</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          )}
 
           {/* 알림 */}
           <AnimatePresence mode="wait">

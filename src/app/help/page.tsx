@@ -128,9 +128,6 @@ export default function HelpPage() {
             </Link>
 
             <nav className="hidden md:flex items-center gap-1">
-              <Link href="/portfolios" className="px-4 py-2 rounded-xl text-ink-600 hover:text-azure-700 hover:bg-azure-50/70 transition-all duration-200 font-medium">
-                포트폴리오
-              </Link>
               <Link href="/companies" className="px-4 py-2 rounded-xl text-ink-600 hover:text-azure-700 hover:bg-azure-50/70 transition-all duration-200 font-medium">
                 기업정보
               </Link>

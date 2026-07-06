@@ -113,6 +113,13 @@ export async function addJobInquiry(inquiryData: any) {
       workingHours: inquiryData.workingHours,
       workType: inquiryData.workType,
       benefits: inquiryData.benefits,
+      // 매칭데이 참석 여부: 시트 가독성을 위해 한글 라벨로 변환해 전송
+      matchingDayAttendance:
+        inquiryData.matchingDayAttendance === 'attend'
+          ? '참석 가능'
+          : inquiryData.matchingDayAttendance === 'unavailable'
+            ? '참석 불가'
+            : '',
       recruiterName: inquiryData.recruiterName,
       recruiterPosition: inquiryData.recruiterPosition,
       recruiterPhone: inquiryData.recruiterPhone,

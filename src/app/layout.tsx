@@ -23,12 +23,12 @@ const paperlogy = localFont({
 
 export const metadata: Metadata = {
   title: "구직자 · 구인기업 면접심사 매칭 플랫폼",
-  description: "서울시 민간기업 참여형 매력일자리 사업 · 구직자·구인기업 면접심사 매칭 플랫폼",
+  description: "서울시 민간기업 참여형 매력일자리 사업 · 구직자 · 구인기업 면접심사 매칭 플랫폼",
   keywords: "구인구직, 면접심사, 매칭, 서울시, 취업, 채용, 포트폴리오",
   authors: [{ name: "면접심사 매칭 플랫폼 Team" }],
   openGraph: {
-    title: "면접심사 매칭 플랫폼",
-    description: "서울시 민간기업 참여형 매력일자리 사업 · 구직자·구인기업 면접심사 매칭 플랫폼",
+    title: "구직자 · 구인기업 면접심사 매칭 플랫폼",
+    description: "서울시 민간기업 참여형 매력일자리 사업 · 구직자 · 구인기업 면접심사 매칭 플랫폼",
     type: "website",
     locale: "ko_KR",
   },

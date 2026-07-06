@@ -21,12 +21,8 @@ export const getAvatarBySpeciality = (speciality: string): string => {
   return avatarMap[speciality] || '👤';
 };
 
-// YouTube URL에서 ID 추출
-export const getYouTubeId = (url: string): string | null => {
-  const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
-  const match = url.match(regExp);
-  return match && match[2].length === 11 ? match[2] : null;
-};
+// YouTube URL에서 ID 추출 — 공용 헬퍼(@/lib/youtube)에 위임한다.
+export { getYouTubeId } from '@/lib/youtube';
 
 /**
  * 다양한 날짜 값을 한국어 표시 문자열로 변환.

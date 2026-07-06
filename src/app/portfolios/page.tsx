@@ -8,6 +8,7 @@ import {
   ArrowLeftIcon,
   CheckCircleIcon,
   ClockIcon,
+  EnvelopeIcon,
   FunnelIcon,
   LockClosedIcon,
   MagnifyingGlassIcon,
@@ -398,10 +399,12 @@ export default function PortfoliosPage() {
   const { user, userData } = useAuth();
   const reduceMotion = useReducedMotion();
   const hasAdminAccess = userData?.role === 'admin' || userData?.isAdmin === true;
+  // 기업 회원에게는 카드에서 바로 채용 신청서 작성으로 이어지는 진입점을 제공한다
+  const isEmployer = userData?.role === 'employer';
 
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedSpeciality, setSelectedSpeciality] = useState('all');
-  const [sortBy, setSortBy] = useState('projects');
+  const [sortBy, setSortBy] = useState('recent');
   const [portfolios, setPortfolios] = useState<Portfolio[]>([]);
   const [loading, setLoading] = useState(true);
   const [hasAccess, setHasAccess] = useState(false);
@@ -522,10 +525,8 @@ export default function PortfoliosPage() {
         case 'name':
           return a.name.localeCompare(b.name, 'ko');
         case 'recent':
-          return (b.createdAt?.getTime() || 0) - (a.createdAt?.getTime() || 0);
-        case 'projects':
         default:
-          return (b.projects || 0) - (a.projects || 0);
+          return (b.createdAt?.getTime() || 0) - (a.createdAt?.getTime() || 0);
       }
     });
 
@@ -534,7 +535,7 @@ export default function PortfoliosPage() {
     setShowTalentGrid(false);
     setSearchTerm('');
     setSelectedSpeciality('all');
-    setSortBy('projects');
+    setSortBy('recent');
   };
 
   if (!accessChecked) {
@@ -671,8 +672,10 @@ export default function PortfoliosPage() {
 
               <ScrollReveal>
                 <div className="glass-strong rounded-3xl p-4 shadow-glass sm:p-5">
-                  <div className="flex flex-col gap-4 lg:flex-row">
-                    <div className="flex-1">
+                  {/* 검색이 주인공: 셀렉트는 데스크톱에서 고정폭.
+                      GlassSelect 기본 w-full 을 flex 행에 직접 두면 검색창(flex-1)이 짜부라지므로 반드시 폭을 제한한다. */}
+                  <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:gap-4">
+                    <div className="min-w-0 flex-1">
                       <div className="relative">
                         <MagnifyingGlassIcon className="pointer-events-none absolute left-4 top-1/2 z-10 h-5 w-5 -translate-y-1/2 text-azure-500" />
                         <GlassInput
@@ -680,32 +683,37 @@ export default function PortfoliosPage() {
                           placeholder="이름, 전문분야, 스킬로 검색..."
                           value={searchTerm}
                           onChange={(event) => setSearchTerm(event.target.value)}
-                          className="py-3 pl-12"
+                          className="pl-12"
                         />
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-3">
-                      <FunnelIcon className="h-5 w-5 shrink-0 text-azure-500" />
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center lg:shrink-0">
+                      <div className="flex min-w-0 items-center gap-2.5">
+                        <FunnelIcon className="h-5 w-5 shrink-0 text-azure-500" />
+                        <GlassSelect
+                          value={selectedSpeciality}
+                          onChange={(event) => setSelectedSpeciality(event.target.value)}
+                          className="sm:w-48"
+                        >
+                          <option value="all">전체 전문분야</option>
+                          {availableSpecialities.map((speciality) => (
+                            <option key={speciality} value={speciality}>
+                              {speciality}
+                            </option>
+                          ))}
+                        </GlassSelect>
+                      </div>
+
                       <GlassSelect
-                        value={selectedSpeciality}
-                        onChange={(event) => setSelectedSpeciality(event.target.value)}
-                        className="py-3"
+                        value={sortBy}
+                        onChange={(event) => setSortBy(event.target.value)}
+                        className="sm:w-36 sm:shrink-0"
                       >
-                        <option value="all">전체 전문분야</option>
-                        {availableSpecialities.map((speciality) => (
-                          <option key={speciality} value={speciality}>
-                            {speciality}
-                          </option>
-                        ))}
+                        <option value="recent">최신순</option>
+                        <option value="name">이름순</option>
                       </GlassSelect>
                     </div>
-
-                    <GlassSelect value={sortBy} onChange={(event) => setSortBy(event.target.value)} className="py-3">
-                      <option value="projects">프로젝트순</option>
-                      <option value="recent">최신순</option>
-                      <option value="name">이름순</option>
-                    </GlassSelect>
                   </div>
                 </div>
               </ScrollReveal>
@@ -803,10 +811,23 @@ export default function PortfoliosPage() {
                             </div>
                           </div>
 
-                          <div className="mt-4">
-                            <GlassButton href={`/portfolios/${portfolio.id}`} className="w-full !rounded-xl !px-3 !py-2 !text-sm">
+                          <div className="mt-4 flex gap-2">
+                            <GlassButton
+                              href={`/portfolios/${portfolio.id}`}
+                              variant={isEmployer ? 'secondary' : 'primary'}
+                              className="flex-1 !rounded-xl !px-3 !py-2 !text-sm"
+                            >
                               포트폴리오 보기
                             </GlassButton>
+                            {isEmployer && (
+                              <GlassButton
+                                href={`/employer-dashboard/contact/${portfolio.id}`}
+                                className="flex-1 !rounded-xl !px-3 !py-2 !text-sm"
+                              >
+                                <EnvelopeIcon className="h-4 w-4" />
+                                채용 신청
+                              </GlassButton>
+                            )}
                           </div>
                         </div>
                       </GlassCard>
