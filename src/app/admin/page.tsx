@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { collection, query, where, getDocs, getDoc, updateDoc, doc, serverTimestamp, orderBy } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -365,13 +365,53 @@ export default function AdminPage() {
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [dateRange, setDateRange] = useState({ start: '', end: '' });
   const [showFilters, setShowFilters] = useState(false);
+  // 과정별 필터 — 제안서는 '대상 교육생이 소속된 과정' 기준, 포트폴리오는 본인 과정 기준
+  const [inquiryProgramFilter, setInquiryProgramFilter] = useState<string>('all');
+  const [portfolioProgramFilter, setPortfolioProgramFilter] = useState<string>('all');
+  const [portfolioSearchTerm, setPortfolioSearchTerm] = useState('');
 
   // 필터 초기화
   const resetFilters = () => {
     setSearchTerm('');
     setStatusFilter('all');
     setDateRange({ start: '', end: '' });
+    setInquiryProgramFilter('all');
   };
+
+  // 교육생(포트폴리오) → 소속 과정 id 매핑. 과정을 알 수 없으면 'none'(과정 미지정).
+  const portfolioProgramById = useMemo(() => {
+    const map: Record<string, string> = {};
+    portfolios.forEach((portfolio) => {
+      const program = getProgramForPortfolio(portfolio as any, allPrograms);
+      map[portfolio.id] = program ? program.id : 'none';
+    });
+    return map;
+  }, [portfolios, allPrograms]);
+
+  // 제안서 과정 필터 옵션에 표시할 건수 (전체 제안서 기준)
+  const inquiryProgramCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    jobInquiries.forEach((inquiry) => {
+      const key = portfolioProgramById[inquiry.jobSeekerId] || 'none';
+      counts[key] = (counts[key] || 0) + 1;
+    });
+    return counts;
+  }, [jobInquiries, portfolioProgramById]);
+
+  // 포트폴리오 탭: 과정 + 검색어 필터 적용 목록
+  const displayedPortfolios = useMemo(() => {
+    const term = portfolioSearchTerm.trim().toLowerCase();
+    return portfolios.filter((portfolio) => {
+      const programKey = portfolioProgramById[portfolio.id] || 'none';
+      if (portfolioProgramFilter !== 'all' && programKey !== portfolioProgramFilter) return false;
+      if (!term) return true;
+      return [portfolio.name, portfolio.speciality, ...(portfolio.skills || [])]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase()
+        .includes(term);
+    });
+  }, [portfolios, portfolioProgramFilter, portfolioProgramById, portfolioSearchTerm]);
 
   // 페이지 로드시 인증 상태 확인
   useEffect(() => {
@@ -681,6 +721,13 @@ export default function AdminPage() {
       filtered = filtered.filter(inquiry => inquiry.status === statusFilter);
     }
 
+    // 과정별 필터 — 제안 대상 교육생이 소속된 과정 기준
+    if (inquiryProgramFilter !== 'all') {
+      filtered = filtered.filter(
+        (inquiry) => (portfolioProgramById[inquiry.jobSeekerId] || 'none') === inquiryProgramFilter,
+      );
+    }
+
     // 날짜 범위 필터
     if (dateRange.start) {
       const startDate = new Date(dateRange.start);
@@ -700,7 +747,7 @@ export default function AdminPage() {
     }
 
     setFilteredInquiries(filtered);
-  }, [jobInquiries, searchTerm, statusFilter, dateRange]);
+  }, [jobInquiries, searchTerm, statusFilter, dateRange, inquiryProgramFilter, portfolioProgramById]);
 
   // 기업 승인 처리
   const handleApprove = async (employerId: string) => {
@@ -1760,16 +1807,37 @@ export default function AdminPage() {
                 </div>
               </div>
 
-              {/* 검색 바 */}
-              <div className="relative mb-4">
-                <MagnifyingGlassIcon className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-ink-400 z-10" />
-                <GlassInput
-                  type="text"
-                  placeholder="회사명, 구직자명, 제안 직무, 담당자명으로 검색..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-11"
-                />
+              {/* 검색 바 + 과정 필터 (과정 필터는 핵심 기능이라 접힘 없이 상시 노출) */}
+              <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center">
+                <div className="relative min-w-0 flex-1">
+                  <MagnifyingGlassIcon className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-ink-400 z-10" />
+                  <GlassInput
+                    type="text"
+                    placeholder="회사명, 구직자명, 제안 직무, 담당자명으로 검색..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-11"
+                  />
+                </div>
+                <div className="flex items-center gap-2.5 sm:shrink-0">
+                  <AcademicCapIcon className="h-5 w-5 shrink-0 text-azure-500" />
+                  <GlassSelect
+                    value={inquiryProgramFilter}
+                    onChange={(e) => setInquiryProgramFilter(e.target.value)}
+                    className="sm:w-72"
+                    aria-label="교육생 소속 과정으로 필터"
+                  >
+                    <option value="all">전체 과정 ({jobInquiries.length})</option>
+                    {allPrograms.map((program) => (
+                      <option key={program.id} value={program.id}>
+                        {program.shortName} ({inquiryProgramCounts[program.id] || 0})
+                      </option>
+                    ))}
+                    {(inquiryProgramCounts['none'] || 0) > 0 && (
+                      <option value="none">과정 미지정 ({inquiryProgramCounts['none']})</option>
+                    )}
+                  </GlassSelect>
+                </div>
               </div>
 
               {/* 필터 옵션 */}
@@ -2535,8 +2603,69 @@ export default function AdminPage() {
                 <p className="mt-1 text-sm text-ink-500">등록된 포트폴리오가 없습니다.</p>
               </div>
             ) : (
+              <>
+                {/* 과정별·검색 필터 — 과정을 선택하면 해당 과정 교육생의 포트폴리오만 표시 */}
+                <div className="glass-card p-4 md:p-5">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+                    <div className="relative min-w-0 flex-1">
+                      <MagnifyingGlassIcon className="absolute left-4 top-1/2 z-10 w-5 h-5 -translate-y-1/2 text-ink-400" />
+                      <GlassInput
+                        type="text"
+                        placeholder="이름, 전문분야, 스킬로 검색..."
+                        value={portfolioSearchTerm}
+                        onChange={(e) => setPortfolioSearchTerm(e.target.value)}
+                        className="pl-11"
+                      />
+                    </div>
+                    <div className="flex items-center gap-2.5 sm:shrink-0">
+                      <AcademicCapIcon className="h-5 w-5 shrink-0 text-azure-500" />
+                      <GlassSelect
+                        value={portfolioProgramFilter}
+                        onChange={(e) => setPortfolioProgramFilter(e.target.value)}
+                        className="sm:w-72"
+                        aria-label="과정으로 필터"
+                      >
+                        <option value="all">전체 과정 ({portfolios.length})</option>
+                        {allPrograms.map((program) => (
+                          <option key={program.id} value={program.id}>
+                            {program.shortName} (
+                            {portfolios.filter((p) => (portfolioProgramById[p.id] || 'none') === program.id).length})
+                          </option>
+                        ))}
+                        {portfolios.some((p) => (portfolioProgramById[p.id] || 'none') === 'none') && (
+                          <option value="none">
+                            과정 미지정 (
+                            {portfolios.filter((p) => (portfolioProgramById[p.id] || 'none') === 'none').length})
+                          </option>
+                        )}
+                      </GlassSelect>
+                    </div>
+                    <Badge tone="azure" className="hidden self-center px-3.5 py-1.5 sm:inline-flex">
+                      {displayedPortfolios.length}명 표시
+                    </Badge>
+                  </div>
+                </div>
+
+                {displayedPortfolios.length === 0 ? (
+                  <div className="glass-card text-center py-16">
+                    <div className="mx-auto h-16 w-16 rounded-2xl bg-azure-50 flex items-center justify-center">
+                      <MagnifyingGlassIcon className="h-8 w-8 text-azure-500" />
+                    </div>
+                    <h3 className="mt-4 text-base font-semibold text-ink-900">조건에 맞는 포트폴리오가 없습니다</h3>
+                    <p className="mt-1 text-sm text-ink-500">과정 필터나 검색어를 조정해보세요.</p>
+                    <button
+                      onClick={() => {
+                        setPortfolioProgramFilter('all');
+                        setPortfolioSearchTerm('');
+                      }}
+                      className="mt-4 text-sm font-semibold text-azure-600 transition-colors hover:text-azure-700"
+                    >
+                      필터 초기화
+                    </button>
+                  </div>
+                ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-5">
-                {portfolios.map((portfolio) => {
+                {displayedPortfolios.map((portfolio) => {
                   const specialities = splitSpecialities(portfolio.speciality);
                   const program = getProgramForPortfolio(portfolio as any, allPrograms);
                   return (
@@ -2675,6 +2804,8 @@ export default function AdminPage() {
                   );
                 })}
               </div>
+                )}
+              </>
             )}
           </div>
         )}
