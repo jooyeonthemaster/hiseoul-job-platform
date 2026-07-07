@@ -108,11 +108,14 @@ function AccessStatusBanner({ employerStatus }: { employerStatus: any }) {
 
 function ProgramChooser({
   programs,
+  archivedPrograms,
   matchPrograms,
   portfolios,
   onSelectProgram,
 }: {
   programs: PortfolioProgram[];
+  /** 연도별 아카이브 과정(지난 진행 사례) — 하단 별도 섹션으로 노출 */
+  archivedPrograms: PortfolioProgram[];
   /** 과정-포트폴리오 매칭용 전체(정적+커스텀) 과정 목록 */
   matchPrograms: PortfolioProgram[];
   portfolios: Portfolio[];
@@ -200,6 +203,88 @@ function ProgramChooser({
           );
         })}
       </div>
+
+      {/* ── 연도별 아카이브: 지난 진행 사례 ──
+          클라이언트 요청 — 2025 수료 과정은 현재 과정과 섞지 않고 '진행 사례' 섹션으로 구분해
+          설명과 함께 노출한다. (상단 네비 탭으로도 동일하게 진입 가능) */}
+      {archivedPrograms.length > 0 && (
+        <div className="space-y-6 pt-4">
+          <div className="flex items-center gap-4">
+            <div className="h-px flex-1 bg-gradient-to-r from-transparent to-ink-200" />
+            <span className="shrink-0 text-xs font-bold uppercase tracking-[0.22em] text-ink-400">
+              Past Program
+            </span>
+            <div className="h-px flex-1 bg-gradient-to-l from-transparent to-ink-200" />
+          </div>
+
+          {archivedPrograms.map((program) => {
+            const year = program.name.match(/^(20\d{2})/)?.[1] || '지난';
+            const count = portfolios.filter((portfolio) =>
+              portfolioMatchesProgram(portfolio, program.id, matchPrograms),
+            ).length;
+            return (
+              <ScrollReveal key={program.id}>
+                <GlassCard strong className="overflow-hidden p-0">
+                  <div className="grid lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
+                    {/* 좌: 진행 사례 설명 */}
+                    <div className="flex flex-col justify-center bg-gradient-to-br from-white/40 to-azure-50/40 p-7 md:p-9">
+                      <Badge tone="neutral" icon={<ClockIcon className="h-4 w-4" />} className="self-start">
+                        {year}년 진행 사례
+                      </Badge>
+                      <h2 className="mt-4 font-display text-2xl font-bold leading-snug tracking-tight text-ink-900 md:text-3xl">
+                        {year}년에 운영이 완료된
+                        <br className="hidden md:block" /> 채용연계 과정입니다
+                      </h2>
+                      <p className="mt-4 text-sm leading-relaxed text-ink-500 md:text-base">
+                        서울시 매력일자리 사업으로 {year}년에 운영을 마친 과정으로, 교육과 수료가 모두 완료된
+                        상태입니다. 수료생들의 포트폴리오를 현재 과정과 동일한 방식으로 열람하고, 채용 신청까지
+                        진행할 수 있습니다.
+                      </p>
+                      <ul className="mt-6 space-y-2.5">
+                        {[
+                          `${year}년 교육·수료 완료 인재 ${count}명`,
+                          '포트폴리오 열람과 채용 신청 모두 가능',
+                          `상단 '${program.shortName}' 탭에서도 바로 진입`,
+                        ].map((line) => (
+                          <li key={line} className="flex items-start gap-2.5 text-sm text-ink-600">
+                            <CheckCircleIcon className="mt-0.5 h-4 w-4 shrink-0 text-azure-500" />
+                            <span className="leading-relaxed">{line}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+
+                    {/* 우: 과정 카드 */}
+                    <div className="flex flex-col border-t border-white/60 p-7 md:p-9 lg:border-l lg:border-t-0">
+                      <div className="flex flex-wrap items-start justify-between gap-4">
+                        <Badge tone={program.courseType === 'foreign' ? 'coral' : 'azure'}>
+                          {program.audience} · {program.hours}
+                        </Badge>
+                        <div className="rounded-2xl border border-white/70 bg-white/70 px-4 py-3 text-center shadow-glass-sm">
+                          <div className="font-display text-2xl font-bold text-azure-700">{count}</div>
+                          <div className="text-xs font-semibold text-ink-400">교육생</div>
+                        </div>
+                      </div>
+                      <h3 className="mt-3 font-display text-xl font-bold leading-snug tracking-tight text-ink-900 md:text-2xl">
+                        {program.name}
+                      </h3>
+                      <p className="mt-3 text-sm leading-relaxed text-ink-500">{program.summary}</p>
+                      <div className="mt-5">
+                        <ProgramTags program={program} />
+                      </div>
+                      <div className="mt-auto pt-6">
+                        <GlassButton onClick={() => onSelectProgram(program.id)} className="w-full">
+                          {year}년 수료생 포트폴리오 보기
+                        </GlassButton>
+                      </div>
+                    </div>
+                  </div>
+                </GlassCard>
+              </ScrollReveal>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
@@ -731,8 +816,9 @@ function PortfoliosPageInner() {
             </GlassCard>
           ) : !selectedProgram ? (
             <ProgramChooser
-              // 연도별 아카이브 과정(2025 등)은 상단 네비 탭으로만 진입 — 메인 과정 선택에서는 제외
+              // 아카이브 과정(2025 등)은 현재 과정 카드와 섞지 않고 하단 '진행 사례' 섹션으로 분리
               programs={visiblePrograms.filter((program) => !program.archived)}
+              archivedPrograms={visiblePrograms.filter((program) => program.archived)}
               matchPrograms={allPrograms}
               portfolios={portfolios}
               onSelectProgram={handleSelectProgram}
