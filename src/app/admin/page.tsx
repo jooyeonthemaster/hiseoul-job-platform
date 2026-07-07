@@ -116,6 +116,8 @@ interface JobInquiry {
   respondedAt?: any;
   jobSeekerName?: string;
   jobSeekerEmail?: string;
+  // 매칭데이(7/22) 참석 여부 — 구버전 제안서에는 없을 수 있음
+  matchingDayAttendance?: 'attend' | 'unavailable';
 }
 
 interface Portfolio {
@@ -367,8 +369,32 @@ export default function AdminPage() {
   const [showFilters, setShowFilters] = useState(false);
   // 과정별 필터 — 제안서는 '대상 교육생이 소속된 과정' 기준, 포트폴리오는 본인 과정 기준
   const [inquiryProgramFilter, setInquiryProgramFilter] = useState<string>('all');
+  const [inquiryCompanyFilter, setInquiryCompanyFilter] = useState<string>('all');
+  const [inquiryAttendanceFilter, setInquiryAttendanceFilter] = useState<string>('all');
+  const [inquirySort, setInquirySort] = useState<'recent' | 'oldest'>('recent');
   const [portfolioProgramFilter, setPortfolioProgramFilter] = useState<string>('all');
   const [portfolioSearchTerm, setPortfolioSearchTerm] = useState('');
+  const [portfolioContactFilter, setPortfolioContactFilter] = useState<string>('all');
+  const [portfolioHiddenFilter, setPortfolioHiddenFilter] = useState<string>('all');
+  const [portfolioSort, setPortfolioSort] = useState<'recent' | 'name'>('recent');
+
+  // 기업 탭 필터 (승인 대기/완료/거절 공용)
+  const [employerSearch, setEmployerSearch] = useState('');
+  const [employerIndustryFilter, setEmployerIndustryFilter] = useState<string>('all');
+  const [employerAccessFilter, setEmployerAccessFilter] = useState<string>('all'); // all | full | partial | blocked
+  const [employerProgramFilter, setEmployerProgramFilter] = useState<string>('all');
+  const [employerHiddenFilter, setEmployerHiddenFilter] = useState<string>('all'); // all | visible | hidden
+  const [employerDateRange, setEmployerDateRange] = useState({ start: '', end: '' });
+  const [employerSort, setEmployerSort] = useState<'recent' | 'oldest' | 'name'>('recent');
+  const [showEmployerFilters, setShowEmployerFilters] = useState(false);
+
+  // Firestore Timestamp 와 JS Date 가 혼재하는 필드 안전 변환
+  const toDateSafe = (value: any): Date | null => {
+    if (!value) return null;
+    if (value instanceof Date) return value;
+    if (typeof value.toDate === 'function') return value.toDate();
+    return null;
+  };
 
   // 필터 초기화
   const resetFilters = () => {
@@ -376,7 +402,139 @@ export default function AdminPage() {
     setStatusFilter('all');
     setDateRange({ start: '', end: '' });
     setInquiryProgramFilter('all');
+    setInquiryCompanyFilter('all');
+    setInquiryAttendanceFilter('all');
+    setInquirySort('recent');
   };
+
+  const resetEmployerFilters = () => {
+    setEmployerSearch('');
+    setEmployerIndustryFilter('all');
+    setEmployerAccessFilter('all');
+    setEmployerProgramFilter('all');
+    setEmployerHiddenFilter('all');
+    setEmployerDateRange({ start: '', end: '' });
+    setEmployerSort('recent');
+  };
+
+  const activeEmployerFilterCount =
+    (employerIndustryFilter !== 'all' ? 1 : 0) +
+    (employerAccessFilter !== 'all' ? 1 : 0) +
+    (employerProgramFilter !== 'all' ? 1 : 0) +
+    (employerHiddenFilter !== 'all' ? 1 : 0) +
+    (employerDateRange.start ? 1 : 0) +
+    (employerDateRange.end ? 1 : 0);
+
+  // 열람 권한 분류: 필드 없음/전체 = full, 일부 = partial, 빈 배열 = blocked
+  const getEmployerAccessCategory = (employer: PendingEmployer): 'full' | 'partial' | 'blocked' => {
+    if (!Array.isArray(employer.allowedProgramIds)) return 'full';
+    const validIds = allPrograms.map((program) => program.id);
+    const allowed = employer.allowedProgramIds.filter((id) => validIds.includes(id));
+    if (allowed.length === 0) return 'blocked';
+    if (allowed.length >= validIds.length) return 'full';
+    return 'partial';
+  };
+
+  // 업종 옵션 (전체 기업 기준, 많은 순)
+  const employerIndustryOptions = useMemo(() => {
+    const counts: Record<string, number> = {};
+    [...pendingEmployers, ...approvedEmployers, ...rejectedEmployers].forEach((employer) => {
+      const industry = employer.company?.industry?.trim();
+      if (industry) counts[industry] = (counts[industry] || 0) + 1;
+    });
+    return Object.entries(counts).sort((a, b) => b[1] - a[1]);
+  }, [pendingEmployers, approvedEmployers, rejectedEmployers]);
+
+  // 현재 탭의 기업 목록에 검색·필터·정렬 적용
+  const displayedEmployers = useMemo(() => {
+    const source =
+      selectedTab === 'pending'
+        ? pendingEmployers
+        : selectedTab === 'approved'
+        ? approvedEmployers
+        : selectedTab === 'rejected'
+        ? rejectedEmployers
+        : [];
+
+    const term = employerSearch.trim().toLowerCase();
+    const filtered = source.filter((employer) => {
+      if (term) {
+        const haystack = [
+          employer.company?.name,
+          employer.userName,
+          employer.userEmail,
+          employer.company?.ceoName,
+          employer.company?.industry,
+          employer.company?.location,
+          employer.company?.contactName,
+        ]
+          .filter(Boolean)
+          .join(' ')
+          .toLowerCase();
+        if (!haystack.includes(term)) return false;
+      }
+      if (employerIndustryFilter !== 'all' && employer.company?.industry?.trim() !== employerIndustryFilter) {
+        return false;
+      }
+      if (employerAccessFilter !== 'all' && getEmployerAccessCategory(employer) !== employerAccessFilter) {
+        return false;
+      }
+      if (employerProgramFilter !== 'all') {
+        // 특정 과정을 열람할 수 있는 기업만 (필드 없음 = 전체 허용이므로 통과)
+        if (
+          Array.isArray(employer.allowedProgramIds) &&
+          !employer.allowedProgramIds.includes(employerProgramFilter)
+        ) {
+          return false;
+        }
+      }
+      if (employerHiddenFilter === 'visible' && employer.isHidden) return false;
+      if (employerHiddenFilter === 'hidden' && !employer.isHidden) return false;
+
+      const joined = toDateSafe(employer.createdAt);
+      if (employerDateRange.start) {
+        if (!joined || joined < new Date(employerDateRange.start)) return false;
+      }
+      if (employerDateRange.end) {
+        const end = new Date(employerDateRange.end);
+        end.setHours(23, 59, 59, 999);
+        if (!joined || joined > end) return false;
+      }
+      return true;
+    });
+
+    return [...filtered].sort((a, b) => {
+      if (employerSort === 'name') {
+        return (a.company?.name || '').localeCompare(b.company?.name || '', 'ko');
+      }
+      const aTime = toDateSafe(a.createdAt)?.getTime() || 0;
+      const bTime = toDateSafe(b.createdAt)?.getTime() || 0;
+      return employerSort === 'oldest' ? aTime - bTime : bTime - aTime;
+    });
+  }, [
+    selectedTab,
+    pendingEmployers,
+    approvedEmployers,
+    rejectedEmployers,
+    employerSearch,
+    employerIndustryFilter,
+    employerAccessFilter,
+    employerProgramFilter,
+    employerHiddenFilter,
+    employerDateRange,
+    employerSort,
+    allPrograms,
+  ]);
+
+  // 제안서 기업(회사명) 옵션 (건수 많은 순)
+  const inquiryCompanyOptions = useMemo(() => {
+    const counts: Record<string, number> = {};
+    jobInquiries.forEach((inquiry) => {
+      const name = inquiry.companyInfo?.name?.trim();
+      if (name) counts[name] = (counts[name] || 0) + 1;
+    });
+    return Object.entries(counts).sort((a, b) => b[1] - a[1]);
+  }, [jobInquiries]);
 
   // 교육생(포트폴리오) → 소속 과정 id 매핑. 과정을 알 수 없으면 'none'(과정 미지정).
   const portfolioProgramById = useMemo(() => {
@@ -398,12 +556,16 @@ export default function AdminPage() {
     return counts;
   }, [jobInquiries, portfolioProgramById]);
 
-  // 포트폴리오 탭: 과정 + 검색어 필터 적용 목록
+  // 포트폴리오 탭: 과정·연락처 공개·표시 상태·검색어 필터 + 정렬 적용 목록
   const displayedPortfolios = useMemo(() => {
     const term = portfolioSearchTerm.trim().toLowerCase();
-    return portfolios.filter((portfolio) => {
+    const filtered = portfolios.filter((portfolio) => {
       const programKey = portfolioProgramById[portfolio.id] || 'none';
       if (portfolioProgramFilter !== 'all' && programKey !== portfolioProgramFilter) return false;
+      if (portfolioContactFilter === 'visible' && !portfolio.contactInfoVisibleToEmployers) return false;
+      if (portfolioContactFilter === 'masked' && portfolio.contactInfoVisibleToEmployers) return false;
+      if (portfolioHiddenFilter === 'visible' && portfolio.isHidden) return false;
+      if (portfolioHiddenFilter === 'hidden' && !portfolio.isHidden) return false;
       if (!term) return true;
       return [portfolio.name, portfolio.speciality, ...(portfolio.skills || [])]
         .filter(Boolean)
@@ -411,7 +573,35 @@ export default function AdminPage() {
         .toLowerCase()
         .includes(term);
     });
-  }, [portfolios, portfolioProgramFilter, portfolioProgramById, portfolioSearchTerm]);
+    return [...filtered].sort((a, b) => {
+      if (portfolioSort === 'name') return (a.name || '').localeCompare(b.name || '', 'ko');
+      const aTime = toDateSafe((a as any).createdAt)?.getTime() || 0;
+      const bTime = toDateSafe((b as any).createdAt)?.getTime() || 0;
+      return bTime - aTime;
+    });
+  }, [
+    portfolios,
+    portfolioProgramFilter,
+    portfolioProgramById,
+    portfolioSearchTerm,
+    portfolioContactFilter,
+    portfolioHiddenFilter,
+    portfolioSort,
+  ]);
+
+  const activePortfolioFilterCount =
+    (portfolioProgramFilter !== 'all' ? 1 : 0) +
+    (portfolioContactFilter !== 'all' ? 1 : 0) +
+    (portfolioHiddenFilter !== 'all' ? 1 : 0) +
+    (portfolioSearchTerm.trim() ? 1 : 0);
+
+  const resetPortfolioFilters = () => {
+    setPortfolioProgramFilter('all');
+    setPortfolioSearchTerm('');
+    setPortfolioContactFilter('all');
+    setPortfolioHiddenFilter('all');
+    setPortfolioSort('recent');
+  };
 
   // 페이지 로드시 인증 상태 확인
   useEffect(() => {
@@ -655,7 +845,8 @@ export default function AdminPage() {
             readAt: inquiryData.readAt,
             respondedAt: inquiryData.respondedAt,
             jobSeekerName: jobSeekerInfo.name,
-            jobSeekerEmail: jobSeekerInfo.email
+            jobSeekerEmail: jobSeekerInfo.email,
+            matchingDayAttendance: inquiryData.matchingDayAttendance
           };
 
           return inquiry;
@@ -728,6 +919,20 @@ export default function AdminPage() {
       );
     }
 
+    // 기업(회사명) 필터
+    if (inquiryCompanyFilter !== 'all') {
+      filtered = filtered.filter((inquiry) => inquiry.companyInfo?.name?.trim() === inquiryCompanyFilter);
+    }
+
+    // 매칭데이 참석 여부 필터 ('unknown' = 구버전 제안서로 미기재)
+    if (inquiryAttendanceFilter !== 'all') {
+      filtered = filtered.filter((inquiry) =>
+        inquiryAttendanceFilter === 'unknown'
+          ? !inquiry.matchingDayAttendance
+          : inquiry.matchingDayAttendance === inquiryAttendanceFilter,
+      );
+    }
+
     // 날짜 범위 필터
     if (dateRange.start) {
       const startDate = new Date(dateRange.start);
@@ -746,8 +951,23 @@ export default function AdminPage() {
       });
     }
 
+    // 정렬 (기본 최신순 — 목록 자체가 최신순 로드이므로 오래된순만 뒤집는다)
+    if (inquirySort === 'oldest') {
+      filtered = [...filtered].reverse();
+    }
+
     setFilteredInquiries(filtered);
-  }, [jobInquiries, searchTerm, statusFilter, dateRange, inquiryProgramFilter, portfolioProgramById]);
+  }, [
+    jobInquiries,
+    searchTerm,
+    statusFilter,
+    dateRange,
+    inquiryProgramFilter,
+    portfolioProgramById,
+    inquiryCompanyFilter,
+    inquiryAttendanceFilter,
+    inquirySort,
+  ]);
 
   // 기업 승인 처리
   const handleApprove = async (employerId: string) => {
@@ -1858,6 +2078,34 @@ export default function AdminPage() {
                     </GlassSelect>
                   </Field>
 
+                  {/* 기업 필터 */}
+                  <Field label="신청 기업">
+                    <GlassSelect
+                      value={inquiryCompanyFilter}
+                      onChange={(e) => setInquiryCompanyFilter(e.target.value)}
+                    >
+                      <option value="all">전체 기업 ({jobInquiries.length})</option>
+                      {inquiryCompanyOptions.map(([name, count]) => (
+                        <option key={name} value={name}>
+                          {name} ({count})
+                        </option>
+                      ))}
+                    </GlassSelect>
+                  </Field>
+
+                  {/* 매칭데이 참석 여부 */}
+                  <Field label="매칭데이(7/22) 참석">
+                    <GlassSelect
+                      value={inquiryAttendanceFilter}
+                      onChange={(e) => setInquiryAttendanceFilter(e.target.value)}
+                    >
+                      <option value="all">전체</option>
+                      <option value="attend">참석 가능</option>
+                      <option value="unavailable">참석 불가</option>
+                      <option value="unknown">미기재 (구버전 신청서)</option>
+                    </GlassSelect>
+                  </Field>
+
                   {/* 시작 날짜 */}
                   <Field label="시작 날짜">
                     <GlassInput
@@ -1874,6 +2122,17 @@ export default function AdminPage() {
                       value={dateRange.end}
                       onChange={(e) => setDateRange({ ...dateRange, end: e.target.value })}
                     />
+                  </Field>
+
+                  {/* 정렬 */}
+                  <Field label="정렬">
+                    <GlassSelect
+                      value={inquirySort}
+                      onChange={(e) => setInquirySort(e.target.value as 'recent' | 'oldest')}
+                    >
+                      <option value="recent">최신 발송순</option>
+                      <option value="oldest">오래된 발송순</option>
+                    </GlassSelect>
                   </Field>
                 </div>
               )}
@@ -2034,9 +2293,156 @@ export default function AdminPage() {
           </div>
         )}
 
+        {/* 기업 검색·필터 툴바 (승인 대기/완료/거절 공용) */}
+        {['pending', 'approved', 'rejected'].includes(selectedTab) && (
+          <div className="glass-card p-5 md:p-6 mb-6">
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
+              <div className="relative min-w-0 flex-1">
+                <MagnifyingGlassIcon className="absolute left-4 top-1/2 z-10 w-5 h-5 -translate-y-1/2 text-ink-400" />
+                <GlassInput
+                  type="text"
+                  placeholder="회사명, 담당자, 이메일, 대표자, 업종, 지역으로 검색..."
+                  value={employerSearch}
+                  onChange={(e) => setEmployerSearch(e.target.value)}
+                  className="pl-11"
+                />
+              </div>
+              <div className="flex flex-wrap items-center gap-2.5 lg:shrink-0">
+                <GlassSelect
+                  value={employerSort}
+                  onChange={(e) => setEmployerSort(e.target.value as 'recent' | 'oldest' | 'name')}
+                  className="sm:w-44"
+                  aria-label="정렬"
+                >
+                  <option value="recent">최신 가입순</option>
+                  <option value="oldest">오래된 가입순</option>
+                  <option value="name">회사명순</option>
+                </GlassSelect>
+                <button
+                  onClick={() => setShowEmployerFilters(!showEmployerFilters)}
+                  className={`relative inline-flex items-center gap-2 rounded-2xl border px-4 py-2.5 text-sm font-semibold transition-all ${
+                    showEmployerFilters || activeEmployerFilterCount > 0
+                      ? 'border-azure-300 bg-azure-500/10 text-azure-700 shadow-glass-sm'
+                      : 'border-white/70 bg-white/60 text-ink-500 hover:border-azure-200 hover:text-azure-700'
+                  }`}
+                >
+                  <FunnelIcon className="h-4 w-4" />
+                  상세 필터
+                  {activeEmployerFilterCount > 0 && (
+                    <span className="inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-azure-500 px-1.5 text-[11px] font-bold text-white">
+                      {activeEmployerFilterCount}
+                    </span>
+                  )}
+                </button>
+                {(activeEmployerFilterCount > 0 || employerSearch.trim()) && (
+                  <button
+                    onClick={resetEmployerFilters}
+                    className="px-3 py-2 text-sm font-medium text-ink-500 hover:text-azure-700 transition-colors"
+                  >
+                    초기화
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {showEmployerFilters && (
+              <div className="mt-4 grid grid-cols-1 gap-4 rounded-3xl border border-white/60 bg-azure-50/50 p-5 sm:grid-cols-2 xl:grid-cols-3">
+                <Field label="업종">
+                  <GlassSelect
+                    value={employerIndustryFilter}
+                    onChange={(e) => setEmployerIndustryFilter(e.target.value)}
+                  >
+                    <option value="all">전체 업종</option>
+                    {employerIndustryOptions.map(([industry, count]) => (
+                      <option key={industry} value={industry}>
+                        {industry} ({count})
+                      </option>
+                    ))}
+                  </GlassSelect>
+                </Field>
+
+                <Field label="포트폴리오 열람 권한">
+                  <GlassSelect
+                    value={employerAccessFilter}
+                    onChange={(e) => setEmployerAccessFilter(e.target.value)}
+                  >
+                    <option value="all">전체</option>
+                    <option value="full">전체 과정 허용</option>
+                    <option value="partial">일부 과정만 허용</option>
+                    <option value="blocked">전면 차단</option>
+                  </GlassSelect>
+                </Field>
+
+                <Field label="특정 과정 열람 가능 기업">
+                  <GlassSelect
+                    value={employerProgramFilter}
+                    onChange={(e) => setEmployerProgramFilter(e.target.value)}
+                  >
+                    <option value="all">전체 과정</option>
+                    {allPrograms.map((program) => (
+                      <option key={program.id} value={program.id}>
+                        {program.shortName}
+                      </option>
+                    ))}
+                  </GlassSelect>
+                </Field>
+
+                <Field label="표시 상태">
+                  <GlassSelect
+                    value={employerHiddenFilter}
+                    onChange={(e) => setEmployerHiddenFilter(e.target.value)}
+                  >
+                    <option value="all">전체</option>
+                    <option value="visible">표시 중</option>
+                    <option value="hidden">숨김</option>
+                  </GlassSelect>
+                </Field>
+
+                <Field label="가입일 시작">
+                  <GlassInput
+                    type="date"
+                    value={employerDateRange.start}
+                    onChange={(e) => setEmployerDateRange({ ...employerDateRange, start: e.target.value })}
+                  />
+                </Field>
+
+                <Field label="가입일 종료">
+                  <GlassInput
+                    type="date"
+                    value={employerDateRange.end}
+                    onChange={(e) => setEmployerDateRange({ ...employerDateRange, end: e.target.value })}
+                  />
+                </Field>
+              </div>
+            )}
+
+            <p className="mt-4 text-sm text-ink-500">
+              <span className="font-semibold text-ink-700">{displayedEmployers.length}개</span> 표시
+              <span className="text-ink-300"> / 총 {getEmployersByTab().length}개</span>
+            </p>
+          </div>
+        )}
+
         {selectedTab !== 'inquiries' && (
           <div className="grid gap-6">
-            {getEmployersByTab().map((employer) => (
+            {['pending', 'approved', 'rejected'].includes(selectedTab) &&
+              displayedEmployers.length === 0 &&
+              getEmployersByTab().length > 0 && (
+                <div className="glass-card text-center py-16">
+                  <div className="mx-auto h-16 w-16 rounded-2xl bg-azure-50 flex items-center justify-center">
+                    <MagnifyingGlassIcon className="h-8 w-8 text-azure-500" />
+                  </div>
+                  <h3 className="mt-4 text-base font-semibold text-ink-900">조건에 맞는 기업이 없습니다</h3>
+                  <p className="mt-1 text-sm text-ink-500">검색어나 필터를 조정해보세요.</p>
+                  <button
+                    onClick={resetEmployerFilters}
+                    className="mt-4 text-sm font-semibold text-azure-600 transition-colors hover:text-azure-700"
+                  >
+                    필터 초기화
+                  </button>
+                </div>
+              )}
+            {displayedEmployers.map((employer) => (
               <motion.div
                 key={employer.id}
                 initial={{ opacity: 0, y: 20 }}
@@ -2118,7 +2524,8 @@ export default function AdminPage() {
                         </p>
                         <p className="text-ink-500">
                           <span className="font-medium text-ink-700">가입일:</span>{' '}
-                          {employer.createdAt?.toDate?.()?.toLocaleDateString() || '-'}
+                          {/* getAllEmployers 가 이미 Date 로 변환해 넘기므로 Timestamp/Date 모두 처리 */}
+                          {toDateSafe(employer.createdAt)?.toLocaleDateString() || '-'}
                         </p>
                       </div>
                     </div>
@@ -2643,6 +3050,47 @@ export default function AdminPage() {
                     <Badge tone="azure" className="hidden self-center px-3.5 py-1.5 sm:inline-flex">
                       {displayedPortfolios.length}명 표시
                     </Badge>
+                  </div>
+
+                  {/* 2행: 상태·정렬 필터 */}
+                  <div className="mt-3 flex flex-wrap items-center gap-2.5">
+                    <GlassSelect
+                      value={portfolioContactFilter}
+                      onChange={(e) => setPortfolioContactFilter(e.target.value)}
+                      className="w-auto sm:w-44"
+                      aria-label="연락처 공개 상태"
+                    >
+                      <option value="all">연락처: 전체</option>
+                      <option value="visible">연락처 공개 중</option>
+                      <option value="masked">연락처 비공개</option>
+                    </GlassSelect>
+                    <GlassSelect
+                      value={portfolioHiddenFilter}
+                      onChange={(e) => setPortfolioHiddenFilter(e.target.value)}
+                      className="w-auto sm:w-40"
+                      aria-label="표시 상태"
+                    >
+                      <option value="all">표시: 전체</option>
+                      <option value="visible">표시 중</option>
+                      <option value="hidden">숨김</option>
+                    </GlassSelect>
+                    <GlassSelect
+                      value={portfolioSort}
+                      onChange={(e) => setPortfolioSort(e.target.value as 'recent' | 'name')}
+                      className="w-auto sm:w-36"
+                      aria-label="정렬"
+                    >
+                      <option value="recent">최신 등록순</option>
+                      <option value="name">이름순</option>
+                    </GlassSelect>
+                    {activePortfolioFilterCount > 0 && (
+                      <button
+                        onClick={resetPortfolioFilters}
+                        className="px-3 py-2 text-sm font-medium text-ink-500 hover:text-azure-700 transition-colors"
+                      >
+                        초기화
+                      </button>
+                    )}
                   </div>
                 </div>
 
