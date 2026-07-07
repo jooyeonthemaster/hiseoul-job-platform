@@ -30,14 +30,17 @@ import {
   DEFAULT_VISIBLE_PROGRAM_IDS,
   PORTFOLIO_PROGRAMS,
   SPECIALITY_ICON_MAP,
+  getAllowedProgramIdsForEmployer,
   getPrimarySpeciality,
   getProgramById,
   getProgramForPortfolio,
+  isEmployerProgramRestricted,
   portfolioMatchesProgram,
   splitSpecialities,
   type PortfolioProgram,
   type ProgramCourseType,
 } from '@/lib/programs';
+import { getAllPrograms } from '@/lib/customPrograms';
 import { getVisiblePortfolioProgramIds } from '@/lib/programSettings';
 
 interface Portfolio {
@@ -104,10 +107,13 @@ function AccessStatusBanner({ employerStatus }: { employerStatus: any }) {
 
 function ProgramChooser({
   programs,
+  matchPrograms,
   portfolios,
   onSelectProgram,
 }: {
   programs: PortfolioProgram[];
+  /** 과정-포트폴리오 매칭용 전체(정적+커스텀) 과정 목록 */
+  matchPrograms: PortfolioProgram[];
   portfolios: Portfolio[];
   onSelectProgram: (programId: string) => void;
 }) {
@@ -145,7 +151,9 @@ function ProgramChooser({
 
       <div className="grid gap-5 lg:grid-cols-2">
         {programs.map((program) => {
-          const count = portfolios.filter((portfolio) => portfolioMatchesProgram(portfolio, program.id)).length;
+          const count = portfolios.filter((portfolio) =>
+            portfolioMatchesProgram(portfolio, program.id, matchPrograms),
+          ).length;
           return (
             <ScrollReveal key={program.id}>
               <GlassCard hover className="flex h-full flex-col p-6 md:p-7">
@@ -169,18 +177,21 @@ function ProgramChooser({
                   <ProgramTags program={program} />
                 </div>
 
-                <div className="mt-6 grid gap-3 sm:grid-cols-3">
-                  {program.curriculum.slice(0, 3).map((item) => (
-                    <div key={item.step} className="rounded-2xl border border-azure-100 bg-azure-50/60 p-3">
-                      <div className="text-[11px] font-bold uppercase tracking-wide text-azure-600">{item.step}</div>
-                      <div className="mt-1 text-sm font-semibold text-ink-900">{item.title}</div>
-                    </div>
-                  ))}
-                </div>
+                {/* 커스텀 과정(연도별 아카이브 등)은 커리큘럼 데이터가 없으므로 자연 생략 */}
+                {program.curriculum.length > 0 && (
+                  <div className="mt-6 grid gap-3 sm:grid-cols-3">
+                    {program.curriculum.slice(0, 3).map((item) => (
+                      <div key={item.step} className="rounded-2xl border border-azure-100 bg-azure-50/60 p-3">
+                        <div className="text-[11px] font-bold uppercase tracking-wide text-azure-600">{item.step}</div>
+                        <div className="mt-1 text-sm font-semibold text-ink-900">{item.title}</div>
+                      </div>
+                    ))}
+                  </div>
+                )}
 
                 <div className="mt-auto pt-6">
                   <GlassButton onClick={() => onSelectProgram(program.id)} className="w-full">
-                    과정 설명과 영상 보기
+                    {program.curriculum.length > 0 ? '과정 설명과 영상 보기' : '과정 설명 보기'}
                   </GlassButton>
                 </div>
               </GlassCard>
@@ -194,16 +205,20 @@ function ProgramChooser({
 
 function ProgramIntro({
   program,
+  matchPrograms,
   portfolios,
   onBack,
   onShowTalents,
 }: {
   program: PortfolioProgram;
+  matchPrograms: PortfolioProgram[];
   portfolios: Portfolio[];
   onBack: () => void;
   onShowTalents: () => void;
 }) {
-  const count = portfolios.filter((portfolio) => portfolioMatchesProgram(portfolio, program.id)).length;
+  const count = portfolios.filter((portfolio) =>
+    portfolioMatchesProgram(portfolio, program.id, matchPrograms),
+  ).length;
 
   return (
     <div className="space-y-8">
@@ -241,23 +256,35 @@ function ProgramIntro({
           </div>
 
           <div className="bg-ink-900 p-4 md:p-6">
-            <div className="relative aspect-video overflow-hidden rounded-3xl border border-white/10 bg-black shadow-glass-lg">
-              <iframe
-                src={`https://www.youtube.com/embed/${program.youtubeId}?rel=0&modestbranding=1`}
-                title={`${program.name} 전체 소개 영상`}
-                className="absolute inset-0 h-full w-full"
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                allowFullScreen
-              />
-            </div>
-            <div className="mt-4 flex items-center gap-3 text-white/80">
-              <PlayCircleIcon className="h-5 w-5 text-azure-300" />
-              <p className="text-sm font-medium">과정 전체 소개 영상과 교육생 검토 전 확인용 콘텐츠입니다.</p>
-            </div>
+            {program.youtubeId ? (
+              <>
+                <div className="relative aspect-video overflow-hidden rounded-3xl border border-white/10 bg-black shadow-glass-lg">
+                  <iframe
+                    src={`https://www.youtube.com/embed/${program.youtubeId}?rel=0&modestbranding=1`}
+                    title={`${program.name} 전체 소개 영상`}
+                    className="absolute inset-0 h-full w-full"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowFullScreen
+                  />
+                </div>
+                <div className="mt-4 flex items-center gap-3 text-white/80">
+                  <PlayCircleIcon className="h-5 w-5 text-azure-300" />
+                  <p className="text-sm font-medium">과정 전체 소개 영상과 교육생 검토 전 확인용 콘텐츠입니다.</p>
+                </div>
+              </>
+            ) : (
+              <div className="flex aspect-video flex-col items-center justify-center gap-4 rounded-3xl border border-white/10 bg-white/[0.04]">
+                <div className="flex h-16 w-16 items-center justify-center rounded-3xl border border-white/10 bg-white/[0.06]">
+                  <PlayCircleIcon className="h-9 w-9 text-azure-300/70" />
+                </div>
+                <p className="text-sm font-medium text-white/60">과정 소개 영상이 준비 중입니다</p>
+              </div>
+            )}
           </div>
         </div>
       </GlassCard>
 
+      {program.curriculum.length > 0 && (
       <ScrollReveal>
         <GlassCard strong className="overflow-hidden p-6 md:p-8">
           <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
@@ -343,7 +370,9 @@ function ProgramIntro({
           </div>
         </GlassCard>
       </ScrollReveal>
+      )}
 
+      {program.skills.length > 0 && (
       <ScrollReveal>
         <GlassCard className="p-6 md:p-8">
           <div className="flex flex-wrap items-end justify-between gap-4">
@@ -375,6 +404,7 @@ function ProgramIntro({
           </div>
         </GlassCard>
       </ScrollReveal>
+      )}
 
       {program.workHoursNote && (
         <GlassCard className="p-6 md:p-7">
@@ -412,6 +442,7 @@ export default function PortfoliosPage() {
   const [accessChecked, setAccessChecked] = useState(false);
   const [showAccessModal, setShowAccessModal] = useState(false);
   const [visibleProgramIds, setVisibleProgramIds] = useState<string[]>(DEFAULT_VISIBLE_PROGRAM_IDS);
+  const [allPrograms, setAllPrograms] = useState<PortfolioProgram[]>(PORTFOLIO_PROGRAMS);
   const [selectedProgramId, setSelectedProgramId] = useState<string | null>(null);
   const [showTalentGrid, setShowTalentGrid] = useState(false);
 
@@ -454,8 +485,9 @@ export default function PortfoliosPage() {
     const loadSettings = async () => {
       if (!accessChecked || !hasAccess) return;
 
-      const ids = await getVisiblePortfolioProgramIds();
+      const [ids, programs] = await Promise.all([getVisiblePortfolioProgramIds(), getAllPrograms()]);
       setVisibleProgramIds(ids);
+      setAllPrograms(programs);
     };
 
     loadSettings();
@@ -486,13 +518,22 @@ export default function PortfoliosPage() {
     loadPortfolios();
   }, [accessChecked, hasAccess]);
 
-  const visiblePrograms = useMemo(
-    () => PORTFOLIO_PROGRAMS.filter((program) => visibleProgramIds.includes(program.id)),
-    [visibleProgramIds],
-  );
-  const selectedProgram = getProgramById(selectedProgramId);
+  // 전역 노출 설정 ∩ (기업 회원이면) 관리자가 그 기업에 허용한 과정.
+  // allowedProgramIds 필드가 없는 기업(레거시)은 전체 허용으로 동작한다.
+  const employerRestricted = isEmployer && !hasAdminAccess && isEmployerProgramRestricted(employerStatus);
+  const visiblePrograms = useMemo(() => {
+    const globallyVisible = allPrograms.filter((program) => visibleProgramIds.includes(program.id));
+    if (!isEmployer || hasAdminAccess) return globallyVisible;
+    const allowedIds = getAllowedProgramIdsForEmployer(
+      employerStatus,
+      globallyVisible.map((program) => program.id),
+    );
+    return globallyVisible.filter((program) => allowedIds.includes(program.id));
+  }, [allPrograms, visibleProgramIds, isEmployer, hasAdminAccess, employerStatus]);
+
+  const selectedProgram = getProgramById(selectedProgramId, allPrograms);
   const selectedProgramPortfolios = selectedProgram
-    ? portfolios.filter((portfolio) => portfolioMatchesProgram(portfolio, selectedProgram.id))
+    ? portfolios.filter((portfolio) => portfolioMatchesProgram(portfolio, selectedProgram.id, allPrograms))
     : [];
 
   const availableSpecialities = useMemo(() => {
@@ -502,7 +543,7 @@ export default function PortfoliosPage() {
 
   const filteredPortfolios = selectedProgramPortfolios
     .filter((portfolio) => {
-      const profileProgram = getProgramForPortfolio(portfolio);
+      const profileProgram = getProgramForPortfolio(portfolio, allPrograms);
       const fields = [
         portfolio.name,
         portfolio.speciality,
@@ -537,6 +578,14 @@ export default function PortfoliosPage() {
     setSelectedSpeciality('all');
     setSortBy('recent');
   };
+
+  // 열람 권한이 뒤늦게 로드되어 보고 있던 과정이 차단되면 과정 선택 화면으로 되돌린다
+  useEffect(() => {
+    if (selectedProgramId && !visiblePrograms.some((program) => program.id === selectedProgramId)) {
+      setSelectedProgramId(null);
+      setShowTalentGrid(false);
+    }
+  }, [selectedProgramId, visiblePrograms]);
 
   if (!accessChecked) {
     return (
@@ -623,17 +672,33 @@ export default function PortfoliosPage() {
             </div>
           ) : visiblePrograms.length === 0 ? (
             <GlassCard strong className="px-8 py-16 text-center">
-              <AcademicCapIcon className="mx-auto h-12 w-12 text-azure-500" />
-              <h2 className="mt-4 font-display text-2xl font-bold tracking-tight text-ink-900">
-                현재 공개된 과정이 없습니다
+              <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-4xl border border-azure-100 bg-azure-50 shadow-glass-sm">
+                {employerRestricted ? (
+                  <LockClosedIcon className="h-10 w-10 text-azure-500" />
+                ) : (
+                  <AcademicCapIcon className="h-10 w-10 text-azure-500" />
+                )}
+              </div>
+              <h2 className="font-display text-2xl font-bold tracking-tight text-ink-900">
+                {employerRestricted ? '현재 열람 가능한 과정이 없습니다' : '현재 공개된 과정이 없습니다'}
               </h2>
-              <p className="mt-2 text-ink-500">관리자 메뉴에서 기업에게 노출할 포트폴리오 과정을 선택해주세요.</p>
+              <p className="mx-auto mt-3 max-w-md leading-relaxed text-ink-500">
+                {employerRestricted
+                  ? '매칭 기간이 종료되었거나 열람 권한이 아직 설정되지 않았습니다. 교육생 개인정보 보호를 위해 관리자가 허용한 과정만 열람할 수 있습니다.'
+                  : '관리자 메뉴에서 기업에게 노출할 포트폴리오 과정을 선택해주세요.'}
+              </p>
             </GlassCard>
           ) : !selectedProgram ? (
-            <ProgramChooser programs={visiblePrograms} portfolios={portfolios} onSelectProgram={handleSelectProgram} />
+            <ProgramChooser
+              programs={visiblePrograms}
+              matchPrograms={allPrograms}
+              portfolios={portfolios}
+              onSelectProgram={handleSelectProgram}
+            />
           ) : !showTalentGrid ? (
             <ProgramIntro
               program={selectedProgram}
+              matchPrograms={allPrograms}
               portfolios={portfolios}
               onBack={() => {
                 setSelectedProgramId(null);
@@ -643,32 +708,77 @@ export default function PortfoliosPage() {
             />
           ) : (
             <div className="space-y-8">
-              <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-                <div>
-                  <button
-                    type="button"
-                    onClick={() => setShowTalentGrid(false)}
-                    className="mb-4 inline-flex items-center gap-2 rounded-2xl px-3 py-2 text-sm font-semibold text-ink-500 transition hover:bg-white/70 hover:text-azure-700"
-                  >
-                    <ArrowLeftIcon className="h-4 w-4" />
-                    과정 설명으로
-                  </button>
-                  <Badge tone={selectedProgram.courseType === 'foreign' ? 'coral' : 'azure'}>
-                    {selectedProgram.audience} · {selectedProgram.hours}
-                  </Badge>
-                  <h2 className="mt-3 font-display text-3xl font-bold tracking-tight text-ink-900 md:text-4xl">
-                    {selectedProgram.shortName} 교육생
-                  </h2>
-                  <p className="mt-2 max-w-3xl text-sm leading-relaxed text-ink-500">
-                    사진과 핵심 역량을 먼저 확인한 뒤, 개인 포트폴리오에서 자기소개·영상·프로젝트 문서를 자세히 검토하세요.
-                  </p>
-                </div>
-                {hasAdminAccess && (
-                  <Badge tone="neutral" className="self-start lg:self-auto">
-                    관리자 열람
-                  </Badge>
-                )}
-              </div>
+              <button
+                type="button"
+                onClick={() => setShowTalentGrid(false)}
+                className="inline-flex items-center gap-2 rounded-2xl px-3 py-2 text-sm font-semibold text-ink-500 transition hover:bg-white/70 hover:text-azure-700"
+              >
+                <ArrowLeftIcon className="h-4 w-4" />
+                과정 설명으로
+              </button>
+
+              {/* 목록 최상단: 과정 요약 + 교육생 전체 자기소개 영상 (클라이언트 요청 — 목록 진입 시 가장 먼저 보이도록) */}
+              <ScrollReveal>
+                <GlassCard strong className="overflow-hidden p-0">
+                  <div className="grid lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
+                    <div className="flex flex-col justify-center p-6 md:p-8">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Badge tone={selectedProgram.courseType === 'foreign' ? 'coral' : 'azure'}>
+                          {selectedProgram.audience} · {selectedProgram.hours}
+                        </Badge>
+                        {hasAdminAccess && <Badge tone="neutral">관리자 열람</Badge>}
+                      </div>
+                      <h2 className="mt-4 font-display text-3xl font-bold tracking-tight text-ink-900 md:text-4xl">
+                        {selectedProgram.shortName} 교육생
+                      </h2>
+                      <p className="mt-3 max-w-2xl text-sm leading-relaxed text-ink-500 md:text-base">
+                        사진과 핵심 역량을 먼저 확인한 뒤, 개인 포트폴리오에서 자기소개·영상·프로젝트 문서를 자세히 검토하세요.
+                      </p>
+                      <div className="mt-6 flex flex-wrap items-center gap-3">
+                        <div className="inline-flex items-center gap-2 rounded-2xl border border-white/70 bg-white/65 px-4 py-2.5 text-sm font-semibold text-ink-700 shadow-glass-sm">
+                          <UserGroupIcon className="h-4 w-4 text-azure-500" />
+                          교육생 {selectedProgramPortfolios.length}명
+                        </div>
+                        <div className="inline-flex items-center gap-2 rounded-2xl border border-white/70 bg-white/65 px-4 py-2.5 text-sm font-semibold text-ink-700 shadow-glass-sm">
+                          <PlayCircleIcon className="h-4 w-4 text-azure-500" />
+                          전체 자기소개 영상
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="bg-ink-900 p-4 md:p-5">
+                      {selectedProgram.introVideoId || selectedProgram.youtubeId ? (
+                        <>
+                          <div className="relative aspect-video overflow-hidden rounded-3xl border border-white/10 bg-black shadow-glass-lg">
+                            <iframe
+                              src={`https://www.youtube.com/embed/${selectedProgram.introVideoId || selectedProgram.youtubeId}?rel=0&modestbranding=1`}
+                              title={`${selectedProgram.name} 교육생 전체 자기소개 영상`}
+                              className="absolute inset-0 h-full w-full"
+                              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                              allowFullScreen
+                            />
+                          </div>
+                          <div className="mt-3.5 flex items-center gap-2.5 text-white/80">
+                            <PlayCircleIcon className="h-5 w-5 shrink-0 text-azure-300" />
+                            <p className="text-sm font-medium">
+                              교육생 전체 자기소개 영상 — 개인 포트폴리오를 열람하기 전에 전체 교육생을 한눈에 확인하세요.
+                            </p>
+                          </div>
+                        </>
+                      ) : (
+                        <div className="flex h-full min-h-[240px] flex-col items-center justify-center gap-4 rounded-3xl border border-white/10 bg-white/[0.04] py-10">
+                          <div className="flex h-16 w-16 items-center justify-center rounded-3xl border border-white/10 bg-white/[0.06]">
+                            <PlayCircleIcon className="h-9 w-9 text-azure-300/70" />
+                          </div>
+                          <p className="px-6 text-center text-sm font-medium leading-relaxed text-white/60">
+                            교육생 전체 자기소개 영상이 아직 등록되지 않았습니다
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </GlassCard>
+              </ScrollReveal>
 
               <ScrollReveal>
                 <div className="glass-strong rounded-3xl p-4 shadow-glass sm:p-5">

@@ -113,6 +113,12 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
+    // ---- 관리자 커스텀 과정(연도별 아카이브 등): 공개 메타데이터라 누구나 읽기, 쓰기는 관리자 ----
+    match /programs/{programId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
     // ---- 관리자 전용 catch-all (그 외 모든 경로) ----
     match /{document=**} {
       allow read, write: if isAdmin();

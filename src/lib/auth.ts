@@ -887,7 +887,16 @@ export const getAllEmployers = async (includeHidden: boolean = false) => {
           }
         },
         createdAt: data.createdAt?.toDate(),
-        updatedAt: data.updatedAt?.toDate()
+        updatedAt: data.updatedAt?.toDate(),
+        // 기업별 과정 열람 권한 (배열 없음 = 전체 허용 레거시 상태)
+        allowedProgramIds: Array.isArray(data.allowedProgramIds)
+          ? data.allowedProgramIds.filter((id: unknown): id is string => typeof id === 'string')
+          : undefined,
+        rejectedReason: data.rejectedReason,
+        canceledReason: data.canceledReason,
+        approvedAt: data.approvedAt,
+        rejectedAt: data.rejectedAt,
+        canceledAt: data.canceledAt
       };
     }).filter(employer => employer.company.name); // 회사명이 있는 기업만 필터링
     

@@ -8,7 +8,12 @@ export interface PortfolioProgram {
   courseType: ProgramCourseType;
   audience: string;
   hours: string;
+  /** 과정 소개 영상. 커스텀 과정은 빈 문자열일 수 있다(미등록 상태). */
   youtubeId: string;
+  /** 교육생 전체 자기소개 영상 — 인재 목록 상단에 노출. 없으면 youtubeId 로 대체. */
+  introVideoId?: string;
+  /** 관리자가 Firestore(programs 컬렉션)에서 직접 추가한 과정 여부 */
+  isCustom?: boolean;
   heroTitle: string;
   summary: string;
   overview: string;
@@ -114,15 +119,10 @@ export const PORTFOLIO_PROGRAMS: PortfolioProgram[] = [
   {
     id: '2026-foreign-ai-market-research',
     name: '2026 외국인 유학생 대상 해외시장 조사 및 AI 마케팅 역량강화 과정',
-    shortName: '외국인 유학생 AI 마케팅',
-    aliases: [
-      '외국인 유학생 AI 마케터 인턴과정',
-      '외국인 유학생 AI마케터 인턴과정',
-      '외국인 유학생 AI 마케팅 프로그램',
-      '외국인 유학생 AI 마케팅 역량강화 및 인턴십 연계과정',
-      '2025 외국인 유학생 AI 마케팅',
-      '외국인 유학생 ai 과정',
-    ],
+    shortName: '2026 외국인 유학생 AI 마케팅',
+    // 주의: 과거에 여기 있던 '외국인 유학생 AI 마케터 인턴과정' 등의 별칭은 전부
+    // 작년(2025) 과정 실데이터의 과정명이므로 2025 과정(관리자 등록 커스텀 과정)으로 이관했다.
+    aliases: ['2026 외국인 유학생 AI 마케팅'],
     courseType: 'foreign',
     audience: '외국인 유학생',
     hours: '155시간',
@@ -223,40 +223,83 @@ export const SPECIALITY_ICON_MAP: Record<string, string> = {
   기타: '👤',
 };
 
-export function getProgramById(programId?: string | null) {
-  return PORTFOLIO_PROGRAMS.find((program) => program.id === programId);
+// ── 매칭 헬퍼 ──────────────────────────────────────────────────────────
+//  programs 인자를 생략하면 정적 과정만 대상으로 한다.
+//  관리자 커스텀 과정(Firestore)까지 포함하려면 usePrograms() 등으로 병합한 목록을 전달할 것.
+
+function normalizedNamesOf(program: PortfolioProgram) {
+  return [program.name, program.shortName, ...(program.aliases || [])]
+    .map((name) => name.trim().toLowerCase())
+    .filter(Boolean);
 }
 
-export function getProgramByCourseName(courseName?: string | null) {
+export function getProgramById(programId?: string | null, programs: PortfolioProgram[] = PORTFOLIO_PROGRAMS) {
+  return programs.find((program) => program.id === programId);
+}
+
+export function getProgramByCourseName(
+  courseName?: string | null,
+  programs: PortfolioProgram[] = PORTFOLIO_PROGRAMS,
+) {
   if (!courseName) return undefined;
   const normalizedCourseName = courseName.trim().toLowerCase();
-  return PORTFOLIO_PROGRAMS.find((program) => {
-    const names = [program.name, program.shortName, ...(program.aliases || [])]
-      .map((name) => name.trim().toLowerCase())
-      .filter(Boolean);
 
-    return names.some((name) => normalizedCourseName === name || normalizedCourseName.includes(name) || name.includes(normalizedCourseName));
-  });
+  // 1차: 정확 일치 — '2025 외국인 유학생 AI 마케팅'이 다른 과정의 부분 문자열과
+  //      겹쳐도 공식 과정명이 항상 우선하도록 한다.
+  const exact = programs.find((program) => normalizedNamesOf(program).some((name) => name === normalizedCourseName));
+  if (exact) return exact;
+
+  // 2차: 양방향 부분 일치 (과거 수기 입력 데이터의 변형 표기 흡수용)
+  return programs.find((program) =>
+    normalizedNamesOf(program).some(
+      (name) => normalizedCourseName.includes(name) || name.includes(normalizedCourseName),
+    ),
+  );
 }
 
-export function getProgramByCourseType(courseType?: ProgramCourseType | null) {
+export function getProgramByCourseType(
+  courseType?: ProgramCourseType | null,
+  programs: PortfolioProgram[] = PORTFOLIO_PROGRAMS,
+) {
   if (!courseType) return undefined;
-  return PORTFOLIO_PROGRAMS.find((program) => program.courseType === courseType);
+  return programs.find((program) => program.courseType === courseType);
 }
 
-export function getProgramForPortfolio(portfolio: { currentCourse?: string; courseType?: ProgramCourseType | null }) {
-  return getProgramByCourseName(portfolio.currentCourse) || getProgramByCourseType(portfolio.courseType);
+export function getProgramForPortfolio(
+  portfolio: { currentCourse?: string; courseType?: ProgramCourseType | null },
+  programs: PortfolioProgram[] = PORTFOLIO_PROGRAMS,
+) {
+  return getProgramByCourseName(portfolio.currentCourse, programs) || getProgramByCourseType(portfolio.courseType, programs);
 }
 
 export function portfolioMatchesProgram(
   portfolio: { currentCourse?: string; courseType?: ProgramCourseType | null },
   programId: string,
+  programs: PortfolioProgram[] = PORTFOLIO_PROGRAMS,
 ) {
-  const program = getProgramById(programId);
+  const program = getProgramById(programId, programs);
   if (!program) return false;
-  const portfolioProgram = getProgramForPortfolio(portfolio);
+  const portfolioProgram = getProgramForPortfolio(portfolio, programs);
   if (portfolioProgram) return portfolioProgram.id === program.id;
   return portfolio.courseType === program.courseType;
+}
+
+// ── 기업별 과정 열람 권한 ──────────────────────────────────────────────
+//  employers/{uid}.allowedProgramIds:
+//   - 필드 없음(레거시)  → 전체 허용 (기존 기업의 접근이 배포로 끊기지 않도록)
+//   - 배열              → 해당 과정만 허용. 빈 배열 = 전면 차단(매칭기간 종료 상태).
+export function getAllowedProgramIdsForEmployer(
+  employerData: { allowedProgramIds?: unknown } | null | undefined,
+  allProgramIds: string[],
+): string[] {
+  const raw = employerData?.allowedProgramIds;
+  if (!Array.isArray(raw)) return allProgramIds;
+  const allowed = raw.filter((id): id is string => typeof id === 'string');
+  return allProgramIds.filter((id) => allowed.includes(id));
+}
+
+export function isEmployerProgramRestricted(employerData: { allowedProgramIds?: unknown } | null | undefined) {
+  return Array.isArray(employerData?.allowedProgramIds);
 }
 
 export function splitSpecialities(value?: string | string[] | null) {

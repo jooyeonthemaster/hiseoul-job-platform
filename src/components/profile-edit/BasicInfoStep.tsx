@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   AcademicCapIcon,
   BriefcaseIcon,
@@ -25,7 +25,9 @@ import {
   formatSpecialities,
   getProgramByCourseName,
   splitSpecialities,
+  type PortfolioProgram,
 } from '@/lib/programs';
+import { getAllPrograms } from '@/lib/customPrograms';
 
 const CURRENT_YEAR = new Date().getFullYear();
 
@@ -51,7 +53,14 @@ export default function BasicInfoStep({ data, onChange }: BasicInfoStepProps) {
   const [customSpeciality, setCustomSpeciality] = useState('');
 
   const selectedSpecialities = useMemo(() => splitSpecialities(data.speciality), [data.speciality]);
-  const selectedProgram = getProgramByCourseName(data.currentCourse);
+
+  // 과정 드롭다운: 정적 과정 + 관리자 커스텀 과정(2025 아카이브 등)
+  const [allPrograms, setAllPrograms] = useState<PortfolioProgram[]>(PORTFOLIO_PROGRAMS);
+  useEffect(() => {
+    getAllPrograms().then(setAllPrograms);
+  }, []);
+
+  const selectedProgram = getProgramByCourseName(data.currentCourse, allPrograms);
 
   const handleChange = (field: string, value: string) => {
     onChange({ ...data, [field]: value });
@@ -79,7 +88,7 @@ export default function BasicInfoStep({ data, onChange }: BasicInfoStepProps) {
   };
 
   const handleCourseChange = (programId: string) => {
-    const program = PORTFOLIO_PROGRAMS.find((item) => item.id === programId);
+    const program = allPrograms.find((item) => item.id === programId);
     onChange({
       ...data,
       currentCourse: program?.name || '',
@@ -356,7 +365,7 @@ export default function BasicInfoStep({ data, onChange }: BasicInfoStepProps) {
                 className={fieldClasses}
               >
                 <option value="">수행 중인 과정을 선택하세요</option>
-                {PORTFOLIO_PROGRAMS.map((program) => (
+                {allPrograms.map((program) => (
                   <option key={program.id} value={program.id}>
                     {program.name}
                   </option>

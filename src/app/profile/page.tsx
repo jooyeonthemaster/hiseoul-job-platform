@@ -27,7 +27,8 @@ import { GlassButton } from '@/components/ui/GlassButton';
 import { GlassDropdown } from '@/components/ui/GlassDropdown';
 import { ScrollReveal } from '@/components/ui/ScrollReveal';
 import { AcademicCapIcon } from '@heroicons/react/24/outline';
-import { PORTFOLIO_PROGRAMS, getProgramByCourseName } from '@/lib/programs';
+import { PORTFOLIO_PROGRAMS, getProgramByCourseName, type PortfolioProgram } from '@/lib/programs';
+import { getAllPrograms } from '@/lib/customPrograms';
 
 export default function ProfilePage() {
   const { user, userData, loading: authLoading, refreshUserData } = useAuth();
@@ -47,6 +48,11 @@ export default function ProfilePage() {
   });
   const [loadingDashboard, setLoadingDashboard] = useState(false);
   const [recommendedCompanies, setRecommendedCompanies] = useState<any[]>([]);
+  // 과정 드롭다운: 정적 과정 + 관리자 커스텀 과정(2025 아카이브 등)
+  const [allPrograms, setAllPrograms] = useState<PortfolioProgram[]>(PORTFOLIO_PROGRAMS);
+  useEffect(() => {
+    getAllPrograms().then(setAllPrograms);
+  }, []);
 
   // Redirect if not authenticated or not jobseeker
   useEffect(() => {
@@ -230,11 +236,11 @@ export default function ProfilePage() {
   };
 
   const resolveCourseType = (courseName?: string, fallback?: 'domestic' | 'foreign' | '') => {
-    return getProgramByCourseName(courseName)?.courseType || fallback || undefined;
+    return getProgramByCourseName(courseName, allPrograms)?.courseType || fallback || undefined;
   };
 
   const handleCourseSelect = (programId: string) => {
-    const program = PORTFOLIO_PROGRAMS.find((item) => item.id === programId);
+    const program = allPrograms.find((item) => item.id === programId);
     setFormData((prev: any) => ({
       ...prev,
       currentCourse: program?.name || '',
@@ -425,10 +431,10 @@ export default function ProfilePage() {
                       현재 참여 중인 교육과정이나 프로그램
                     </label>
                     <GlassDropdown
-                      value={getProgramByCourseName(formData.currentCourse)?.id || ''}
+                      value={getProgramByCourseName(formData.currentCourse, allPrograms)?.id || ''}
                       onChange={(id) => handleCourseSelect(id)}
                       placeholder="수행 중인 과정을 선택하세요"
-                      options={PORTFOLIO_PROGRAMS.map((program) => ({
+                      options={allPrograms.map((program) => ({
                         value: program.id,
                         label: program.name,
                       }))}
@@ -442,8 +448,8 @@ export default function ProfilePage() {
                         과정 분류
                       </label>
                       <div className="flex min-h-[50px] items-center rounded-2xl border border-white/70 bg-white/65 px-4 py-3 text-sm font-semibold text-ink-700 shadow-glass-sm">
-                        {getProgramByCourseName(formData.currentCourse)
-                          ? `${getProgramByCourseName(formData.currentCourse)?.audience} · ${getProgramByCourseName(formData.currentCourse)?.hours}`
+                        {getProgramByCourseName(formData.currentCourse, allPrograms)
+                          ? `${getProgramByCourseName(formData.currentCourse, allPrograms)?.audience} · ${getProgramByCourseName(formData.currentCourse, allPrograms)?.hours}`
                           : '과정 선택 후 자동 분류'}
                       </div>
                     </div>

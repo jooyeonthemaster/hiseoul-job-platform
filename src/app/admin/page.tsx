@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { collection, query, where, getDocs, updateDoc, doc, serverTimestamp, orderBy } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { AnimatePresence, motion } from 'framer-motion';
-import { CheckCircleIcon, XCircleIcon, ClockIcon, BuildingOfficeIcon, LockClosedIcon, EyeIcon, EyeSlashIcon, EnvelopeIcon, UserGroupIcon, UserIcon, BriefcaseIcon, MagnifyingGlassIcon, FunnelIcon, CalendarDaysIcon, PencilIcon, ArrowLeftIcon, ArrowRightIcon, XMarkIcon, ArrowPathIcon, ChevronUpIcon, ChevronDownIcon, ArrowDownTrayIcon, TableCellsIcon, ArrowTopRightOnSquareIcon, AcademicCapIcon } from '@heroicons/react/24/outline';
+import { CheckCircleIcon, XCircleIcon, ClockIcon, BuildingOfficeIcon, LockClosedIcon, LockOpenIcon, EyeIcon, EyeSlashIcon, EnvelopeIcon, UserGroupIcon, UserIcon, BriefcaseIcon, MagnifyingGlassIcon, FunnelIcon, CalendarDaysIcon, PencilIcon, ArrowLeftIcon, ArrowRightIcon, XMarkIcon, ArrowPathIcon, ChevronUpIcon, ChevronDownIcon, ArrowDownTrayIcon, TableCellsIcon, ArrowTopRightOnSquareIcon, AcademicCapIcon, PlusIcon, TrashIcon, PlayCircleIcon } from '@heroicons/react/24/outline';
 import { GlassButton } from '@/components/ui/GlassButton';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { Badge } from '@/components/ui/Badge';
@@ -13,8 +13,18 @@ import { AuroraBackground } from '@/components/ui/AuroraBackground';
 import { ScrollReveal } from '@/components/ui/ScrollReveal';
 import { getAllPortfolios, updateJobSeekerProfile, getJobSeekerProfile, updateUserProfile, registerPortfolio, togglePortfolioVisibility, setPortfolioContactVisibility, toggleEmployerVisibility, getAllEmployers, logOut } from '@/lib/auth';
 import { exportJobseekersToExcel, exportEmployersToExcel, exportSelectionsToExcel, exportAllToExcel } from '@/lib/excelExport';
-import { DEFAULT_VISIBLE_PROGRAM_IDS, PORTFOLIO_PROGRAMS, splitSpecialities, portfolioMatchesProgram } from '@/lib/programs';
+import { DEFAULT_VISIBLE_PROGRAM_IDS, PORTFOLIO_PROGRAMS, splitSpecialities, portfolioMatchesProgram, type PortfolioProgram, type ProgramCourseType } from '@/lib/programs';
 import { getVisiblePortfolioProgramIds, saveVisiblePortfolioProgramIds } from '@/lib/programSettings';
+import {
+  buildProgramId,
+  createCustomProgram,
+  deleteCustomProgram,
+  getAllPrograms,
+  invalidateProgramsCache,
+  updateCustomProgram,
+  type CustomProgramInput,
+} from '@/lib/customPrograms';
+import { normalizeYouTubeInput } from '@/lib/youtube';
 import {
   StepNavigation,
   BasicInfoStep,
@@ -70,6 +80,8 @@ interface PendingEmployer {
   rejectedAt?: any;
   canceledAt?: any;
   isHidden?: boolean; // 숨김 상태 추가
+  // 기업별 과정 열람 권한 (undefined = 전체 허용 레거시, [] = 전면 차단)
+  allowedProgramIds?: string[];
 }
 
 interface JobInquiry {
@@ -284,6 +296,34 @@ export default function AdminPage() {
   const [visibleProgramIds, setVisibleProgramIds] = useState<string[]>(DEFAULT_VISIBLE_PROGRAM_IDS);
   const [savingProgramSettings, setSavingProgramSettings] = useState(false);
 
+  // 과정 목록(정적+커스텀) — 기업별 열람 권한·과정 관리에서 공용 사용
+  const [allPrograms, setAllPrograms] = useState<PortfolioProgram[]>(PORTFOLIO_PROGRAMS);
+  // 기업별 과정 열람 권한 편집 초안: employerId → 허용 과정 id 배열
+  const [programDrafts, setProgramDrafts] = useState<Record<string, string[]>>({});
+  const [savingEmployerPrograms, setSavingEmployerPrograms] = useState<string | null>(null);
+  // 매칭기간 일괄 조치 확인 모달: null | 'blockAll' | 'allowAll'
+  const [bulkProgramAction, setBulkProgramAction] = useState<'blockAll' | 'allowAll' | null>(null);
+  const [bulkProcessing, setBulkProcessing] = useState(false);
+  // 커스텀 과정 추가/수정 모달
+  const [programModalOpen, setProgramModalOpen] = useState(false);
+  const [editingProgramId, setEditingProgramId] = useState<string | null>(null);
+  const [programForm, setProgramForm] = useState({
+    name: '',
+    shortName: '',
+    courseType: 'foreign' as ProgramCourseType,
+    audience: '',
+    hours: '',
+    summary: '',
+    overview: '',
+    talentNote: '',
+    youtubeInput: '',
+    introVideoInput: '',
+    aliasesText: '',
+    tagsText: '',
+  });
+  const [savingProgram, setSavingProgram] = useState(false);
+  const [deletingProgram, setDeletingProgram] = useState<PortfolioProgram | null>(null);
+
   // 엑셀 내보내기 상태 (진행 중인 항목 키: 'jobseekers' | 'employers' | 'selections' | 'all')
   const [exporting, setExporting] = useState<string | null>(null);
 
@@ -424,6 +464,20 @@ export default function AdminPage() {
 
   const canLoadAdminData = isAuthenticated && hasAdminAccess;
 
+  // 과정 목록(정적+커스텀) + 노출 설정 — 기업별 열람 권한 UI 에서도 쓰므로 탭과 무관하게 로드
+  useEffect(() => {
+    if (!canLoadAdminData) return;
+    (async () => {
+      try {
+        const [programs, ids] = await Promise.all([getAllPrograms(), getVisiblePortfolioProgramIds()]);
+        setAllPrograms(programs);
+        setVisibleProgramIds(ids);
+      } catch (error) {
+        console.error('과정 목록 로드 실패:', error);
+      }
+    })();
+  }, [canLoadAdminData]);
+
   // 기업 목록 조회
   useEffect(() => {
     if (!canLoadAdminData) return;
@@ -476,7 +530,8 @@ export default function AdminPage() {
             approvedAt: (employer as any).approvedAt,
             rejectedAt: (employer as any).rejectedAt,
             canceledAt: (employer as any).canceledAt,
-            isHidden: employer.isHidden
+            isHidden: employer.isHidden,
+            allowedProgramIds: (employer as any).allowedProgramIds
           };
 
           // 상태별로 분류
@@ -955,6 +1010,222 @@ export default function AdminPage() {
       alert('과정 노출 설정 저장에 실패했습니다.');
     } finally {
       setSavingProgramSettings(false);
+    }
+  };
+
+  // ══════════════ 기업별 과정 열람 권한 ══════════════
+  const allProgramIds = allPrograms.map((program) => program.id);
+
+  // 저장된 권한(필드 없음 = 전체 허용)을 편집용 배열로 해석
+  const resolveEmployerAllowedIds = (employer: PendingEmployer) =>
+    Array.isArray(employer.allowedProgramIds)
+      ? employer.allowedProgramIds.filter((id) => allProgramIds.includes(id))
+      : allProgramIds;
+
+  const getEmployerProgramDraft = (employer: PendingEmployer) =>
+    programDrafts[employer.id] ?? resolveEmployerAllowedIds(employer);
+
+  const isEmployerProgramDraftDirty = (employer: PendingEmployer) => {
+    const draft = programDrafts[employer.id];
+    if (!draft) return false;
+    const saved = resolveEmployerAllowedIds(employer);
+    return draft.length !== saved.length || draft.some((id) => !saved.includes(id));
+  };
+
+  const toggleEmployerProgram = (employer: PendingEmployer, programId: string) => {
+    setProgramDrafts((prev) => {
+      const current = prev[employer.id] ?? resolveEmployerAllowedIds(employer);
+      const next = current.includes(programId)
+        ? current.filter((id) => id !== programId)
+        : [...current, programId];
+      return { ...prev, [employer.id]: next };
+    });
+  };
+
+  const setEmployerProgramDraft = (employer: PendingEmployer, ids: string[]) => {
+    setProgramDrafts((prev) => ({ ...prev, [employer.id]: ids }));
+  };
+
+  const applyEmployerProgramsLocally = (employerId: string, ids: string[]) => {
+    const patch = (list: PendingEmployer[]) =>
+      list.map((item) => (item.id === employerId ? { ...item, allowedProgramIds: ids } : item));
+    setApprovedEmployers((prev) => patch(prev));
+    setPendingEmployers((prev) => patch(prev));
+    setRejectedEmployers((prev) => patch(prev));
+  };
+
+  const saveEmployerPrograms = async (employer: PendingEmployer) => {
+    const draft = getEmployerProgramDraft(employer);
+    try {
+      setSavingEmployerPrograms(employer.id);
+      await updateDoc(doc(db, 'employers', employer.id), {
+        allowedProgramIds: draft,
+        allowedProgramsUpdatedAt: serverTimestamp(),
+      });
+      applyEmployerProgramsLocally(employer.id, draft);
+      setProgramDrafts((prev) => {
+        const next = { ...prev };
+        delete next[employer.id];
+        return next;
+      });
+    } catch (error) {
+      console.error('기업 과정 열람 권한 저장 실패:', error);
+      alert('열람 권한 저장에 실패했습니다.');
+    } finally {
+      setSavingEmployerPrograms(null);
+    }
+  };
+
+  // 매칭기간 종료/재개용 일괄 조치 — 승인 완료 기업 전체에 적용
+  const applyBulkProgramAction = async () => {
+    if (!bulkProgramAction) return;
+    const targetIds = bulkProgramAction === 'blockAll' ? [] : allProgramIds;
+    try {
+      setBulkProcessing(true);
+      await Promise.all(
+        approvedEmployers.map((employer) =>
+          updateDoc(doc(db, 'employers', employer.id), {
+            allowedProgramIds: targetIds,
+            allowedProgramsUpdatedAt: serverTimestamp(),
+          }),
+        ),
+      );
+      setApprovedEmployers((prev) => prev.map((item) => ({ ...item, allowedProgramIds: targetIds })));
+      setProgramDrafts({});
+      setBulkProgramAction(null);
+      alert(
+        bulkProgramAction === 'blockAll'
+          ? `승인 기업 ${approvedEmployers.length}곳의 포트폴리오 열람을 전면 차단했습니다.`
+          : `승인 기업 ${approvedEmployers.length}곳에 모든 과정 열람을 허용했습니다.`,
+      );
+    } catch (error) {
+      console.error('일괄 조치 실패:', error);
+      alert('일괄 조치 중 오류가 발생했습니다. 목록을 새로고침해 상태를 확인해주세요.');
+    } finally {
+      setBulkProcessing(false);
+    }
+  };
+
+  // ══════════════ 커스텀 과정 관리 (추가/수정/삭제) ══════════════
+  const resetProgramForm = () => {
+    setProgramForm({
+      name: '',
+      shortName: '',
+      courseType: 'foreign',
+      audience: '',
+      hours: '',
+      summary: '',
+      overview: '',
+      talentNote: '',
+      youtubeInput: '',
+      introVideoInput: '',
+      aliasesText: '',
+      tagsText: '',
+    });
+  };
+
+  const openCreateProgramModal = () => {
+    resetProgramForm();
+    setEditingProgramId(null);
+    setProgramModalOpen(true);
+  };
+
+  const openEditProgramModal = (program: PortfolioProgram) => {
+    setProgramForm({
+      name: program.name,
+      shortName: program.shortName,
+      courseType: program.courseType,
+      audience: program.audience,
+      hours: program.hours,
+      summary: program.summary,
+      overview: program.overview || '',
+      talentNote: program.talentNote || '',
+      youtubeInput: program.youtubeId || '',
+      introVideoInput: program.introVideoId || '',
+      aliasesText: (program.aliases || []).join('\n'),
+      tagsText: (program.tags || []).join(', '),
+    });
+    setEditingProgramId(program.id);
+    setProgramModalOpen(true);
+  };
+
+  const reloadPrograms = async () => {
+    invalidateProgramsCache();
+    setAllPrograms(await getAllPrograms());
+  };
+
+  const handleSaveProgram = async () => {
+    const { name, audience, hours, summary } = programForm;
+    if (!name.trim() || !audience.trim() || !hours.trim() || !summary.trim()) {
+      alert('과정명, 대상, 기간 표기, 요약은 필수 입력입니다.');
+      return;
+    }
+    const youtubeId = normalizeYouTubeInput(programForm.youtubeInput);
+    if (youtubeId === null) {
+      alert('과정 소개 영상의 YouTube 주소를 해석할 수 없습니다. 전체 URL 또는 11자리 영상 ID를 입력해주세요.');
+      return;
+    }
+    const introVideoId = normalizeYouTubeInput(programForm.introVideoInput);
+    if (introVideoId === null) {
+      alert('교육생 전체 자기소개 영상의 YouTube 주소를 해석할 수 없습니다. 전체 URL 또는 11자리 영상 ID를 입력해주세요.');
+      return;
+    }
+
+    const input: CustomProgramInput = {
+      name: programForm.name,
+      shortName: programForm.shortName || programForm.name,
+      courseType: programForm.courseType,
+      audience: programForm.audience,
+      hours: programForm.hours,
+      summary: programForm.summary,
+      overview: programForm.overview,
+      talentNote: programForm.talentNote,
+      youtubeId,
+      introVideoId,
+      aliases: programForm.aliasesText.split(/[\n,]/),
+      tags: programForm.tagsText.split(','),
+    };
+
+    try {
+      setSavingProgram(true);
+      if (editingProgramId) {
+        await updateCustomProgram(editingProgramId, input);
+      } else {
+        let programId = buildProgramId(input.name);
+        while (allProgramIds.includes(programId)) programId = `${programId}-1`;
+        await createCustomProgram(programId, input);
+        // 새 과정은 즉시 노출 목록에 포함해 기업 화면에서 바로 선택 가능하게 한다
+        const nextVisible = [...visibleProgramIds, programId];
+        setVisibleProgramIds(nextVisible);
+        await saveVisiblePortfolioProgramIds(nextVisible);
+      }
+      await reloadPrograms();
+      setProgramModalOpen(false);
+      setEditingProgramId(null);
+      resetProgramForm();
+    } catch (error) {
+      console.error('과정 저장 실패:', error);
+      alert('과정 저장에 실패했습니다.');
+    } finally {
+      setSavingProgram(false);
+    }
+  };
+
+  const handleDeleteProgram = async () => {
+    if (!deletingProgram) return;
+    try {
+      setSavingProgram(true);
+      await deleteCustomProgram(deletingProgram.id);
+      const nextVisible = visibleProgramIds.filter((id) => id !== deletingProgram.id);
+      setVisibleProgramIds(nextVisible);
+      await saveVisiblePortfolioProgramIds(nextVisible);
+      await reloadPrograms();
+      setDeletingProgram(null);
+    } catch (error) {
+      console.error('과정 삭제 실패:', error);
+      alert('과정 삭제에 실패했습니다.');
+    } finally {
+      setSavingProgram(false);
     }
   };
 
@@ -1701,6 +1972,41 @@ export default function AdminPage() {
         )}
 
         {/* 기업 목록 */}
+        {/* 매칭기간 일괄 관리 — 승인 완료 탭 상단 */}
+        {selectedTab === 'approved' && approvedEmployers.length > 0 && (
+          <div className="glass-card p-6 md:p-7 mb-8">
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+              <div className="flex items-start gap-3">
+                <span className="inline-flex items-center justify-center w-11 h-11 shrink-0 rounded-2xl bg-gradient-to-br from-azure-500 to-azure-600 text-white shadow-glow">
+                  <AcademicCapIcon className="w-6 h-6" />
+                </span>
+                <div>
+                  <h3 className="font-semibold text-lg text-ink-900">매칭기간 열람 일괄 관리</h3>
+                  <p className="text-sm text-ink-500 mt-0.5 leading-relaxed">
+                    매칭기간이 끝나면 전면 차단으로 교육생 개인정보 열람을 막고, 다음 매칭 시작 시 다시 허용하세요.
+                    기업별 세부 권한은 아래 각 기업 카드에서 조정할 수 있습니다.
+                  </p>
+                </div>
+              </div>
+              <div className="flex flex-wrap gap-2 shrink-0">
+                <GlassButton
+                  onClick={() => setBulkProgramAction('blockAll')}
+                  variant="secondary"
+                  size="sm"
+                  className="!text-coral-600"
+                >
+                  <LockClosedIcon className="w-4 h-4 mr-1.5" />
+                  전체 기업 열람 차단
+                </GlassButton>
+                <GlassButton onClick={() => setBulkProgramAction('allowAll')} variant="secondary" size="sm">
+                  <LockOpenIcon className="w-4 h-4 mr-1.5" />
+                  전체 기업 모든 과정 허용
+                </GlassButton>
+              </div>
+            </div>
+          </div>
+        )}
+
         {selectedTab !== 'inquiries' && (
           <div className="grid gap-6">
             {getEmployersByTab().map((employer) => (
@@ -2004,7 +2310,83 @@ export default function AdminPage() {
                     </div>
                   </div>
                 </div>
-                
+
+                {/* 기업별 과정 열람 권한 — 체크한 과정의 교육생만 열람 가능. 전부 해제 = 전면 차단(매칭기간 종료) */}
+                {employer.approvalStatus === 'approved' && (() => {
+                  const draft = getEmployerProgramDraft(employer);
+                  const dirty = isEmployerProgramDraftDirty(employer);
+                  const saving = savingEmployerPrograms === employer.id;
+                  return (
+                    <div className="mt-6 border-t border-ink-100 pt-5">
+                      <div className="flex flex-wrap items-center justify-between gap-3">
+                        <div className="flex flex-wrap items-center gap-2.5">
+                          <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl bg-azure-50 text-azure-500">
+                            <AcademicCapIcon className="w-5 h-5" />
+                          </span>
+                          <div>
+                            <h4 className="text-sm font-semibold text-ink-900">포트폴리오 열람 권한</h4>
+                            <p className="mt-0.5 text-xs text-ink-400">체크한 과정의 교육생 포트폴리오만 열람할 수 있습니다</p>
+                          </div>
+                          <Badge
+                            tone={draft.length === 0 ? 'coral' : draft.length === allProgramIds.length ? 'mint' : 'azure'}
+                          >
+                            {draft.length === 0
+                              ? '전면 차단'
+                              : draft.length === allProgramIds.length
+                              ? '전체 허용'
+                              : `${draft.length}개 과정 허용`}
+                          </Badge>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setEmployerProgramDraft(employer, allProgramIds)}
+                            className="rounded-xl px-2.5 py-1.5 text-xs font-semibold text-ink-500 transition hover:bg-azure-50 hover:text-azure-700"
+                          >
+                            전체 허용
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setEmployerProgramDraft(employer, [])}
+                            className="rounded-xl px-2.5 py-1.5 text-xs font-semibold text-ink-500 transition hover:bg-coral-100/60 hover:text-coral-600"
+                          >
+                            전체 차단
+                          </button>
+                          {dirty && (
+                            <GlassButton onClick={() => saveEmployerPrograms(employer)} disabled={saving} size="sm">
+                              {saving ? '저장 중...' : '권한 저장'}
+                            </GlassButton>
+                          )}
+                        </div>
+                      </div>
+                      <div className="mt-4 flex flex-wrap gap-2">
+                        {allPrograms.map((program) => {
+                          const checked = draft.includes(program.id);
+                          return (
+                            <button
+                              key={program.id}
+                              type="button"
+                              onClick={() => toggleEmployerProgram(employer, program.id)}
+                              className={`inline-flex items-center gap-1.5 rounded-2xl border px-3.5 py-2 text-xs font-semibold transition-all ${
+                                checked
+                                  ? 'border-azure-300 bg-azure-500/10 text-azure-700 shadow-glass-sm'
+                                  : 'border-ink-100 bg-white/60 text-ink-400 hover:border-azure-200 hover:text-ink-600'
+                              }`}
+                            >
+                              {checked ? (
+                                <CheckCircleIcon className="h-4 w-4 text-azure-500" />
+                              ) : (
+                                <XCircleIcon className="h-4 w-4 text-ink-300" />
+                              )}
+                              {program.shortName}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })()}
+
                 {/* 거절 사유 입력 모달 */}
                 {selectedEmployerId === employer.id && (
                   <div className="mt-5 p-5 bg-azure-50/50 border border-white/60 rounded-3xl">
@@ -2092,34 +2474,40 @@ export default function AdminPage() {
                   <div className="flex items-center gap-2">
                     <AcademicCapIcon className="h-5 w-5 text-azure-500" />
                     <h4 className="font-display text-lg font-bold tracking-tight text-ink-900">
-                      기업 포트폴리오 과정 노출 설정
+                      과정 관리
                     </h4>
                   </div>
                   <p className="mt-2 text-sm leading-relaxed text-ink-500">
-                    기업담당자가 포트폴리오 버튼을 눌렀을 때 선택할 수 있는 과정을 관리합니다. 체크 해제한 과정은 기업 화면의 과정 선택 카드에서 숨겨집니다.
+                    기업 화면에 노출할 과정을 체크로 관리하고, 연도별 과정(예: 2025 수료 과정)을 직접 추가할 수 있습니다.
+                    체크 해제한 과정은 기업 화면의 과정 선택 카드에서 숨겨집니다.
                   </p>
                 </div>
-                <GlassButton
-                  onClick={handleSaveProgramSettings}
-                  disabled={savingProgramSettings}
-                  size="sm"
-                  className="w-full lg:w-auto"
-                >
-                  {savingProgramSettings ? '저장 중...' : '노출 설정 저장'}
-                </GlassButton>
+                <div className="flex flex-wrap gap-2 lg:shrink-0">
+                  <GlassButton onClick={openCreateProgramModal} variant="secondary" size="sm">
+                    <PlusIcon className="w-4 h-4 mr-1.5" />
+                    새 과정 추가
+                  </GlassButton>
+                  <GlassButton
+                    onClick={handleSaveProgramSettings}
+                    disabled={savingProgramSettings}
+                    size="sm"
+                  >
+                    {savingProgramSettings ? '저장 중...' : '노출 설정 저장'}
+                  </GlassButton>
+                </div>
               </div>
 
               <div className="mt-5 grid gap-3 lg:grid-cols-2">
-                {PORTFOLIO_PROGRAMS.map((program) => {
+                {allPrograms.map((program) => {
                   const visible = visibleProgramIds.includes(program.id);
                   const programCount = portfolios.filter((portfolio) =>
-                    portfolioMatchesProgram(portfolio, program.id)
+                    portfolioMatchesProgram(portfolio, program.id, allPrograms)
                   ).length;
 
                   return (
-                    <label
+                    <div
                       key={program.id}
-                      className={`flex cursor-pointer items-start gap-4 rounded-3xl border p-4 transition-all ${
+                      className={`flex items-start gap-4 rounded-3xl border p-4 transition-all ${
                         visible
                           ? 'border-azure-200 bg-azure-50/70 shadow-glass-sm'
                           : 'border-white/70 bg-white/55 opacity-70'
@@ -2129,19 +2517,45 @@ export default function AdminPage() {
                         type="checkbox"
                         checked={visible}
                         onChange={() => handleToggleProgramVisibility(program.id)}
-                        className="mt-1 h-5 w-5 rounded border-azure-200 text-azure-600 focus:ring-azure-400"
+                        className="mt-1 h-5 w-5 shrink-0 cursor-pointer rounded border-azure-200 text-azure-600 focus:ring-azure-400"
                       />
-                      <div className="min-w-0">
+                      <div className="min-w-0 flex-1">
                         <div className="flex flex-wrap items-center gap-2">
                           <span className="font-semibold text-ink-900">{program.name}</span>
                           <Badge tone={program.courseType === 'foreign' ? 'coral' : 'azure'}>
                             {program.audience}
                           </Badge>
                           <Badge tone="neutral">{programCount}명</Badge>
+                          {program.isCustom && <Badge tone="honey">관리자 추가</Badge>}
+                          {(program.introVideoId || program.youtubeId) && (
+                            <Badge tone="mint" icon={<PlayCircleIcon className="w-3.5 h-3.5" />}>
+                              영상
+                            </Badge>
+                          )}
                         </div>
                         <p className="mt-2 text-sm leading-relaxed text-ink-500">{program.summary}</p>
+                        {program.isCustom && (
+                          <div className="mt-3 flex gap-2">
+                            <button
+                              type="button"
+                              onClick={() => openEditProgramModal(program)}
+                              className="inline-flex items-center gap-1 rounded-xl px-2.5 py-1.5 text-xs font-semibold text-azure-600 transition hover:bg-azure-100/70"
+                            >
+                              <PencilIcon className="h-3.5 w-3.5" />
+                              수정
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setDeletingProgram(program)}
+                              className="inline-flex items-center gap-1 rounded-xl px-2.5 py-1.5 text-xs font-semibold text-coral-500 transition hover:bg-coral-100/60"
+                            >
+                              <TrashIcon className="h-3.5 w-3.5" />
+                              삭제
+                            </button>
+                          </div>
+                        )}
                       </div>
-                    </label>
+                    </div>
                   );
                 })}
               </div>
@@ -2455,6 +2869,327 @@ export default function AdminPage() {
             showJobSeekerName={true}
           />
         )}
+
+        {/* 커스텀 과정 추가/수정 모달 */}
+        <AnimatePresence>
+          {programModalOpen && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="fixed inset-0 bg-ink-900/30 backdrop-blur-sm flex items-center justify-center p-4 z-[100]"
+              onClick={() => !savingProgram && setProgramModalOpen(false)}
+            >
+              <motion.div
+                initial={{ opacity: 0, scale: 0.96, y: 16 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.96, y: 16 }}
+                transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
+                className="glass-strong rounded-4xl shadow-glass-lg w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="bg-gradient-to-r from-azure-500 via-sky-cool-400 to-azure-600 px-6 py-5 text-white">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h2 className="font-display text-xl font-bold tracking-tight">
+                        {editingProgramId ? '과정 수정' : '새 과정 추가'}
+                      </h2>
+                      <p className="text-white/80 text-sm mt-0.5">
+                        {editingProgramId ? '커스텀 과정 정보를 수정합니다' : '연도별 과정 등을 직접 추가합니다'}
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => !savingProgram && setProgramModalOpen(false)}
+                      className="flex items-center justify-center w-10 h-10 rounded-full bg-white/15 text-white hover:bg-white/30 transition-colors"
+                    >
+                      <XMarkIcon className="w-6 h-6" />
+                    </button>
+                  </div>
+                </div>
+
+                <div className="p-6 overflow-y-auto space-y-5">
+                  <div>
+                    <label className="block text-sm font-semibold text-ink-700 mb-2">
+                      과정명 <span className="text-coral-500">*</span>
+                    </label>
+                    <GlassInput
+                      value={programForm.name}
+                      onChange={(e) => setProgramForm((prev) => ({ ...prev, name: e.target.value }))}
+                      placeholder="예: 2025 외국인 유학생 AI 마케팅 역량강화 및 인턴십 연계과정"
+                    />
+                  </div>
+
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div>
+                      <label className="block text-sm font-semibold text-ink-700 mb-2">짧은 이름</label>
+                      <GlassInput
+                        value={programForm.shortName}
+                        onChange={(e) => setProgramForm((prev) => ({ ...prev, shortName: e.target.value }))}
+                        placeholder="목록·칩에 표시 (미입력 시 과정명)"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-ink-700 mb-2">과정 구분</label>
+                      <GlassSelect
+                        value={programForm.courseType}
+                        onChange={(e) =>
+                          setProgramForm((prev) => ({ ...prev, courseType: e.target.value as ProgramCourseType }))
+                        }
+                      >
+                        <option value="domestic">내국인 과정</option>
+                        <option value="foreign">외국인 과정</option>
+                      </GlassSelect>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-ink-700 mb-2">
+                        대상 <span className="text-coral-500">*</span>
+                      </label>
+                      <GlassInput
+                        value={programForm.audience}
+                        onChange={(e) => setProgramForm((prev) => ({ ...prev, audience: e.target.value }))}
+                        placeholder="예: 외국인 유학생"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-ink-700 mb-2">
+                        기간·시간 표기 <span className="text-coral-500">*</span>
+                      </label>
+                      <GlassInput
+                        value={programForm.hours}
+                        onChange={(e) => setProgramForm((prev) => ({ ...prev, hours: e.target.value }))}
+                        placeholder="예: 155시간 또는 2025년 수료"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-semibold text-ink-700 mb-2">
+                      요약 <span className="text-coral-500">*</span>
+                    </label>
+                    <GlassTextarea
+                      value={programForm.summary}
+                      onChange={(e) => setProgramForm((prev) => ({ ...prev, summary: e.target.value }))}
+                      rows={2}
+                      placeholder="과정 선택 카드에 표시되는 한두 문장 요약"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-semibold text-ink-700 mb-2">상세 소개</label>
+                    <GlassTextarea
+                      value={programForm.overview}
+                      onChange={(e) => setProgramForm((prev) => ({ ...prev, overview: e.target.value }))}
+                      rows={3}
+                      placeholder="과정 소개 화면에 표시되는 상세 설명 (선택)"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-semibold text-ink-700 mb-2">교육생 특징</label>
+                    <GlassTextarea
+                      value={programForm.talentNote}
+                      onChange={(e) => setProgramForm((prev) => ({ ...prev, talentNote: e.target.value }))}
+                      rows={2}
+                      placeholder="어떤 교육생인지 한두 문장 (선택)"
+                    />
+                  </div>
+
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div>
+                      <label className="block text-sm font-semibold text-ink-700 mb-2">과정 소개 영상</label>
+                      <GlassInput
+                        value={programForm.youtubeInput}
+                        onChange={(e) => setProgramForm((prev) => ({ ...prev, youtubeInput: e.target.value }))}
+                        placeholder="YouTube URL 또는 영상 ID"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-ink-700 mb-2">교육생 전체 자기소개 영상</label>
+                      <GlassInput
+                        value={programForm.introVideoInput}
+                        onChange={(e) => setProgramForm((prev) => ({ ...prev, introVideoInput: e.target.value }))}
+                        placeholder="인재 목록 상단에 표시 (선택)"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-semibold text-ink-700 mb-2">과정명 별칭</label>
+                    <GlassTextarea
+                      value={programForm.aliasesText}
+                      onChange={(e) => setProgramForm((prev) => ({ ...prev, aliasesText: e.target.value }))}
+                      rows={3}
+                      placeholder={'교육생 프로필의 과정명 표기가 다양할 때 줄바꿈으로 구분해 입력\n예: 외국인 유학생 AI 마케터 인턴과정'}
+                    />
+                    <p className="mt-1.5 text-xs text-ink-400">
+                      교육생 프로필의 과정명이 별칭과 일치하면 이 과정으로 분류됩니다.
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-semibold text-ink-700 mb-2">태그</label>
+                    <GlassInput
+                      value={programForm.tagsText}
+                      onChange={(e) => setProgramForm((prev) => ({ ...prev, tagsText: e.target.value }))}
+                      placeholder="쉼표로 구분 (예: 서울시 매력일자리, 2025년 수료)"
+                    />
+                  </div>
+                </div>
+
+                <div className="px-6 py-4 border-t border-ink-100 bg-white/40 flex justify-end gap-2">
+                  <GlassButton
+                    onClick={() => setProgramModalOpen(false)}
+                    variant="secondary"
+                    size="sm"
+                    disabled={savingProgram}
+                  >
+                    취소
+                  </GlassButton>
+                  <GlassButton onClick={handleSaveProgram} disabled={savingProgram} size="sm">
+                    {savingProgram ? '저장 중...' : editingProgramId ? '수정 완료' : '과정 추가'}
+                  </GlassButton>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* 커스텀 과정 삭제 확인 모달 */}
+        <AnimatePresence>
+          {deletingProgram && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="fixed inset-0 bg-ink-900/30 backdrop-blur-sm flex items-center justify-center p-4 z-[100]"
+              onClick={() => !savingProgram && setDeletingProgram(null)}
+            >
+              <motion.div
+                initial={{ opacity: 0, scale: 0.96, y: 16 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.96, y: 16 }}
+                transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
+                className="glass-strong rounded-4xl shadow-glass-lg w-full max-w-md p-8"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-3xl border border-coral-400/40 bg-coral-100">
+                  <TrashIcon className="h-8 w-8 text-coral-500" />
+                </div>
+                <h3 className="text-center font-display text-xl font-bold tracking-tight text-ink-900">
+                  과정을 삭제할까요?
+                </h3>
+                <p className="mt-3 text-center text-sm leading-relaxed text-ink-500">
+                  <strong className="text-ink-700">{deletingProgram.name}</strong> 과정을 삭제합니다.
+                  {portfolios.filter((p) => portfolioMatchesProgram(p, deletingProgram.id, allPrograms)).length > 0 && (
+                    <span className="mt-2 block text-coral-500">
+                      이 과정에 분류된 교육생{' '}
+                      {portfolios.filter((p) => portfolioMatchesProgram(p, deletingProgram.id, allPrograms)).length}명이
+                      과정 목록에서 보이지 않게 됩니다.
+                    </span>
+                  )}
+                </p>
+                <div className="mt-6 flex gap-2">
+                  <GlassButton
+                    onClick={() => setDeletingProgram(null)}
+                    variant="secondary"
+                    size="sm"
+                    className="flex-1"
+                    disabled={savingProgram}
+                  >
+                    취소
+                  </GlassButton>
+                  <GlassButton
+                    onClick={handleDeleteProgram}
+                    size="sm"
+                    className="flex-1 !bg-gradient-to-r !from-coral-500 !to-coral-500 hover:!from-coral-400 hover:!to-coral-500 !text-white"
+                    disabled={savingProgram}
+                  >
+                    {savingProgram ? '삭제 중...' : '삭제'}
+                  </GlassButton>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* 매칭기간 일괄 조치 확인 모달 */}
+        <AnimatePresence>
+          {bulkProgramAction && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="fixed inset-0 bg-ink-900/30 backdrop-blur-sm flex items-center justify-center p-4 z-[100]"
+              onClick={() => !bulkProcessing && setBulkProgramAction(null)}
+            >
+              <motion.div
+                initial={{ opacity: 0, scale: 0.96, y: 16 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.96, y: 16 }}
+                transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
+                className="glass-strong rounded-4xl shadow-glass-lg w-full max-w-md p-8"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div
+                  className={`mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-3xl border ${
+                    bulkProgramAction === 'blockAll'
+                      ? 'border-coral-400/40 bg-coral-100'
+                      : 'border-mint-400/40 bg-mint-100'
+                  }`}
+                >
+                  {bulkProgramAction === 'blockAll' ? (
+                    <LockClosedIcon className="h-8 w-8 text-coral-500" />
+                  ) : (
+                    <LockOpenIcon className="h-8 w-8 text-mint-600" />
+                  )}
+                </div>
+                <h3 className="text-center font-display text-xl font-bold tracking-tight text-ink-900">
+                  {bulkProgramAction === 'blockAll' ? '전체 기업 열람을 차단할까요?' : '전체 기업에 모든 과정을 허용할까요?'}
+                </h3>
+                <p className="mt-3 text-center text-sm leading-relaxed text-ink-500">
+                  {bulkProgramAction === 'blockAll' ? (
+                    <>
+                      승인 완료 기업 <strong className="text-ink-700">{approvedEmployers.length}곳</strong>의 포트폴리오
+                      열람을 전면 차단합니다. 기업 화면에서 모든 과정과 교육생 정보가 숨겨지며, 관리자가 다시 허용할
+                      때까지 유지됩니다.
+                    </>
+                  ) : (
+                    <>
+                      승인 완료 기업 <strong className="text-ink-700">{approvedEmployers.length}곳</strong>에 현재 등록된
+                      모든 과정({allProgramIds.length}개)의 열람을 허용합니다.
+                    </>
+                  )}
+                </p>
+                <div className="mt-6 flex gap-2">
+                  <GlassButton
+                    onClick={() => setBulkProgramAction(null)}
+                    variant="secondary"
+                    size="sm"
+                    className="flex-1"
+                    disabled={bulkProcessing}
+                  >
+                    취소
+                  </GlassButton>
+                  <GlassButton
+                    onClick={applyBulkProgramAction}
+                    size="sm"
+                    className={`flex-1 ${
+                      bulkProgramAction === 'blockAll'
+                        ? '!bg-gradient-to-r !from-coral-500 !to-coral-500 hover:!from-coral-400 hover:!to-coral-500 !text-white'
+                        : ''
+                    }`}
+                    disabled={bulkProcessing}
+                  >
+                    {bulkProcessing ? '적용 중...' : bulkProgramAction === 'blockAll' ? '전면 차단' : '전체 허용'}
+                  </GlassButton>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     </div>
   );

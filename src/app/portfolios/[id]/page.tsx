@@ -1,6 +1,13 @@
 'use client';
+import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
+import {
+  getProgramForPortfolio,
+  isEmployerProgramRestricted,
+  type PortfolioProgram,
+} from '@/lib/programs';
+import { getAllPrograms } from '@/lib/customPrograms';
 
 // 커스텀 훅
 import { usePortfolioAccess } from './hooks/usePortfolioAccess';
@@ -41,6 +48,12 @@ export default function PortfolioDetailPage() {
   // 커스텀 훅 사용
   const { hasAccess, accessChecked, showAccessModal, employerStatus } = usePortfolioAccess(portfolioId);
   const { portfolio, loading } = usePortfolioData(portfolioId, hasAccess, accessChecked);
+
+  // 과정 열람 권한 판정에는 커스텀 과정(2025 아카이브 등)까지 병합된 목록이 필요하다
+  const [allPrograms, setAllPrograms] = useState<PortfolioProgram[] | null>(null);
+  useEffect(() => {
+    getAllPrograms().then(setAllPrograms);
+  }, []);
 
   // 접근 권한 확인 중일 때 로딩 화면
   if (!accessChecked) {
@@ -106,6 +119,51 @@ export default function PortfolioDetailPage() {
 
   const hasIntroVideo = Boolean(portfolio.introVideo || portfolio.introVideos?.length);
   const hasAdminAccess = userData?.role === 'admin' || userData?.isAdmin === true;
+
+  // ── 기업별 과정 열람 권한 게이트 ──
+  //  관리자가 employers.allowedProgramIds 로 제한한 기업은 허용된 과정의 교육생만 열람 가능.
+  //  과정을 알 수 없는 포트폴리오는 개인정보 보호 원칙에 따라 보수적으로 차단한다.
+  const isRestrictedEmployer =
+    userData?.role === 'employer' && !hasAdminAccess && isEmployerProgramRestricted(employerStatus);
+  if (isRestrictedEmployer) {
+    if (allPrograms === null) {
+      return (
+        <div className="relative min-h-screen overflow-hidden bg-azure-mist flex items-center justify-center">
+          <AuroraBackground />
+          <div className="relative z-10 animate-spin rounded-full h-12 w-12 border-2 border-azure-200 border-t-azure-500" />
+        </div>
+      );
+    }
+
+    const allowedIds = ((employerStatus as any).allowedProgramIds as unknown[]).filter(
+      (id): id is string => typeof id === 'string',
+    );
+    const portfolioProgram = getProgramForPortfolio(portfolio, allPrograms);
+    const programAllowed = Boolean(portfolioProgram && allowedIds.includes(portfolioProgram.id));
+
+    if (!programAllowed) {
+      return (
+        <div className="relative min-h-screen overflow-hidden bg-azure-mist flex items-center justify-center px-5">
+          <AuroraBackground />
+          <div className="relative z-10 glass-card max-w-md w-full px-10 py-14 text-center">
+            <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-3xl bg-azure-50 border border-azure-100 text-5xl shadow-glass-sm">
+              🔒
+            </div>
+            <h1 className="font-display text-2xl font-bold tracking-tight text-ink-900 mb-3">
+              열람 권한이 없는 과정입니다
+            </h1>
+            <p className="text-ink-500 leading-relaxed mb-8">
+              교육생 개인정보 보호를 위해 관리자가 허용한 과정의 포트폴리오만 열람할 수 있습니다.
+            </p>
+            <GlassButton href="/portfolios" variant="secondary">
+              포트폴리오 목록으로 돌아가기
+            </GlassButton>
+          </div>
+        </div>
+      );
+    }
+  }
+
   const canViewContact =
     hasAdminAccess ||
     userData?.role === 'jobseeker' ||

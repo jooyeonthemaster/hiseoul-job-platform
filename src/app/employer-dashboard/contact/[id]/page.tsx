@@ -18,7 +18,8 @@ import {
   CheckCircleIcon,
   CalendarDaysIcon,
   MapPinIcon,
-  XCircleIcon
+  XCircleIcon,
+  LockClosedIcon
 } from '@heroicons/react/24/outline';
 import { handleJobInquiryCreate } from '@/lib/googleSheetsIntegration';
 import { AuroraBackground } from '@/components/ui/AuroraBackground';
@@ -27,7 +28,8 @@ import { GlassButton } from '@/components/ui/GlassButton';
 import { GlassInput, GlassTextarea, GlassSelect } from '@/components/ui/GlassField';
 import { Badge } from '@/components/ui/Badge';
 import { ScrollReveal } from '@/components/ui/ScrollReveal';
-import { splitSpecialities } from '@/lib/programs';
+import { getProgramForPortfolio, isEmployerProgramRestricted, splitSpecialities } from '@/lib/programs';
+import { getAllPrograms } from '@/lib/customPrograms';
 
 interface InquiryForm {
   proposedPosition: string;
@@ -57,6 +59,7 @@ export default function ContactJobSeeker() {
   const [portfolio, setPortfolio] = useState<any>(null);
   const [companyInfo, setCompanyInfo] = useState<any>(null);
   const [approvalBlocked, setApprovalBlocked] = useState(false);
+  const [programBlocked, setProgramBlocked] = useState(false);
 
   const [form, setForm] = useState<InquiryForm>({
     proposedPosition: '',
@@ -109,6 +112,22 @@ export default function ContactJobSeeker() {
           router.push('/employer-dashboard');
           return;
         }
+
+        // 과정 열람 권한 게이트: 관리자가 허용하지 않은 과정의 교육생에게는
+        // 채용 신청서도 작성할 수 없다 (포트폴리오 상세와 동일 정책, 직접 URL 우회 방지)
+        if (isEmployerProgramRestricted(employerData as any)) {
+          const allowedIds = ((employerData as any).allowedProgramIds as unknown[]).filter(
+            (id): id is string => typeof id === 'string',
+          );
+          const mergedPrograms = await getAllPrograms();
+          const program = getProgramForPortfolio(portfolioData as any, mergedPrograms);
+          if (!program || !allowedIds.includes(program.id)) {
+            setProgramBlocked(true);
+            setLoading(false);
+            return;
+          }
+        }
+
         setPortfolio(portfolioData);
 
         // 기본 담당자 정보 설정
@@ -311,6 +330,34 @@ export default function ContactJobSeeker() {
           </h2>
           <p className="mt-3 text-sm leading-relaxed text-ink-500">
             채용 신청서는 관리자의 기업 승인이 완료된 뒤 제출할 수 있습니다. 승인이 완료되면 다시 시도해주세요.
+          </p>
+          <GlassButton
+            type="button"
+            variant="primary"
+            size="md"
+            className="mt-6 w-full"
+            onClick={() => router.push('/employer-dashboard')}
+          >
+            대시보드로 돌아가기
+          </GlassButton>
+        </GlassCard>
+      </div>
+    );
+  }
+
+  if (programBlocked) {
+    return (
+      <div className="relative min-h-screen flex items-center justify-center overflow-hidden px-5">
+        <AuroraBackground />
+        <GlassCard strong className="relative w-full max-w-md p-10 text-center">
+          <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-3xl border border-azure-100 bg-azure-50 shadow-glass-sm">
+            <LockClosedIcon className="h-8 w-8 text-azure-500" />
+          </div>
+          <h2 className="font-display text-2xl font-bold tracking-tight text-ink-900">
+            열람 권한이 없는 과정입니다
+          </h2>
+          <p className="mt-3 text-sm leading-relaxed text-ink-500">
+            교육생 개인정보 보호를 위해 관리자가 허용한 과정의 교육생에게만 채용 신청서를 보낼 수 있습니다.
           </p>
           <GlassButton
             type="button"

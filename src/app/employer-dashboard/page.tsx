@@ -30,7 +30,14 @@ import { GlassButton } from '@/components/ui/GlassButton';
 import { Badge } from '@/components/ui/Badge';
 import { AuroraBackground } from '@/components/ui/AuroraBackground';
 import { ScrollReveal } from '@/components/ui/ScrollReveal';
-import { PORTFOLIO_PROGRAMS, portfolioMatchesProgram } from '@/lib/programs';
+import {
+  PORTFOLIO_PROGRAMS,
+  getAllowedProgramIdsForEmployer,
+  isEmployerProgramRestricted,
+  portfolioMatchesProgram,
+  type PortfolioProgram,
+} from '@/lib/programs';
+import { getAllPrograms } from '@/lib/customPrograms';
 import { getVisiblePortfolioProgramIds } from '@/lib/programSettings';
 import { formatKoreanDate } from '@/lib/dateUtils';
 
@@ -70,6 +77,9 @@ export default function EmployerDashboard() {
   const [rejectedReason, setRejectedReason] = useState<string | null>(null);
   const [programCounts, setProgramCounts] = useState<Record<string, number>>({});
   const [visibleProgramIds, setVisibleProgramIds] = useState<string[]>([]);
+  const [allPrograms, setAllPrograms] = useState<PortfolioProgram[]>(PORTFOLIO_PROGRAMS);
+  const [programRestricted, setProgramRestricted] = useState(false);
+  const [allowedProgramIds, setAllowedProgramIds] = useState<string[] | null>(null);
   const [sentInquiries, setSentInquiries] = useState<SentInquiry[]>([]);
   const [sentTotal, setSentTotal] = useState(0);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -103,21 +113,41 @@ export default function EmployerDashboard() {
         setApprovalStatus(status);
         setRejectedReason((employerData as any).rejectedReason || null);
 
+        // 관리자가 이 기업에 허용한 과정 (필드 없음 = 전체 허용, 빈 배열 = 전면 차단)
+        const restricted = isEmployerProgramRestricted(employerData as any);
+        setProgramRestricted(restricted);
+        setAllowedProgramIds(
+          restricted
+            ? ((employerData as any).allowedProgramIds as unknown[]).filter(
+                (id): id is string => typeof id === 'string',
+              )
+            : null,
+        );
+
         // 인재 데이터는 승인된 기업에게만 로드한다.
         // (미승인 기업에게 전체 인재 명단이 노출되던 문제 수정 — 열람 정책은 /portfolios 와 동일하게)
         if (status === 'approved') {
-          const [portfolios, programIds] = await Promise.all([
+          const [portfolios, programIds, mergedPrograms] = await Promise.all([
             getAllPortfolios(),
             getVisiblePortfolioProgramIds(),
+            getAllPrograms(),
           ]);
           setVisibleProgramIds(programIds);
+          setAllPrograms(mergedPrograms);
           const counts: Record<string, number> = {};
-          PORTFOLIO_PROGRAMS.forEach((program) => {
-            counts[program.id] = portfolios.filter((p: any) => portfolioMatchesProgram(p, program.id)).length;
+          mergedPrograms.forEach((program) => {
+            counts[program.id] = portfolios.filter((p: any) =>
+              portfolioMatchesProgram(p, program.id, mergedPrograms),
+            ).length;
           });
           setProgramCounts(counts);
         } else {
-          setVisibleProgramIds(await getVisiblePortfolioProgramIds());
+          const [programIds, mergedPrograms] = await Promise.all([
+            getVisiblePortfolioProgramIds(),
+            getAllPrograms(),
+          ]);
+          setVisibleProgramIds(programIds);
+          setAllPrograms(mergedPrograms);
         }
 
         // 내가 보낸 채용 신청서 (본인 선택 내역 — 관리자 중개형 원칙에 저촉되지 않음)
@@ -189,7 +219,16 @@ export default function EmployerDashboard() {
   }
 
   const isApproved = approvalStatus === 'approved';
-  const visiblePrograms = PORTFOLIO_PROGRAMS.filter((program) => visibleProgramIds.includes(program.id));
+  // 전역 노출 설정 ∩ 관리자가 이 기업에 허용한 과정
+  const globallyVisiblePrograms = allPrograms.filter((program) => visibleProgramIds.includes(program.id));
+  const visiblePrograms = programRestricted
+    ? globallyVisiblePrograms.filter((program) =>
+        getAllowedProgramIdsForEmployer(
+          { allowedProgramIds: allowedProgramIds ?? [] },
+          globallyVisiblePrograms.map((p) => p.id),
+        ).includes(program.id),
+      )
+    : globallyVisiblePrograms;
   const navItemBase =
     'group flex items-center px-4 py-3 text-sm font-medium rounded-2xl transition-all duration-300';
 
@@ -461,6 +500,21 @@ export default function EmployerDashboard() {
                   <h2 className="text-lg font-semibold text-ink-900">과정별 교육생</h2>
                 </div>
 
+                {visiblePrograms.length === 0 && (
+                  <GlassCard className="p-10 text-center">
+                    <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-3xl border border-azure-100 bg-azure-50 shadow-glass-sm">
+                      <LockClosedIcon className="h-8 w-8 text-azure-500" />
+                    </div>
+                    <h3 className="font-display text-xl font-bold tracking-tight text-ink-900">
+                      현재 열람 가능한 과정이 없습니다
+                    </h3>
+                    <p className="mx-auto mt-2 max-w-md text-sm leading-relaxed text-ink-500">
+                      {programRestricted
+                        ? '매칭 기간이 종료되었거나 열람 권한이 아직 설정되지 않았습니다. 교육생 개인정보 보호를 위해 관리자가 허용한 과정만 열람할 수 있습니다.'
+                        : '관리자가 노출할 과정을 설정하면 이곳에 표시됩니다.'}
+                    </p>
+                  </GlassCard>
+                )}
                 <div className="grid gap-4 lg:grid-cols-2">
                   {visiblePrograms.map((program) => (
                     <GlassCard key={program.id} hover={isApproved} className="flex h-full flex-col p-6">

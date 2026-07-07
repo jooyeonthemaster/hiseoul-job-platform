@@ -70,3 +70,14 @@ export function getYouTubeId(url: string): string | null {
 
   return null;
 }
+
+/**
+ * 관리자 입력값(전체 URL 또는 11자리 ID)을 영상 ID로 정규화한다.
+ * 빈 값은 빈 문자열, 해석 불가한 값은 null 을 반환한다.
+ */
+export function normalizeYouTubeInput(value: string): string | null {
+  const trimmed = (value || '').trim();
+  if (!trimmed) return '';
+  if (YOUTUBE_ID_PATTERN.test(trimmed)) return trimmed;
+  return getYouTubeId(trimmed);
+}
