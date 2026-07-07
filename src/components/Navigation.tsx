@@ -20,8 +20,11 @@ import {
   ArrowRightOnRectangleIcon,
   UserPlusIcon,
   ArrowLeftOnRectangleIcon,
+  AcademicCapIcon,
 } from '@heroicons/react/24/outline';
 import { Badge } from '@/components/ui/Badge';
+import { getAllPrograms } from '@/lib/customPrograms';
+import type { PortfolioProgram } from '@/lib/programs';
 
 export default function Navigation() {
   const { user, userData, loading: authLoading } = useAuth();
@@ -30,6 +33,17 @@ export default function Navigation() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const hasAdminAccess = userData?.role === 'admin' || userData?.isAdmin === true;
+  const canBrowsePortfolios = userData?.role === 'employer' || hasAdminAccess;
+
+  // 연도별 아카이브 과정(예: 2025 수료생)은 메인 과정 선택 대신 상단 탭으로 분리 노출
+  const [archivedPrograms, setArchivedPrograms] = useState<PortfolioProgram[]>([]);
+  useEffect(() => {
+    if (!canBrowsePortfolios) {
+      setArchivedPrograms([]);
+      return;
+    }
+    getAllPrograms().then((programs) => setArchivedPrograms(programs.filter((program) => program.archived)));
+  }, [canBrowsePortfolios]);
 
   useEffect(() => {
     const loadApprovalStatus = async () => {
@@ -98,12 +112,26 @@ export default function Navigation() {
           {/* 데스크톱 메인 네비게이션 */}
           <nav className="hidden md:flex items-center gap-1">
             {/* 포트폴리오 둘러보기는 기업회원·관리자만 (비로그인/구직자에게는 미노출) */}
-            {(userData?.role === 'employer' || hasAdminAccess) && (
+            {canBrowsePortfolios && (
               <Link href="/portfolios" className={navLinkClass}>
                 <DocumentTextIcon className="w-5 h-5 group-hover:scale-110 transition-transform duration-200" />
                 <span>포트폴리오</span>
               </Link>
             )}
+            {/* 연도별 아카이브 과정 — 클라이언트 요청: 메인 과정 선택 카드가 아닌 상단 탭으로 분리.
+                md~lg 구간에서는 헤더가 넘치지 않도록 '2025 수료생' 형태의 짧은 라벨을 쓴다. */}
+            {canBrowsePortfolios &&
+              archivedPrograms.map((program) => {
+                const year = program.name.match(/^(20\d{2})/)?.[1];
+                const shortLabel = year ? `${year} 수료생` : program.shortName;
+                return (
+                  <Link key={program.id} href={`/portfolios?program=${program.id}`} className={navLinkClass}>
+                    <AcademicCapIcon className="w-5 h-5 shrink-0 group-hover:scale-110 transition-transform duration-200" />
+                    <span className="hidden whitespace-nowrap lg:inline">{program.shortName}</span>
+                    <span className="whitespace-nowrap lg:hidden">{shortLabel}</span>
+                  </Link>
+                );
+              })}
             <Link href="/companies" className={navLinkClass}>
               <BuildingOffice2Icon className="w-5 h-5 group-hover:scale-110 transition-transform duration-200" />
               <span>기업정보</span>
@@ -235,7 +263,7 @@ export default function Navigation() {
               className="md:hidden overflow-hidden border-t border-white/50 mt-2 space-y-2 pb-4 pt-3"
             >
               {/* 포트폴리오 둘러보기는 기업회원·관리자만 (비로그인/구직자에게는 미노출) */}
-              {(userData?.role === 'employer' || hasAdminAccess) && (
+              {canBrowsePortfolios && (
                 <Link
                   href="/portfolios"
                   className="flex items-center gap-3 px-4 py-3 text-ink-600 hover:bg-azure-50/70 hover:text-azure-700 rounded-xl transition-colors"
@@ -245,6 +273,18 @@ export default function Navigation() {
                   <span>포트폴리오</span>
                 </Link>
               )}
+              {canBrowsePortfolios &&
+                archivedPrograms.map((program) => (
+                  <Link
+                    key={program.id}
+                    href={`/portfolios?program=${program.id}`}
+                    className="flex items-center gap-3 px-4 py-3 text-ink-600 hover:bg-azure-50/70 hover:text-azure-700 rounded-xl transition-colors"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                  >
+                    <AcademicCapIcon className="w-5 h-5" />
+                    <span>{program.shortName}</span>
+                  </Link>
+                ))}
               <Link
                 href="/companies"
                 className="flex items-center gap-3 px-4 py-3 text-ink-600 hover:bg-azure-50/70 hover:text-azure-700 rounded-xl transition-colors"

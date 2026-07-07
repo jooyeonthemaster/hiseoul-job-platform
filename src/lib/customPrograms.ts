@@ -31,12 +31,15 @@ export interface CustomProgramInput {
   introVideoId?: string;
   aliases?: string[];
   tags?: string[];
+  /** 연도별 아카이브 — 메인 과정 선택 대신 상단 네비 탭으로 노출 */
+  archived?: boolean;
 }
 
 function toPortfolioProgram(id: string, data: Record<string, any>): PortfolioProgram {
   return {
     id,
     isCustom: true,
+    archived: data.archived === true,
     name: data.name || '',
     shortName: data.shortName || data.name || '',
     aliases: Array.isArray(data.aliases) ? data.aliases.filter(Boolean) : [],
@@ -110,6 +113,7 @@ function sanitizeInput(input: CustomProgramInput) {
     introVideoId: (input.introVideoId || '').trim(),
     aliases: (input.aliases || []).map((alias) => alias.trim()).filter(Boolean),
     tags: (input.tags || []).map((tag) => tag.trim()).filter(Boolean),
+    archived: input.archived === true,
   };
 }
 

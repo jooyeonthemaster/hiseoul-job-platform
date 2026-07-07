@@ -14,6 +14,12 @@ export interface PortfolioProgram {
   introVideoId?: string;
   /** 관리자가 Firestore(programs 컬렉션)에서 직접 추가한 과정 여부 */
   isCustom?: boolean;
+  /**
+   * 연도별 아카이브 과정(예: 2025 수료 과정).
+   * 메인 과정 선택 카드·기업 대시보드에는 노출하지 않고, 상단 네비게이션 탭으로만 진입한다.
+   * 열람 권한(allowedProgramIds)·노출 설정에는 일반 과정과 동일하게 참여한다.
+   */
+  archived?: boolean;
   heroTitle: string;
   summary: string;
   overview: string;

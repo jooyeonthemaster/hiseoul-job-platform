@@ -6,6 +6,7 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import Navigation from "@/components/Navigation";
 import GoogleSheetsProvider from "@/components/providers/GoogleSheetsProvider";
 import ScrollProgress from "@/components/ui/ScrollProgress";
+import ScrollToTop from "@/components/ScrollToTop";
 
 // 전역 폰트: Paperlogy (로컬 번들 — 런타임 CDN 의존 없음)
 const paperlogy = localFont({
@@ -47,6 +48,7 @@ export default function RootLayout({
       >
         <AuthProvider>
           <GoogleSheetsProvider>
+            <ScrollToTop />
             <ScrollProgress />
             <div className="min-h-full">
               <Navigation />

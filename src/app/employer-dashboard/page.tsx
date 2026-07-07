@@ -219,8 +219,11 @@ export default function EmployerDashboard() {
   }
 
   const isApproved = approvalStatus === 'approved';
-  // 전역 노출 설정 ∩ 관리자가 이 기업에 허용한 과정
-  const globallyVisiblePrograms = allPrograms.filter((program) => visibleProgramIds.includes(program.id));
+  // 전역 노출 설정 ∩ 관리자가 이 기업에 허용한 과정.
+  // 연도별 아카이브 과정(2025 등)은 상단 네비 탭 전용이므로 대시보드 카드에서는 제외한다.
+  const globallyVisiblePrograms = allPrograms.filter(
+    (program) => visibleProgramIds.includes(program.id) && !program.archived,
+  );
   const visiblePrograms = programRestricted
     ? globallyVisiblePrograms.filter((program) =>
         getAllowedProgramIdsForEmployer(

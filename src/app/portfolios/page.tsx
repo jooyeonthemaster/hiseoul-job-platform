@@ -1,7 +1,8 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { Suspense, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { motion, useReducedMotion } from 'framer-motion';
 import {
   AcademicCapIcon,
@@ -225,7 +226,7 @@ function ProgramIntro({
       <button
         type="button"
         onClick={onBack}
-        className="inline-flex items-center gap-2 rounded-2xl px-3 py-2 text-sm font-semibold text-ink-500 transition hover:bg-white/70 hover:text-azure-700"
+        className="inline-flex items-center gap-2 rounded-2xl border border-azure-200 bg-white/75 px-4 py-2.5 text-sm font-semibold text-azure-700 shadow-glass-sm transition hover:bg-white"
       >
         <ArrowLeftIcon className="h-4 w-4" />
         과정 선택으로
@@ -425,8 +426,11 @@ function ProgramIntro({
   );
 }
 
-export default function PortfoliosPage() {
+function PortfoliosPageInner() {
   const { user, userData } = useAuth();
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const programParam = searchParams?.get('program') ?? null;
   const reduceMotion = useReducedMotion();
   const hasAdminAccess = userData?.role === 'admin' || userData?.isAdmin === true;
   // 기업 회원에게는 카드에서 바로 채용 신청서 작성으로 이어지는 진입점을 제공한다
@@ -577,7 +581,31 @@ export default function PortfoliosPage() {
     setSearchTerm('');
     setSelectedSpeciality('all');
     setSortBy('recent');
+    // 단계 전환은 라우트 이동이 아니므로 스크롤을 직접 최상단으로 복원한다
+    window.scrollTo(0, 0);
   };
+
+  // 단계 뒤로가기 (인재 목록 → 과정 설명 → 과정 선택). 상단 툴바와 본문 버튼이 공용으로 사용한다.
+  const handleStepBack = () => {
+    if (showTalentGrid) {
+      setShowTalentGrid(false);
+    } else {
+      setSelectedProgramId(null);
+      // 네비 탭(?program=...)으로 진입한 경우 쿼리를 지워 새로고침 시 재진입되지 않게 한다
+      if (programParam) router.replace('/portfolios', { scroll: false });
+    }
+    window.scrollTo(0, 0);
+  };
+
+  // 상단 네비 탭(?program=아카이브 과정)으로 직접 진입 지원
+  useEffect(() => {
+    if (!programParam) return;
+    if (visiblePrograms.some((program) => program.id === programParam)) {
+      setSelectedProgramId(programParam);
+      setShowTalentGrid(false);
+      window.scrollTo(0, 0);
+    }
+  }, [programParam, visiblePrograms]);
 
   // 열람 권한이 뒤늦게 로드되어 보고 있던 과정이 차단되면 과정 선택 화면으로 되돌린다
   useEffect(() => {
@@ -634,10 +662,23 @@ export default function PortfoliosPage() {
         <div className="mx-auto w-full max-w-[1760px] px-4 py-5 sm:px-6 lg:px-8 xl:px-10">
           <div className="flex items-center justify-between gap-4">
             <div className="flex min-w-0 items-center gap-4">
-              <Link href="/" className="flex items-center gap-2 font-medium text-ink-500 transition-colors hover:text-azure-700">
-                <ArrowLeftIcon className="h-5 w-5" />
-                <span>홈으로</span>
-              </Link>
+              {/* 과정에 들어와 있으면 좌측 상단 버튼은 '한 단계 뒤로'가 된다.
+                  (사용자가 뒤로 가려고 습관적으로 누르는 위치가 '홈으로'라 홈으로 이탈하던 문제 수정) */}
+              {selectedProgram ? (
+                <button
+                  type="button"
+                  onClick={handleStepBack}
+                  className="inline-flex shrink-0 items-center gap-2 rounded-2xl border border-azure-200 bg-white/75 px-3.5 py-2 text-sm font-semibold text-azure-700 shadow-glass-sm transition hover:bg-white"
+                >
+                  <ArrowLeftIcon className="h-4 w-4" />
+                  <span className="whitespace-nowrap">{showTalentGrid ? '과정 설명으로' : '과정 선택으로'}</span>
+                </button>
+              ) : (
+                <Link href="/" className="flex items-center gap-2 font-medium text-ink-500 transition-colors hover:text-azure-700">
+                  <ArrowLeftIcon className="h-5 w-5" />
+                  <span>홈으로</span>
+                </Link>
+              )}
               <div className="h-6 w-px bg-ink-200" />
               <h1 className="truncate font-display text-2xl font-bold tracking-tight text-gradient-azure md:text-3xl">
                 포트폴리오
@@ -690,7 +731,8 @@ export default function PortfoliosPage() {
             </GlassCard>
           ) : !selectedProgram ? (
             <ProgramChooser
-              programs={visiblePrograms}
+              // 연도별 아카이브 과정(2025 등)은 상단 네비 탭으로만 진입 — 메인 과정 선택에서는 제외
+              programs={visiblePrograms.filter((program) => !program.archived)}
               matchPrograms={allPrograms}
               portfolios={portfolios}
               onSelectProgram={handleSelectProgram}
@@ -700,18 +742,18 @@ export default function PortfoliosPage() {
               program={selectedProgram}
               matchPrograms={allPrograms}
               portfolios={portfolios}
-              onBack={() => {
-                setSelectedProgramId(null);
-                setShowTalentGrid(false);
+              onBack={handleStepBack}
+              onShowTalents={() => {
+                setShowTalentGrid(true);
+                window.scrollTo(0, 0);
               }}
-              onShowTalents={() => setShowTalentGrid(true)}
             />
           ) : (
             <div className="space-y-8">
               <button
                 type="button"
-                onClick={() => setShowTalentGrid(false)}
-                className="inline-flex items-center gap-2 rounded-2xl px-3 py-2 text-sm font-semibold text-ink-500 transition hover:bg-white/70 hover:text-azure-700"
+                onClick={handleStepBack}
+                className="inline-flex items-center gap-2 rounded-2xl border border-azure-200 bg-white/75 px-4 py-2.5 text-sm font-semibold text-azure-700 shadow-glass-sm transition hover:bg-white"
               >
                 <ArrowLeftIcon className="h-4 w-4" />
                 과정 설명으로
@@ -972,5 +1014,24 @@ export default function PortfoliosPage() {
         </div>
       </main>
     </div>
+  );
+}
+
+// useSearchParams 는 Suspense 경계가 필요하다 (정적 프리렌더 대응)
+export default function PortfoliosPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-azure-aurora">
+          <AuroraBackground />
+          <GlassCard strong className="relative z-10 px-10 py-12 text-center">
+            <div className="mx-auto mb-5 h-12 w-12 animate-spin rounded-full border-2 border-azure-200 border-b-azure-500" />
+            <p className="font-medium text-ink-500">포트폴리오를 불러오고 있습니다...</p>
+          </GlassCard>
+        </div>
+      }
+    >
+      <PortfoliosPageInner />
+    </Suspense>
   );
 }

@@ -1,10 +1,10 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { collection, query, where, getDocs, updateDoc, doc, serverTimestamp, orderBy } from 'firebase/firestore';
+import { collection, query, where, getDocs, getDoc, updateDoc, doc, serverTimestamp, orderBy } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { AnimatePresence, motion } from 'framer-motion';
-import { CheckCircleIcon, XCircleIcon, ClockIcon, BuildingOfficeIcon, LockClosedIcon, LockOpenIcon, EyeIcon, EyeSlashIcon, EnvelopeIcon, UserGroupIcon, UserIcon, BriefcaseIcon, MagnifyingGlassIcon, FunnelIcon, CalendarDaysIcon, PencilIcon, ArrowLeftIcon, ArrowRightIcon, XMarkIcon, ArrowPathIcon, ChevronUpIcon, ChevronDownIcon, ArrowDownTrayIcon, TableCellsIcon, ArrowTopRightOnSquareIcon, AcademicCapIcon, PlusIcon, TrashIcon, PlayCircleIcon } from '@heroicons/react/24/outline';
+import { CheckCircleIcon, XCircleIcon, ClockIcon, BuildingOfficeIcon, LockClosedIcon, LockOpenIcon, EyeIcon, EyeSlashIcon, EnvelopeIcon, UserGroupIcon, UserIcon, BriefcaseIcon, MagnifyingGlassIcon, FunnelIcon, CalendarDaysIcon, PencilIcon, ArrowLeftIcon, ArrowRightIcon, XMarkIcon, ArrowPathIcon, ChevronUpIcon, ChevronDownIcon, ArrowDownTrayIcon, TableCellsIcon, ArrowTopRightOnSquareIcon, AcademicCapIcon, PlusIcon, TrashIcon, PlayCircleIcon, PhoneIcon, MapPinIcon } from '@heroicons/react/24/outline';
 import { GlassButton } from '@/components/ui/GlassButton';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { Badge } from '@/components/ui/Badge';
@@ -13,7 +13,7 @@ import { AuroraBackground } from '@/components/ui/AuroraBackground';
 import { ScrollReveal } from '@/components/ui/ScrollReveal';
 import { getAllPortfolios, updateJobSeekerProfile, getJobSeekerProfile, updateUserProfile, registerPortfolio, togglePortfolioVisibility, setPortfolioContactVisibility, toggleEmployerVisibility, getAllEmployers, logOut } from '@/lib/auth';
 import { exportJobseekersToExcel, exportEmployersToExcel, exportSelectionsToExcel, exportAllToExcel } from '@/lib/excelExport';
-import { DEFAULT_VISIBLE_PROGRAM_IDS, PORTFOLIO_PROGRAMS, splitSpecialities, portfolioMatchesProgram, type PortfolioProgram, type ProgramCourseType } from '@/lib/programs';
+import { DEFAULT_VISIBLE_PROGRAM_IDS, PORTFOLIO_PROGRAMS, splitSpecialities, portfolioMatchesProgram, getProgramForPortfolio, type PortfolioProgram, type ProgramCourseType } from '@/lib/programs';
 import { getVisiblePortfolioProgramIds, saveVisiblePortfolioProgramIds } from '@/lib/programSettings';
 import {
   buildProgramId,
@@ -252,6 +252,9 @@ export default function AdminPage() {
   const [filteredInquiries, setFilteredInquiries] = useState<JobInquiry[]>([]);
   const [selectedInquiry, setSelectedInquiry] = useState<JobInquiry | null>(null);
   const [showInquiryModal, setShowInquiryModal] = useState(false);
+  // 탭 카운트를 즉시 채우기 위해 제안서/포트폴리오도 진입 시 바로 로드한다 (탭별 독립 로딩 플래그)
+  const [inquiriesLoading, setInquiriesLoading] = useState(true);
+  const [portfoliosLoading, setPortfoliosLoading] = useState(true);
 
   // 포트폴리오 관련 상태
   const [portfolios, setPortfolios] = useState<Portfolio[]>([]);
@@ -320,6 +323,7 @@ export default function AdminPage() {
     introVideoInput: '',
     aliasesText: '',
     tagsText: '',
+    archived: false,
   });
   const [savingProgram, setSavingProgram] = useState(false);
   const [deletingProgram, setDeletingProgram] = useState<PortfolioProgram | null>(null);
@@ -478,6 +482,56 @@ export default function AdminPage() {
     })();
   }, [canLoadAdminData]);
 
+  // 기업 목록 로드 — 사용자 정보 조회를 병렬화해 탭 카운트가 빠르게 채워지도록 한다.
+  // (기존: 기업마다 순차 대기 → 48개 기업 기준 수 초간 카운트가 0으로 표시되던 원인)
+  const buildEmployerLists = async () => {
+    const employersData = await getAllEmployers(true); // 관리자는 숨겨진 기업도 포함
+
+    const withUserInfo: PendingEmployer[] = await Promise.all(
+      employersData.map(async (employer: any) => {
+        let userInfo = { email: '', name: '' };
+        try {
+          const userDoc = await getDoc(doc(db, 'users', employer.userId));
+          if (userDoc.exists()) {
+            const userData = userDoc.data();
+            userInfo = { email: userData.email || '', name: userData.name || '' };
+          }
+        } catch {
+          // 사용자 문서가 없거나 조회 실패해도 기업 카드 자체는 표시한다
+        }
+
+        return {
+          id: employer.id,
+          userId: employer.userId,
+          company: {
+            ...(employer.company || {}),
+            contactName: employer.company?.contactName || userInfo.name || '',
+            contactPosition: employer.company?.contactPosition || '',
+            contactPhone: employer.company?.contactPhone || '',
+            companyAttraction: employer.company?.companyAttraction || {},
+          },
+          approvalStatus: employer.approvalStatus || 'pending',
+          createdAt: employer.createdAt,
+          userEmail: userInfo.email,
+          userName: userInfo.name,
+          rejectedReason: employer.rejectedReason,
+          canceledReason: employer.canceledReason,
+          approvedAt: employer.approvedAt,
+          rejectedAt: employer.rejectedAt,
+          canceledAt: employer.canceledAt,
+          isHidden: employer.isHidden,
+          allowedProgramIds: employer.allowedProgramIds,
+        } as PendingEmployer;
+      }),
+    );
+
+    return {
+      pending: withUserInfo.filter((item) => item.approvalStatus === 'pending'),
+      approved: withUserInfo.filter((item) => item.approvalStatus === 'approved'),
+      rejected: withUserInfo.filter((item) => item.approvalStatus === 'rejected'),
+    };
+  };
+
   // 기업 목록 조회
   useEffect(() => {
     if (!canLoadAdminData) return;
@@ -485,65 +539,7 @@ export default function AdminPage() {
     const fetchEmployers = async () => {
       try {
         setLoading(true);
-        
-        // 모든 기업 정보 조회 (숨겨진 기업 포함)
-        const employersData = await getAllEmployers(true); // 관리자는 숨겨진 기업도 포함
-        
-        const pending: PendingEmployer[] = [];
-        const approved: PendingEmployer[] = [];
-        const rejected: PendingEmployer[] = [];
-
-        // 각 기업의 사용자 정보도 함께 조회
-        for (const employer of employersData) {
-          // 사용자 정보 조회
-          const usersRef = collection(db, 'users');
-          const userQuery = query(usersRef, where('__name__', '==', employer.userId));
-          const userSnapshot = await getDocs(userQuery);
-          
-          let userInfo = { email: '', name: '' };
-          if (!userSnapshot.empty) {
-            const userData = userSnapshot.docs[0].data();
-            userInfo = {
-              email: userData.email || '',
-              name: userData.name || ''
-            };
-          }
-
-          const employerWithUserInfo: PendingEmployer = {
-            id: employer.id,
-            userId: employer.userId,
-            company: {
-              ...(employer.company || {}),
-              // 담당자 정보 포함
-              contactName: (employer.company as any)?.contactName || userInfo?.name || '',
-              contactPosition: (employer.company as any)?.contactPosition || (userInfo as any)?.position || '',
-              contactPhone: (employer.company as any)?.contactPhone || '',
-              // 기업 매력도 정보 포함
-              companyAttraction: (employer.company as any)?.companyAttraction || {}
-            },
-            approvalStatus: employer.approvalStatus || 'pending',
-            createdAt: employer.createdAt,
-            userEmail: userInfo.email,
-            userName: userInfo.name,
-            rejectedReason: (employer as any).rejectedReason,
-            canceledReason: (employer as any).canceledReason,
-            approvedAt: (employer as any).approvedAt,
-            rejectedAt: (employer as any).rejectedAt,
-            canceledAt: (employer as any).canceledAt,
-            isHidden: employer.isHidden,
-            allowedProgramIds: (employer as any).allowedProgramIds
-          };
-
-          // 상태별로 분류
-          if (employerWithUserInfo.approvalStatus === 'pending') {
-            pending.push(employerWithUserInfo);
-          } else if (employerWithUserInfo.approvalStatus === 'approved') {
-            approved.push(employerWithUserInfo);
-          } else if (employerWithUserInfo.approvalStatus === 'rejected') {
-            rejected.push(employerWithUserInfo);
-          }
-        }
-
+        const { pending, approved, rejected } = await buildEmployerLists();
         setPendingEmployers(pending);
         setApprovedEmployers(approved);
         setRejectedEmployers(rejected);
@@ -555,35 +551,37 @@ export default function AdminPage() {
     };
 
     fetchEmployers();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [canLoadAdminData]);
 
-  // 채용 제안서 목록 조회
+  // 채용 제안서 목록 조회 — 탭 카운트가 첫 화면부터 정확하도록 진입 즉시 로드 + 구직자 조회 병렬화
   useEffect(() => {
-    if (!canLoadAdminData || selectedTab !== 'inquiries') return;
+    if (!canLoadAdminData) return;
 
     const fetchJobInquiries = async () => {
       try {
-        setLoading(true);
-        
+        setInquiriesLoading(true);
+
         const inquiriesRef = collection(db, 'jobInquiries');
         const inquiriesSnapshot = await getDocs(inquiriesRef);
-        
-        const inquiries: JobInquiry[] = [];
 
-        for (const docSnapshot of inquiriesSnapshot.docs) {
+        const inquiries: JobInquiry[] = await Promise.all(
+          inquiriesSnapshot.docs.map(async (docSnapshot) => {
           const inquiryData = docSnapshot.data();
-          
+
           // 구직자 정보 조회
-          const jobSeekerQuery = query(collection(db, 'users'), where('__name__', '==', inquiryData.jobSeekerId));
-          const jobSeekerSnapshot = await getDocs(jobSeekerQuery);
-          
           let jobSeekerInfo = { name: '', email: '' };
-          if (!jobSeekerSnapshot.empty) {
-            const userData = jobSeekerSnapshot.docs[0].data();
-            jobSeekerInfo = {
-              name: userData.name || '',
-              email: userData.email || ''
-            };
+          try {
+            const jobSeekerDoc = await getDoc(doc(db, 'users', inquiryData.jobSeekerId));
+            if (jobSeekerDoc.exists()) {
+              const userData = jobSeekerDoc.data();
+              jobSeekerInfo = {
+                name: userData.name || '',
+                email: userData.email || ''
+              };
+            }
+          } catch {
+            // 사용자 문서 조회 실패 시 기본값 유지
           }
 
           const inquiry: JobInquiry = {
@@ -620,8 +618,9 @@ export default function AdminPage() {
             jobSeekerEmail: jobSeekerInfo.email
           };
 
-          inquiries.push(inquiry);
-        }
+          return inquiry;
+          }),
+        );
 
         // 최신순으로 정렬
         inquiries.sort((a, b) => {
@@ -635,35 +634,31 @@ export default function AdminPage() {
       } catch (error) {
         console.error('Error fetching job inquiries:', error);
       } finally {
-        setLoading(false);
+        setInquiriesLoading(false);
       }
     };
 
     fetchJobInquiries();
-  }, [canLoadAdminData, selectedTab]);
+  }, [canLoadAdminData]);
 
-  // 포트폴리오 목록 조회
+  // 포트폴리오 목록 조회 — 탭 카운트가 첫 화면부터 정확하도록 진입 즉시 로드
   useEffect(() => {
-    if (!canLoadAdminData || selectedTab !== 'portfolios') return;
+    if (!canLoadAdminData) return;
 
     const fetchPortfolios = async () => {
       try {
-        setLoading(true);
-        const [portfolioData, programIds] = await Promise.all([
-          getAllPortfolios(true), // 관리자는 숨겨진 포트폴리오도 포함
-          getVisiblePortfolioProgramIds(),
-        ]);
+        setPortfoliosLoading(true);
+        const portfolioData = await getAllPortfolios(true); // 관리자는 숨겨진 포트폴리오도 포함
         setPortfolios(portfolioData as Portfolio[]);
-        setVisibleProgramIds(programIds);
       } catch (error) {
         console.error('Error fetching portfolios:', error);
       } finally {
-        setLoading(false);
+        setPortfoliosLoading(false);
       }
     };
 
     fetchPortfolios();
-  }, [canLoadAdminData, selectedTab]);
+  }, [canLoadAdminData]);
 
   // 필터링 로직
   useEffect(() => {
@@ -1121,6 +1116,7 @@ export default function AdminPage() {
       introVideoInput: '',
       aliasesText: '',
       tagsText: '',
+      archived: false,
     });
   };
 
@@ -1144,6 +1140,7 @@ export default function AdminPage() {
       introVideoInput: program.introVideoId || '',
       aliasesText: (program.aliases || []).join('\n'),
       tagsText: (program.tags || []).join(', '),
+      archived: program.archived === true,
     });
     setEditingProgramId(program.id);
     setProgramModalOpen(true);
@@ -1184,6 +1181,7 @@ export default function AdminPage() {
       introVideoId,
       aliases: programForm.aliasesText.split(/[\n,]/),
       tags: programForm.tagsText.split(','),
+      archived: programForm.archived,
     };
 
     try {
@@ -1233,52 +1231,8 @@ export default function AdminPage() {
   const handleToggleEmployerVisibility = async (employerId: string, currentHidden: boolean) => {
     try {
       await toggleEmployerVisibility(employerId, !currentHidden);
-      // 기업 목록 새로고침
-      const employersData = await getAllEmployers(true);
-      
-      const pending: PendingEmployer[] = [];
-      const approved: PendingEmployer[] = [];
-      const rejected: PendingEmployer[] = [];
-
-      for (const employer of employersData) {
-        const usersRef = collection(db, 'users');
-        const userQuery = query(usersRef, where('__name__', '==', employer.userId));
-        const userSnapshot = await getDocs(userQuery);
-        
-        let userInfo = { email: '', name: '' };
-        if (!userSnapshot.empty) {
-          const userData = userSnapshot.docs[0].data();
-          userInfo = {
-            email: userData.email || '',
-            name: userData.name || ''
-          };
-        }
-
-        const employerWithUserInfo: PendingEmployer = {
-          id: employer.id,
-          userId: employer.userId,
-          company: employer.company || {},
-          approvalStatus: employer.approvalStatus || 'pending',
-          createdAt: employer.createdAt,
-          userEmail: userInfo.email,
-          userName: userInfo.name,
-          rejectedReason: (employer as any).rejectedReason,
-          canceledReason: (employer as any).canceledReason,
-          approvedAt: (employer as any).approvedAt,
-          rejectedAt: (employer as any).rejectedAt,
-          canceledAt: (employer as any).canceledAt,
-          isHidden: employer.isHidden
-        };
-
-        if (employerWithUserInfo.approvalStatus === 'pending') {
-          pending.push(employerWithUserInfo);
-        } else if (employerWithUserInfo.approvalStatus === 'approved') {
-          approved.push(employerWithUserInfo);
-        } else if (employerWithUserInfo.approvalStatus === 'rejected') {
-          rejected.push(employerWithUserInfo);
-        }
-      }
-
+      // 기업 목록 새로고침 (allowedProgramIds 등 전체 필드 유지)
+      const { pending, approved, rejected } = await buildEmployerLists();
       setPendingEmployers(pending);
       setApprovedEmployers(approved);
       setRejectedEmployers(rejected);
@@ -1859,7 +1813,12 @@ export default function AdminPage() {
 
             {/* 제안서 목록 */}
             <div className="grid gap-6">
-              {filteredInquiries.length === 0 ? (
+              {inquiriesLoading ? (
+                <div className="glass-card text-center py-12">
+                  <div className="inline-block animate-spin rounded-full h-8 w-8 border-2 border-azure-200 border-t-azure-500"></div>
+                  <p className="mt-3 text-ink-500 font-medium">채용 제안서를 불러오는 중...</p>
+                </div>
+              ) : filteredInquiries.length === 0 ? (
                 <div className="glass-card text-center py-16">
                   {jobInquiries.length === 0 ? (
                     <>
@@ -2527,6 +2486,7 @@ export default function AdminPage() {
                           </Badge>
                           <Badge tone="neutral">{programCount}명</Badge>
                           {program.isCustom && <Badge tone="honey">관리자 추가</Badge>}
+                          {program.archived && <Badge tone="neutral">상단 탭 분리</Badge>}
                           {(program.introVideoId || program.youtubeId) && (
                             <Badge tone="mint" icon={<PlayCircleIcon className="w-3.5 h-3.5" />}>
                               영상
@@ -2561,7 +2521,7 @@ export default function AdminPage() {
               </div>
             </GlassCard>
 
-            {loading ? (
+            {portfoliosLoading ? (
               <div className="glass-card text-center py-12">
                 <div className="inline-block animate-spin rounded-full h-8 w-8 border-2 border-azure-200 border-t-azure-500"></div>
                 <p className="mt-3 text-ink-500 font-medium">포트폴리오를 불러오는 중...</p>
@@ -2576,160 +2536,144 @@ export default function AdminPage() {
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-5">
-                {portfolios.map((portfolio) => (
+                {portfolios.map((portfolio) => {
+                  const specialities = splitSpecialities(portfolio.speciality);
+                  const program = getProgramForPortfolio(portfolio as any, allPrograms);
+                  return (
                   <motion.div
                     key={portfolio.id}
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     whileHover={{ y: -6 }}
                     transition={{ type: 'spring', stiffness: 320, damping: 28 }}
-                    className="glass-card min-w-0 p-5 transition-shadow duration-300 hover:shadow-glass-lg"
+                    className="glass-card flex h-full min-w-0 flex-col p-5 transition-shadow duration-300 hover:shadow-glass-lg"
                   >
-                    <div className="flex items-start justify-between mb-4">
-                      <div className="flex min-w-0 flex-1 items-center space-x-3">
-                        {portfolio.profileImage ? (
-                          <img
-                            src={portfolio.profileImage}
-                            alt={portfolio.name}
-                            className="w-12 h-12 rounded-2xl object-cover ring-1 ring-white/70 shadow-glass-sm"
-                          />
-                        ) : (
-                          <div className="w-12 h-12 bg-azure-50 rounded-2xl flex items-center justify-center">
-                            <UserIcon className="w-6 h-6 text-azure-400" />
-                          </div>
-                        )}
-                        <div className="min-w-0 flex-1">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <h4 className="font-semibold text-ink-900 truncate">{portfolio.name}</h4>
-                            {/* 숨김 상태 표시 */}
-                            {portfolio.isHidden && (
-                              <Badge tone="neutral" icon={<EyeSlashIcon className="w-3 h-3" />}>
-                                숨김
-                              </Badge>
-                            )}
-                            <Badge tone={portfolio.contactInfoVisibleToEmployers ? 'mint' : 'neutral'}>
-                              {portfolio.contactInfoVisibleToEmployers ? '연락처 공개' : '연락처 비공개'}
-                            </Badge>
-                          </div>
-                          <div className="mt-1 flex flex-wrap gap-1">
-                            {splitSpecialities(portfolio.speciality).map((speciality) => (
-                              <Badge key={speciality} tone="azure">{speciality}</Badge>
-                            ))}
-                          </div>
+                    {/* 헤더: 아바타 + 이름 + 과정 (상태 배지는 이름 옆 한 줄) */}
+                    <div className="flex items-start gap-3">
+                      {portfolio.profileImage ? (
+                        <img
+                          src={portfolio.profileImage}
+                          alt={portfolio.name}
+                          className="h-12 w-12 shrink-0 rounded-2xl object-cover ring-1 ring-white/70 shadow-glass-sm"
+                        />
+                      ) : (
+                        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-azure-50">
+                          <UserIcon className="h-6 w-6 text-azure-400" />
                         </div>
+                      )}
+                      <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          <h4 className="truncate font-semibold text-ink-900">{portfolio.name}</h4>
+                          {portfolio.isHidden && (
+                            <Badge tone="neutral" icon={<EyeSlashIcon className="h-3 w-3" />}>
+                              숨김
+                            </Badge>
+                          )}
+                        </div>
+                        <p className="mt-1 flex items-center gap-1.5 text-xs text-ink-400">
+                          <AcademicCapIcon className="h-3.5 w-3.5 shrink-0" />
+                          <span className="truncate">{program?.shortName || portfolio.currentCourse || '과정 미지정'}</span>
+                        </p>
                       </div>
-                      <div className="flex shrink-0 space-x-1">
+                    </div>
+
+                    {/* 전문분야 */}
+                    <div className="mt-3.5 flex flex-wrap gap-1.5">
+                      {specialities.length > 0 ? (
+                        <>
+                          {specialities.slice(0, 3).map((speciality) => (
+                            <Badge key={speciality} tone="azure" className="max-w-[11rem] truncate">
+                              {speciality}
+                            </Badge>
+                          ))}
+                          {specialities.length > 3 && <Badge tone="neutral">+{specialities.length - 3}</Badge>}
+                        </>
+                      ) : (
+                        <Badge tone="neutral">전문분야 미입력</Badge>
+                      )}
+                    </div>
+
+                    {/* 연락처·주소 — 값이 없어도 행을 유지해 카드 정렬이 흔들리지 않게 한다 */}
+                    <div className="mt-4 space-y-1.5 rounded-2xl border border-white/70 bg-white/55 p-3.5 text-sm">
+                      <div className="flex items-center gap-2 text-ink-600">
+                        <PhoneIcon className="h-4 w-4 shrink-0 text-azure-500" />
+                        <span className="truncate">{portfolio.phone || '-'}</span>
+                      </div>
+                      <div className="flex items-center gap-2 text-ink-600">
+                        <MapPinIcon className="h-4 w-4 shrink-0 text-azure-500" />
+                        <span className="truncate">{portfolio.address || '-'}</span>
+                      </div>
+                      <div className="flex items-center gap-2 text-ink-600">
+                        <BriefcaseIcon className="h-4 w-4 shrink-0 text-azure-500" />
+                        <span className="min-w-0 truncate">
+                          {(portfolio.skills || []).length > 0
+                            ? `${portfolio.skills.slice(0, 3).join(', ')}${portfolio.skills.length > 3 ? ` 외 ${portfolio.skills.length - 3}개` : ''}`
+                            : '스킬 미입력'}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* 관리 토글 — 아이콘 대신 상태가 읽히는 명시적 컨트롤 */}
+                    <div className="mt-3 grid grid-cols-2 gap-2">
+                      <button
+                        onClick={() =>
+                          handleTogglePortfolioContactVisibility(
+                            portfolio.id,
+                            portfolio.contactInfoVisibleToEmployers || false,
+                          )
+                        }
+                        className={`inline-flex items-center justify-center gap-1.5 rounded-2xl border px-3 py-2 text-xs font-semibold transition-all ${
+                          portfolio.contactInfoVisibleToEmployers
+                            ? 'border-mint-400/50 bg-mint-100/70 text-mint-600 hover:bg-mint-100'
+                            : 'border-ink-100 bg-white/60 text-ink-500 hover:border-azure-200 hover:text-azure-700'
+                        }`}
+                        title={portfolio.contactInfoVisibleToEmployers ? '클릭 시 연락처 공개 차단' : '클릭 시 연락처 공개 승인'}
+                      >
+                        {portfolio.contactInfoVisibleToEmployers ? (
+                          <EnvelopeIcon className="h-4 w-4" />
+                        ) : (
+                          <LockClosedIcon className="h-4 w-4" />
+                        )}
+                        {portfolio.contactInfoVisibleToEmployers ? '연락처 공개 중' : '연락처 비공개'}
+                      </button>
+                      <button
+                        onClick={() => handleTogglePortfolioVisibility(portfolio.id, portfolio.isHidden || false)}
+                        className={`inline-flex items-center justify-center gap-1.5 rounded-2xl border px-3 py-2 text-xs font-semibold transition-all ${
+                          portfolio.isHidden
+                            ? 'border-honey-400/50 bg-honey-100/70 text-honey-600 hover:bg-honey-100'
+                            : 'border-ink-100 bg-white/60 text-ink-500 hover:border-azure-200 hover:text-azure-700'
+                        }`}
+                        title={portfolio.isHidden ? '클릭 시 목록에 표시' : '클릭 시 목록에서 숨김'}
+                      >
+                        {portfolio.isHidden ? <EyeSlashIcon className="h-4 w-4" /> : <EyeIcon className="h-4 w-4" />}
+                        {portfolio.isHidden ? '숨김 상태' : '표시 중'}
+                      </button>
+                    </div>
+
+                    {/* 하단 고정 액션 — mt-auto 로 카드 높이가 달라도 항상 바닥에 정렬 */}
+                    <div className="mt-auto pt-3.5">
+                      <div className="flex items-center gap-2 border-t border-ink-100 pt-3.5">
                         <a
                           href={`/portfolios/${portfolio.id}`}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="p-2 text-azure-600 hover:text-azure-700 hover:bg-azure-50/70 rounded-xl transition-colors"
-                          title="상세 페이지 새 창에서 열기"
-                          aria-label={`${portfolio.name} 상세 페이지 새 창에서 열기`}
+                          className="inline-flex flex-1 items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-azure-500 to-azure-600 px-3 py-2 text-sm font-semibold text-white shadow-glow transition-colors hover:from-azure-400 hover:to-azure-500"
                         >
-                          <ArrowTopRightOnSquareIcon className="w-5 h-5" />
+                          <ArrowTopRightOnSquareIcon className="h-4 w-4" />
+                          상세 새 창
                         </a>
-                        {/* 숨김/표시 토글 버튼 */}
-                        <button
-                          onClick={() => handleTogglePortfolioVisibility(portfolio.id, portfolio.isHidden || false)}
-                          className={`p-2 rounded-xl transition-colors ${
-                            portfolio.isHidden
-                              ? 'text-azure-600 hover:bg-azure-50'
-                              : 'text-ink-400 hover:bg-azure-50/60 hover:text-azure-600'
-                          }`}
-                          title={portfolio.isHidden ? '포트폴리오 표시' : '포트폴리오 숨김'}
-                        >
-                          {portfolio.isHidden ? (
-                            <EyeIcon className="w-5 h-5" />
-                          ) : (
-                            <EyeSlashIcon className="w-5 h-5" />
-                          )}
-                        </button>
-                        <button
-                          onClick={() => handleTogglePortfolioContactVisibility(portfolio.id, portfolio.contactInfoVisibleToEmployers || false)}
-                          className={`p-2 rounded-xl transition-colors ${
-                            portfolio.contactInfoVisibleToEmployers
-                              ? 'text-mint-600 hover:bg-mint-50'
-                              : 'text-ink-400 hover:bg-azure-50/60 hover:text-azure-600'
-                          }`}
-                          title={portfolio.contactInfoVisibleToEmployers ? '기업 연락처 공개 차단' : '기업 연락처 공개 승인'}
-                          aria-label={portfolio.contactInfoVisibleToEmployers ? '기업 연락처 공개 차단' : '기업 연락처 공개 승인'}
-                        >
-                          {portfolio.contactInfoVisibleToEmployers ? (
-                            <EnvelopeIcon className="w-5 h-5" />
-                          ) : (
-                            <LockClosedIcon className="w-5 h-5" />
-                          )}
-                        </button>
-                        {/* 수정 버튼 */}
                         <button
                           onClick={() => openPortfolioModal(portfolio)}
-                          className="p-2 text-ink-400 hover:text-azure-600 hover:bg-azure-50/60 rounded-xl transition-colors"
-                          title="포트폴리오 수정"
+                          className="inline-flex items-center justify-center gap-2 rounded-2xl border border-white/70 bg-white/70 px-3.5 py-2 text-sm font-semibold text-azure-700 shadow-glass-sm transition hover:bg-white"
                         >
-                          <PencilIcon className="w-5 h-5" />
+                          <PencilIcon className="h-4 w-4" />
+                          수정
                         </button>
                       </div>
                     </div>
-
-                    <div className="space-y-2">
-                      <div>
-                        <span className="text-sm font-medium text-ink-700">전문 분야:</span>
-                        <span className="ml-2 text-sm text-ink-900">{splitSpecialities(portfolio.speciality).join(', ')}</span>
-                      </div>
-                      <div>
-                        <span className="text-sm font-medium text-ink-700">연락처:</span>
-                        <span className="ml-2 text-sm text-ink-900">{portfolio.phone}</span>
-                      </div>
-                      <div>
-                        <span className="text-sm font-medium text-ink-700">주소:</span>
-                        <span className="ml-2 text-sm text-ink-900">{portfolio.address}</span>
-                      </div>
-                      {portfolio.currentCourse && (
-                        <div>
-                          <span className="text-sm font-medium text-ink-700">수행 과정:</span>
-                          <span className="ml-2 text-sm text-ink-900">{portfolio.currentCourse}</span>
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="mt-4 min-w-0">
-                      <div className="flex min-w-0 flex-wrap gap-1.5 overflow-hidden">
-                        {portfolio.skills.slice(0, 3).map((skill, index) => (
-                          <Badge
-                            key={index}
-                            tone="azure"
-                            className="max-w-full whitespace-normal break-words text-left leading-snug"
-                          >
-                            {skill}
-                          </Badge>
-                        ))}
-                        {portfolio.skills.length > 3 && (
-                          <Badge tone="neutral">+{portfolio.skills.length - 3}개</Badge>
-                        )}
-                      </div>
-                    </div>
-
-                    <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-ink-100 pt-4">
-                      <a
-                        href={`/portfolios/${portfolio.id}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex flex-1 items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-azure-500 to-azure-600 px-3 py-2 text-sm font-semibold text-white shadow-glow transition-colors hover:from-azure-400 hover:to-azure-500"
-                      >
-                        <ArrowTopRightOnSquareIcon className="h-4 w-4" />
-                        상세 새 창
-                      </a>
-                      <button
-                        onClick={() => openPortfolioModal(portfolio)}
-                        className="inline-flex items-center justify-center gap-2 rounded-2xl border border-white/70 bg-white/70 px-3 py-2 text-sm font-semibold text-azure-700 shadow-glass-sm transition hover:bg-white"
-                      >
-                        <PencilIcon className="h-4 w-4" />
-                        수정
-                      </button>
-                    </div>
                   </motion.div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>
@@ -3035,6 +2979,28 @@ export default function AdminPage() {
                       placeholder="쉼표로 구분 (예: 서울시 매력일자리, 2025년 수료)"
                     />
                   </div>
+
+                  <label
+                    className={`flex cursor-pointer items-start gap-3 rounded-3xl border p-4 transition-all ${
+                      programForm.archived
+                        ? 'border-honey-400/50 bg-honey-100/50 shadow-glass-sm'
+                        : 'border-white/70 bg-white/55'
+                    }`}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={programForm.archived}
+                      onChange={(e) => setProgramForm((prev) => ({ ...prev, archived: e.target.checked }))}
+                      className="mt-0.5 h-5 w-5 shrink-0 rounded border-azure-200 text-azure-600 focus:ring-azure-400"
+                    />
+                    <div>
+                      <span className="text-sm font-semibold text-ink-900">연도별 아카이브 과정 (상단 탭 분리)</span>
+                      <p className="mt-1 text-xs leading-relaxed text-ink-500">
+                        체크하면 메인 과정 선택 카드·기업 대시보드에는 표시하지 않고, 상단 네비게이션에 별도 탭으로
+                        노출합니다. 열람 권한 관리에는 일반 과정과 동일하게 포함됩니다.
+                      </p>
+                    </div>
+                  </label>
                 </div>
 
                 <div className="px-6 py-4 border-t border-ink-100 bg-white/40 flex justify-end gap-2">
