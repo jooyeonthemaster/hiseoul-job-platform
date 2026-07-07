@@ -177,7 +177,9 @@ export default function HomePage() {
         try {
           const [profile, portfolio] = await Promise.all([
             getJobSeekerProfile(user.uid),
-            getPortfolio(user.uid)
+            // 본인 포트폴리오 '등록 여부' 판정이므로 숨김 상태여도 인정한다
+            // (프로필 페이지와 동일 기준 — 숨김 시 메인만 90%로 어긋나던 불일치 수정)
+            getPortfolio(user.uid, true)
           ]);
 
           console.log('🏠 메인 페이지: 가져온 데이터');
