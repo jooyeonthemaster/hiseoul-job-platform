@@ -462,7 +462,7 @@ export default function HomePage() {
                           style={{ width: `${profileCompletion.percentage}%` }} 
                         />
                       </div>
-                      <div className="text-[0.75rem] font-bold text-azure-600 shrink-0 w-8 text-right">
+                      <div className="text-[0.75rem] font-bold text-azure-600 shrink-0 w-11 text-right whitespace-nowrap tabular-nums">
                         {profileCompletion.percentage}%
                       </div>
                     </div>
