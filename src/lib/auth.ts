@@ -892,6 +892,8 @@ export const getAllEmployers = async (includeHidden: boolean = false) => {
         allowedProgramIds: Array.isArray(data.allowedProgramIds)
           ? data.allowedProgramIds.filter((id: unknown): id is string => typeof id === 'string')
           : undefined,
+        // 구직자에게 기업정보 공개 여부 (관리자 승인 옵트인 — 없음/false = 비공개, true = 공개)
+        visibleToJobSeekers: data.visibleToJobSeekers === true,
         rejectedReason: data.rejectedReason,
         canceledReason: data.canceledReason,
         approvedAt: data.approvedAt,
@@ -922,6 +924,12 @@ export const getEmployerById = async (employerId: string) => {
         id: employerDoc.id,
         userId: data.userId,
         approvalStatus: data.approvalStatus || 'pending',
+        // 구직자에게 기업정보 공개 여부 (관리자 승인 옵트인 — 없음/false = 비공개, true = 공개)
+        visibleToJobSeekers: data.visibleToJobSeekers === true,
+        // 기업별 과정 열람 권한 (구직자 노출 과정 매칭에도 재사용 — 없음=전체, []=전면차단)
+        allowedProgramIds: Array.isArray(data.allowedProgramIds)
+          ? data.allowedProgramIds.filter((id: unknown): id is string => typeof id === 'string')
+          : undefined,
         company: {
           name: data.company?.name || '',
           ceoName: data.company?.ceoName || '',
@@ -1289,6 +1297,23 @@ export const toggleEmployerVisibility = async (employerId: string, isHidden: boo
     return true;
   } catch (error) {
     console.error('기업 숨김 상태 변경 실패:', error);
+    throw error;
+  }
+};
+
+// 구직자에게 기업정보 공개 여부 설정 (관리자 승인 옵트인)
+// - true: /companies 목록·상세에서 구직자·비로그인 방문자에게 노출
+// - false(기본): 관리자·본인만 접근, 구직자에게는 비공개
+export const setEmployerJobSeekerVisibility = async (employerId: string, visible: boolean) => {
+  try {
+    await updateDoc(doc(db, 'employers', employerId), {
+      visibleToJobSeekers: visible,
+      jobSeekerVisibilityUpdatedAt: serverTimestamp(),
+      updatedAt: serverTimestamp()
+    });
+    return true;
+  } catch (error) {
+    console.error('기업 구직자 공개 상태 변경 실패:', error);
     throw error;
   }
 };

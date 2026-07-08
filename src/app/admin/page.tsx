@@ -11,7 +11,7 @@ import { Badge } from '@/components/ui/Badge';
 import { GlassInput, GlassTextarea, GlassSelect, Field } from '@/components/ui/GlassField';
 import { AuroraBackground } from '@/components/ui/AuroraBackground';
 import { ScrollReveal } from '@/components/ui/ScrollReveal';
-import { getAllPortfolios, updateJobSeekerProfile, getJobSeekerProfile, updateUserProfile, registerPortfolio, togglePortfolioVisibility, setPortfolioContactVisibility, toggleEmployerVisibility, getAllEmployers, logOut } from '@/lib/auth';
+import { getAllPortfolios, updateJobSeekerProfile, getJobSeekerProfile, updateUserProfile, registerPortfolio, togglePortfolioVisibility, setPortfolioContactVisibility, toggleEmployerVisibility, setEmployerJobSeekerVisibility, getAllEmployers, logOut } from '@/lib/auth';
 import { exportJobseekersToExcel, exportEmployersToExcel, exportSelectionsToExcel, exportAllToExcel } from '@/lib/excelExport';
 import { DEFAULT_VISIBLE_PROGRAM_IDS, PORTFOLIO_PROGRAMS, splitSpecialities, portfolioMatchesProgram, getProgramForPortfolio, type PortfolioProgram, type ProgramCourseType } from '@/lib/programs';
 import { getVisiblePortfolioProgramIds, saveVisiblePortfolioProgramIds } from '@/lib/programSettings';
@@ -82,6 +82,8 @@ interface PendingEmployer {
   isHidden?: boolean; // 숨김 상태 추가
   // 기업별 과정 열람 권한 (undefined = 전체 허용 레거시, [] = 전면 차단)
   allowedProgramIds?: string[];
+  // 구직자에게 기업정보 공개 여부 (undefined/false = 비공개, true = 공개)
+  visibleToJobSeekers?: boolean;
 }
 
 interface JobInquiry {
@@ -309,6 +311,9 @@ export default function AdminPage() {
   // 매칭기간 일괄 조치 확인 모달: null | 'blockAll' | 'allowAll'
   const [bulkProgramAction, setBulkProgramAction] = useState<'blockAll' | 'allowAll' | null>(null);
   const [bulkProcessing, setBulkProcessing] = useState(false);
+  // 구직자 공개(기업정보 노출) 상태 저장 중인 기업 id / 일괄 처리 플래그
+  const [savingJobSeekerVisibility, setSavingJobSeekerVisibility] = useState<string | null>(null);
+  const [bulkVisibilityProcessing, setBulkVisibilityProcessing] = useState(false);
   // 커스텀 과정 추가/수정 모달
   const [programModalOpen, setProgramModalOpen] = useState(false);
   const [editingProgramId, setEditingProgramId] = useState<string | null>(null);
@@ -751,6 +756,7 @@ export default function AdminPage() {
           canceledAt: employer.canceledAt,
           isHidden: employer.isHidden,
           allowedProgramIds: employer.allowedProgramIds,
+          visibleToJobSeekers: employer.visibleToJobSeekers,
         } as PendingEmployer;
       }),
     );
@@ -1506,6 +1512,49 @@ export default function AdminPage() {
     } catch (error) {
       console.error('기업 숨김 상태 변경 실패:', error);
       alert('기업 숨김 상태 변경에 실패했습니다.');
+    }
+  };
+
+  // 구직자 공개(기업정보 노출) 토글 — true 인 기업만 /companies 에서 구직자·비로그인에게 노출된다
+  const handleToggleJobSeekerVisibility = async (employerId: string, currentVisible: boolean) => {
+    try {
+      setSavingJobSeekerVisibility(employerId);
+      await setEmployerJobSeekerVisibility(employerId, !currentVisible);
+      const { pending, approved, rejected } = await buildEmployerLists();
+      setPendingEmployers(pending);
+      setApprovedEmployers(approved);
+      setRejectedEmployers(rejected);
+    } catch (error) {
+      console.error('구직자 공개 상태 변경 실패:', error);
+      alert('구직자 공개 상태 변경에 실패했습니다.');
+    } finally {
+      setSavingJobSeekerVisibility(null);
+    }
+  };
+
+  // 구직자 공개 일괄 조치 — 승인 완료 기업 전체에 적용(예: 이번 과정 기업만 일괄 공개)
+  const applyBulkJobSeekerVisibility = async (visible: boolean) => {
+    const count = approvedEmployers.length;
+    if (count === 0) return;
+    const ok = window.confirm(
+      visible
+        ? `승인 완료 기업 ${count}곳을 모두 구직자에게 공개하시겠습니까?`
+        : `승인 완료 기업 ${count}곳을 모두 구직자에게 비공개로 전환하시겠습니까?`,
+    );
+    if (!ok) return;
+    try {
+      setBulkVisibilityProcessing(true);
+      await Promise.all(approvedEmployers.map((employer) => setEmployerJobSeekerVisibility(employer.id, visible)));
+      const { pending, approved, rejected } = await buildEmployerLists();
+      setPendingEmployers(pending);
+      setApprovedEmployers(approved);
+      setRejectedEmployers(rejected);
+      alert(visible ? `${count}곳을 구직자에게 공개했습니다.` : `${count}곳을 구직자에게 비공개로 전환했습니다.`);
+    } catch (error) {
+      console.error('구직자 공개 일괄 조치 실패:', error);
+      alert('일괄 조치 중 오류가 발생했습니다. 목록을 새로고침해 상태를 확인해주세요.');
+    } finally {
+      setBulkVisibilityProcessing(false);
     }
   };
 
@@ -2293,6 +2342,49 @@ export default function AdminPage() {
           </div>
         )}
 
+        {/* 구직자 공개 일괄 관리 — 승인 완료 탭 상단 */}
+        {selectedTab === 'approved' && approvedEmployers.length > 0 && (
+          <div className="glass-card p-6 md:p-7 mb-8">
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+              <div className="flex items-start gap-3">
+                <span className="inline-flex items-center justify-center w-11 h-11 shrink-0 rounded-2xl bg-gradient-to-br from-azure-500 to-azure-600 text-white shadow-glow">
+                  <BuildingOfficeIcon className="w-6 h-6" />
+                </span>
+                <div>
+                  <h3 className="font-semibold text-lg text-ink-900">기업정보 구직자 공개 관리</h3>
+                  <p className="text-sm text-ink-500 mt-0.5 leading-relaxed">
+                    <span className="font-semibold text-azure-700">‘구직자 공개’로 켠 기업만</span> 구직자에게 노출되며, 그중에서도 아래
+                    <span className="font-semibold text-azure-700"> ‘포트폴리오 열람 권한’에 체크한 과정</span>의 구직자에게만 표시됩니다
+                    (권한이 비어 있으면 전체 과정 구직자에게 노출). 지난 과정 기업은 공개를 끄거나 과정을 지정하면 현재 구직자에게서 자연스럽게 숨겨집니다.
+                    <span className="font-semibold text-ink-600"> 기본값은 비공개.</span>
+                  </p>
+                </div>
+              </div>
+              <div className="flex flex-wrap gap-2 shrink-0">
+                <GlassButton
+                  onClick={() => applyBulkJobSeekerVisibility(false)}
+                  variant="secondary"
+                  size="sm"
+                  disabled={bulkVisibilityProcessing}
+                  className="!text-coral-600"
+                >
+                  <EyeSlashIcon className="w-4 h-4 mr-1.5" />
+                  전체 비공개
+                </GlassButton>
+                <GlassButton
+                  onClick={() => applyBulkJobSeekerVisibility(true)}
+                  variant="secondary"
+                  size="sm"
+                  disabled={bulkVisibilityProcessing}
+                >
+                  <EyeIcon className="w-4 h-4 mr-1.5" />
+                  전체 공개
+                </GlassButton>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* 기업 검색·필터 툴바 (승인 대기/완료/거절 공용) */}
         {['pending', 'approved', 'rejected'].includes(selectedTab) && (
           <div className="glass-card p-5 md:p-6 mb-6">
@@ -2475,6 +2567,18 @@ export default function AdminPage() {
                           <Badge tone="neutral" icon={<EyeSlashIcon className="w-3 h-3" />}>
                             숨김
                           </Badge>
+                        )}
+                        {/* 구직자 공개 상태 표시 (승인 완료 기업만 의미 있음) */}
+                        {employer.approvalStatus === 'approved' && (
+                          employer.visibleToJobSeekers ? (
+                            <Badge tone="mint" icon={<EyeIcon className="w-3 h-3" />}>
+                              구직자 공개
+                            </Badge>
+                          ) : (
+                            <Badge tone="coral" icon={<EyeSlashIcon className="w-3 h-3" />}>
+                              구직자 비공개
+                            </Badge>
+                          )
                         )}
                       </div>
 
@@ -2701,6 +2805,30 @@ export default function AdminPage() {
                         )}
                       </GlassButton>
 
+                      {/* 구직자 공개 토글 (승인 완료 기업만) — 구직자·비로그인 방문자에게 기업정보 노출 여부 */}
+                      {employer.approvalStatus === 'approved' && (
+                        <GlassButton
+                          onClick={() => handleToggleJobSeekerVisibility(employer.id, employer.visibleToJobSeekers || false)}
+                          variant={employer.visibleToJobSeekers ? 'secondary' : 'primary'}
+                          size="sm"
+                          disabled={savingJobSeekerVisibility === employer.id}
+                        >
+                          {savingJobSeekerVisibility === employer.id ? (
+                            '저장 중...'
+                          ) : employer.visibleToJobSeekers ? (
+                            <>
+                              <EyeSlashIcon className="w-4 h-4 mr-1" />
+                              구직자 비공개로
+                            </>
+                          ) : (
+                            <>
+                              <EyeIcon className="w-4 h-4 mr-1" />
+                              구직자 공개
+                            </>
+                          )}
+                        </GlassButton>
+                      )}
+
                       {/* 승인 대기 상태 */}
                       {employer.approvalStatus === 'pending' && (
                         <>
@@ -2758,8 +2886,8 @@ export default function AdminPage() {
                             <AcademicCapIcon className="w-5 h-5" />
                           </span>
                           <div>
-                            <h4 className="text-sm font-semibold text-ink-900">포트폴리오 열람 권한</h4>
-                            <p className="mt-0.5 text-xs text-ink-400">체크한 과정의 교육생 포트폴리오만 열람할 수 있습니다</p>
+                            <h4 className="text-sm font-semibold text-ink-900">포트폴리오 열람 권한 · 구직자 노출 과정</h4>
+                            <p className="mt-0.5 text-xs text-ink-400">체크한 과정의 교육생 포트폴리오를 열람하고, ‘구직자 공개’ 시 해당 과정 구직자에게만 이 기업이 노출됩니다</p>
                           </div>
                           <Badge
                             tone={draft.length === 0 ? 'coral' : draft.length === allProgramIds.length ? 'mint' : 'azure'}

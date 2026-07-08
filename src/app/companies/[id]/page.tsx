@@ -4,7 +4,9 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
-import { getEmployerById, addToFavorites, removeFromFavorites, isFavoriteCompany, getUserData } from '@/lib/auth';
+import { getEmployerById, addToFavorites, removeFromFavorites, isFavoriteCompany, getUserData, getJobSeekerProfile } from '@/lib/auth';
+import { getAllPrograms } from '@/lib/customPrograms';
+import { getProgramForPortfolio, employerMatchesJobSeekerProgram } from '@/lib/programs';
 import { motion, AnimatePresence } from 'framer-motion';
 import Navigation from '@/components/Navigation';
 import { GlassButton } from '@/components/ui/GlassButton';
@@ -39,6 +41,8 @@ interface Company {
   id: string;
   userId: string;
   approvalStatus: 'pending' | 'approved' | 'rejected';
+  visibleToJobSeekers?: boolean;
+  allowedProgramIds?: string[];
   company: {
     name: string;
     ceoName: string;
@@ -90,17 +94,63 @@ export default function CompanyDetailPage() {
           return;
         }
 
+        // 뷰어 판별 — 관리자/본인만 미공개 기업 열람 가능
+        let viewerIsAdmin = false;
+        let viewerRole: string | null = null;
+        if (user) {
+          const userData = await getUserData(user.uid);
+          viewerRole = userData?.role || null;
+          viewerIsAdmin = userData?.role === 'admin' || userData?.isAdmin === true;
+          setUserRole(viewerRole);
+        }
+        const isOwner = !!user && companyData.userId === user.uid;
+
+        // 구직자는 자신이 선택한 과정을 program id 로 해석해 기업 열람 권한과 매칭한다.
+        let jobSeekerProgramId: string | null = null;
+        if (viewerRole === 'jobseeker' && user) {
+          try {
+            const [profileDoc, allPrograms] = await Promise.all([
+              getJobSeekerProfile(user.uid),
+              getAllPrograms(),
+            ]);
+            const prof = (profileDoc as { profile?: { currentCourse?: string; courseType?: any } } | null)?.profile;
+            jobSeekerProgramId =
+              getProgramForPortfolio(
+                { currentCourse: prof?.currentCourse, courseType: prof?.courseType ?? null },
+                allPrograms,
+              )?.id ?? null;
+          } catch (e) {
+            console.error('구직자 과정 확인 실패:', e);
+          }
+        }
+
+        // 접근 정책(기업정보는 구직자·관리자 전용): 관리자/본인은 항상,
+        // 구직자는 ①구직자 공개 ON ②자신의 과정이 기업 열람 권한에 포함될 때만. 기업회원·비로그인은 차단.
+        const canView =
+          viewerIsAdmin ||
+          isOwner ||
+          (viewerRole === 'jobseeker' &&
+            companyData.visibleToJobSeekers === true &&
+            employerMatchesJobSeekerProgram(companyData, jobSeekerProgramId));
+        if (!canView) {
+          if (!user) {
+            setError('로그인이 필요합니다. 기업정보는 구직자 회원에게만 제공됩니다.');
+          } else if (viewerRole === 'employer') {
+            setError('기업정보는 구직자 회원 전용입니다.');
+          } else if (companyData.visibleToJobSeekers !== true) {
+            setError('현재 공개되지 않은 기업 정보입니다.');
+          } else {
+            setError('회원님이 선택한 과정에 해당하지 않는 기업입니다.');
+          }
+          return;
+        }
+
         setCompany(companyData);
 
         // 로그인한 사용자의 관심 기업 여부 확인
-        if (user) {
-          const userData = await getUserData(user.uid);
-          setUserRole(userData?.role || null);
-
-          if (userData?.role === 'jobseeker') {
-            const favorite = await isFavoriteCompany(user.uid, params.id);
-            setIsFavorite(favorite);
-          }
+        if (viewerRole === 'jobseeker') {
+          const favorite = await isFavoriteCompany(user!.uid, params.id);
+          setIsFavorite(favorite);
         }
       } catch (error) {
         console.error('Error loading company:', error);

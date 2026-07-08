@@ -312,6 +312,25 @@ export function isEmployerProgramRestricted(employerData: { allowedProgramIds?: 
   return Array.isArray(employerData?.allowedProgramIds);
 }
 
+// ── 구직자 → 기업 노출 매칭 (기업정보 /companies 목록·상세) ─────────────────
+//  기업의 allowedProgramIds(포트폴리오 열람 권한)를 구직자 노출에도 재사용한다:
+//   - 필드 없음(레거시)  → 전체 과정 구직자에게 노출
+//   - 빈 배열            → 아무 구직자에게도 노출 안 함(전면 차단)
+//   - 배열 [X,…]         → 해당 과정을 선택한 구직자에게만 노출
+//  jobSeekerProgramId 를 알 수 없으면(과정 미설정) 제한 기업엔 노출하지 않는다(보수적).
+//  주의: '구직자 공개(visibleToJobSeekers)' 게이트와 AND 로 함께 적용된다 — 공개 켠 기업 중 과정 일치분만.
+export function employerMatchesJobSeekerProgram(
+  employerData: { allowedProgramIds?: unknown } | null | undefined,
+  jobSeekerProgramId: string | null | undefined,
+): boolean {
+  const raw = employerData?.allowedProgramIds;
+  if (!Array.isArray(raw)) return true; // 레거시 = 전체 허용
+  const allowed = raw.filter((id): id is string => typeof id === 'string');
+  if (allowed.length === 0) return false; // 전면 차단
+  if (!jobSeekerProgramId) return false; // 과정 불명 → 제한 기업 미노출
+  return allowed.includes(jobSeekerProgramId);
+}
+
 export function splitSpecialities(value?: string | string[] | null) {
   if (Array.isArray(value)) return value.map((item) => item.trim()).filter(Boolean);
   if (!value) return [];

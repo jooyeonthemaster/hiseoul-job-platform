@@ -3,7 +3,9 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
-import { getAllEmployers, addToFavorites, removeFromFavorites, getFavoriteCompanies, getUserData } from '@/lib/auth';
+import { getAllEmployers, addToFavorites, removeFromFavorites, getFavoriteCompanies, getJobSeekerProfile } from '@/lib/auth';
+import { getAllPrograms } from '@/lib/customPrograms';
+import { getProgramForPortfolio, employerMatchesJobSeekerProgram } from '@/lib/programs';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import Navigation from '@/components/Navigation';
 import { GlassButton } from '@/components/ui/GlassButton';
@@ -35,6 +37,8 @@ interface Company {
   id: string;
   userId: string;
   approvalStatus: 'pending' | 'approved' | 'rejected';
+  visibleToJobSeekers?: boolean;
+  allowedProgramIds?: string[];
   company: {
     name: string;
     ceoName: string;
@@ -61,7 +65,7 @@ interface Company {
 }
 
 export default function CompaniesPage() {
-  const { isAuthenticated, user } = useAuth();
+  const { user, userData, loading: authLoading } = useAuth();
   const [companies, setCompanies] = useState<Company[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -69,10 +73,17 @@ export default function CompaniesPage() {
   const [selectedSize, setSelectedSize] = useState('all');
   const [showFilters, setShowFilters] = useState(false);
   const [favoriteCompanies, setFavoriteCompanies] = useState<string[]>([]);
-  const [userRole, setUserRole] = useState<string | null>(null);
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [favoriteLoading, setFavoriteLoading] = useState<string | null>(null);
+  // 로그인 구직자가 선택한 과정(program id) — 기업 노출 매칭에 사용. ready 전엔 목록 표시를 보류해 깜빡임 방지.
+  const [jobSeekerProgramId, setJobSeekerProgramId] = useState<string | null>(null);
+  const [jobSeekerContextReady, setJobSeekerContextReady] = useState(false);
   const reduceMotion = useReducedMotion();
+
+  // 역할 판별 — 기업정보(기업 목록)는 구직자·관리자만 접근. 관리자는 미공개 기업까지 전체 열람.
+  const userRole = userData?.role ?? null;
+  const isAdminViewer = userData?.role === 'admin' || userData?.isAdmin === true;
+  const accessAllowed = isAdminViewer || userData?.role === 'jobseeker';
 
   useEffect(() => {
     const loadCompanies = async () => {
@@ -90,26 +101,53 @@ export default function CompaniesPage() {
   }, []);
 
   useEffect(() => {
-    const loadUserData = async () => {
-      if (user) {
-        const userData = await getUserData(user.uid);
-        setUserRole(userData?.role || null);
-
-        if (userData?.role === 'jobseeker') {
-          const favorites = await getFavoriteCompanies(user.uid);
+    const loadJobSeekerContext = async () => {
+      if (user && userData?.role === 'jobseeker') {
+        setJobSeekerContextReady(false);
+        try {
+          const [favorites, profileDoc, allPrograms] = await Promise.all([
+            getFavoriteCompanies(user.uid),
+            getJobSeekerProfile(user.uid),
+            getAllPrograms(),
+          ]);
           setFavoriteCompanies(favorites);
+          // 구직자가 선택한 과정을 program id 로 해석 (currentCourse 우선, courseType 폴백)
+          const prof = (profileDoc as { profile?: { currentCourse?: string; courseType?: any } } | null)?.profile;
+          const program = getProgramForPortfolio(
+            { currentCourse: prof?.currentCourse, courseType: prof?.courseType ?? null },
+            allPrograms,
+          );
+          setJobSeekerProgramId(program?.id ?? null);
+        } catch (error) {
+          console.error('구직자 과정 확인 실패:', error);
+          setJobSeekerProgramId(null);
+        } finally {
+          setJobSeekerContextReady(true);
         }
       } else {
         setFavoriteCompanies([]);
-        setUserRole(null);
+        setJobSeekerProgramId(null);
+        setJobSeekerContextReady(true);
       }
     };
 
-    loadUserData();
-  }, [user]);
+    loadJobSeekerContext();
+  }, [user, userData]);
+
+  // 구직자 노출 게이팅(관리자 확정 설계): 관리자는 전체 열람.
+  // 구직자는 ① '구직자 공개'가 켜져 있고 ② 자신의 과정이 기업의 열람 권한(allowedProgramIds)에 포함된 기업만 본다.
+  //  - allowedProgramIds 없음(레거시) = 전체 과정 허용, 빈 배열 = 전면 차단, [X] = 과정 X 구직자에게만.
+  // → 지난 과정 기업은 '공개 OFF' 또는 과정 불일치로 자연스럽게 숨겨진다.
+  const viewableCompanies = isAdminViewer
+    ? companies
+    : companies.filter(
+        (company) =>
+          company.visibleToJobSeekers === true &&
+          employerMatchesJobSeekerProgram(company, jobSeekerProgramId),
+      );
 
   // 필터링 로직
-  const filteredCompanies = companies.filter(company => {
+  const filteredCompanies = viewableCompanies.filter(company => {
     const matchesSearch =
       company.company.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       company.company.industry.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -122,8 +160,8 @@ export default function CompaniesPage() {
     return matchesSearch && matchesIndustry && matchesSize;
   });
 
-  const industries = [...new Set(companies.map(c => c.company.industry).filter(Boolean))];
-  const sizes = [...new Set(companies.map(c => c.company.size).filter(Boolean))];
+  const industries = [...new Set(viewableCompanies.map(c => c.company.industry).filter(Boolean))];
+  const sizes = [...new Set(viewableCompanies.map(c => c.company.size).filter(Boolean))];
 
   const getAttractionTags = (attraction: any) => {
     const tags = [];
@@ -182,7 +220,7 @@ export default function CompaniesPage() {
     }
   };
 
-  if (loading) {
+  if (loading || authLoading || (userData?.role === 'jobseeker' && !jobSeekerContextReady)) {
     return (
       <div className="min-h-screen bg-azure-aurora pt-24">
         <div className="container-wide">
@@ -190,6 +228,50 @@ export default function CompaniesPage() {
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-azure-500"></div>
           </div>
         </div>
+      </div>
+    );
+  }
+
+  // 기업정보(기업 목록)는 구직자·관리자 전용 — 비로그인/기업회원은 접근 차단(직접 URL 포함)
+  if (!accessAllowed) {
+    return (
+      <div className="min-h-screen bg-azure-aurora overflow-x-clip">
+        <Navigation />
+        <section className="relative pt-28 pb-24 overflow-hidden">
+          <AuroraBackground />
+          <div className="relative z-10 container-wide flex justify-center">
+            <GlassCard strong className="max-w-lg w-full px-8 sm:px-10 py-14 text-center">
+              <div className="w-20 h-20 mx-auto mb-6 rounded-3xl bg-azure-50 border border-azure-100 flex items-center justify-center text-azure-500 shadow-glass-sm">
+                <BuildingOfficeIcon className="w-10 h-10" />
+              </div>
+              {!user ? (
+                <>
+                  <h3 className="font-display text-2xl font-bold text-ink-900 mb-3 tracking-tight">로그인이 필요합니다</h3>
+                  <p className="text-ink-500 mb-8 leading-relaxed">
+                    기업정보는 로그인한 구직자 회원에게만 제공됩니다.
+                    <br />로그인 후 이용해주세요.
+                  </p>
+                  <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                    <GlassButton href="/auth" className="flex-1">로그인 / 회원가입</GlassButton>
+                    <GlassButton href="/" variant="secondary" className="flex-1">홈으로</GlassButton>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <h3 className="font-display text-2xl font-bold text-ink-900 mb-3 tracking-tight">구직자 전용 메뉴입니다</h3>
+                  <p className="text-ink-500 mb-8 leading-relaxed">
+                    기업정보 목록은 구직자 회원 전용입니다.
+                    <br />기업 회원은 포트폴리오에서 인재를 확인하실 수 있습니다.
+                  </p>
+                  <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                    <GlassButton href="/portfolios" className="flex-1">포트폴리오 보러가기</GlassButton>
+                    <GlassButton href="/employer-dashboard" variant="secondary" className="flex-1">대시보드</GlassButton>
+                  </div>
+                </>
+              )}
+            </GlassCard>
+          </div>
+        </section>
       </div>
     );
   }
