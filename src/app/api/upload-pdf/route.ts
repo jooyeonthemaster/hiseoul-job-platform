@@ -23,10 +23,12 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'PDF 파일이 필요합니다.' }, { status: 400 });
     }
 
-    // 파일 크기 제한 (10MB)
-    const maxSize = 10 * 1024 * 1024; // 10MB
+    // 파일 크기 제한 (30MB)
+    // 참고: 이 서버 경유 라우트는 Vercel 서버리스 본문 한도(~4.5MB)에 걸리므로, 대용량 PDF 업로드는
+    //       브라우저 → Cloudinary 직행 서명 업로드(/api/upload-pdf-signature)를 사용한다. (PDFUpload 컴포넌트)
+    const maxSize = 30 * 1024 * 1024; // 30MB
     if (file.size > maxSize) {
-      return NextResponse.json({ error: '파일 크기는 10MB를 초과할 수 없습니다.' }, { status: 400 });
+      return NextResponse.json({ error: '파일 크기는 30MB를 초과할 수 없습니다.' }, { status: 400 });
     }
 
     // PDF 파일 형식 검증

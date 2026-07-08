@@ -24,7 +24,7 @@ export default function PDFUpload({
   onUploadSuccess,
   onUploadError,
   className = '',
-  maxSize = 10
+  maxSize = 30
 }: PDFUploadProps) {
   const [isDragging, setIsDragging] = useState(false);
   const [uploadingFiles, setUploadingFiles] = useState<UploadingFile[]>([]);
@@ -57,20 +57,63 @@ export default function PDFUpload({
     }
 
     try {
-      const formData = new FormData();
-      formData.append('file', file);
-
-      const response = await fetch('/api/upload-pdf', {
-        method: 'POST',
-        body: formData,
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'PDF 업로드에 실패했습니다.');
+      // 1) 서명 발급 — 브라우저에서 Cloudinary 로 직접 업로드해 Vercel 서버리스 본문 한도(~4.5MB)를 우회한다.
+      const sigResponse = await fetch('/api/upload-pdf-signature', { method: 'POST' });
+      if (!sigResponse.ok) {
+        const errorData = await sigResponse.json().catch(() => ({}));
+        throw new Error(errorData.error || 'PDF 업로드 준비에 실패했습니다.');
+      }
+      const { cloudName, apiKey, timestamp, signature, publicId, uploadUrl } = await sigResponse.json();
+      if (!cloudName || !apiKey || !signature || !uploadUrl) {
+        throw new Error('PDF 업로드 설정이 올바르지 않습니다.');
       }
 
-      const result = await response.json();
+      // 2) Cloudinary 직접 업로드 (진행률 추적)
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('api_key', apiKey);
+      formData.append('timestamp', String(timestamp));
+      formData.append('signature', signature);
+      formData.append('public_id', publicId);
+
+      const result = await new Promise<{ secure_url?: string }>((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+
+        xhr.upload.addEventListener('progress', (event) => {
+          if (event.lengthComputable) {
+            const progress = Math.round((event.loaded / event.total) * 100);
+            setUploadingFiles(prev => prev.map((f, i) => (i === index ? { ...f, progress } : f)));
+          }
+        });
+
+        xhr.addEventListener('load', () => {
+          if (xhr.status >= 200 && xhr.status < 300) {
+            try {
+              resolve(JSON.parse(xhr.responseText));
+            } catch {
+              reject(new Error('업로드 응답을 해석할 수 없습니다.'));
+            }
+          } else {
+            // Cloudinary 오류 메시지 우선 노출 (예: 플랜 파일 크기 한도 초과)
+            let message = 'PDF 업로드에 실패했습니다.';
+            try {
+              message = JSON.parse(xhr.responseText)?.error?.message || message;
+            } catch {
+              /* noop */
+            }
+            reject(new Error(message));
+          }
+        });
+
+        xhr.addEventListener('error', () => reject(new Error('네트워크 오류로 업로드에 실패했습니다.')));
+
+        xhr.open('POST', uploadUrl);
+        xhr.send(formData);
+      });
+
+      if (!result.secure_url) {
+        throw new Error('업로드된 PDF 주소를 받지 못했습니다.');
+      }
 
       // 업로드 완료 상태로 변경
       setUploadingFiles(prev => prev.map((f, i) =>
@@ -78,7 +121,7 @@ export default function PDFUpload({
       ));
 
       // 성공 콜백 호출
-      onUploadSuccess(result.url, file.name);
+      onUploadSuccess(result.secure_url, file.name);
 
       // 일정 시간 후 목록에서 제거
       setTimeout(() => {
