@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { useEffect, useState } from 'react';
 import { checkEmployerApprovalStatus } from '@/lib/auth';
@@ -20,30 +21,24 @@ import {
   ArrowRightOnRectangleIcon,
   UserPlusIcon,
   ArrowLeftOnRectangleIcon,
-  AcademicCapIcon,
 } from '@heroicons/react/24/outline';
 import { Badge } from '@/components/ui/Badge';
-import { getAllPrograms } from '@/lib/customPrograms';
-import type { PortfolioProgram } from '@/lib/programs';
 
 export default function Navigation() {
   const { user, userData, loading: authLoading } = useAuth();
+  const pathname = usePathname();
   const [approvalStatus, setApprovalStatus] = useState<'pending' | 'approved' | 'rejected' | null>(null);
   const [loading, setLoading] = useState(true);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const hasAdminAccess = userData?.role === 'admin' || userData?.isAdmin === true;
+  // 상반된 두 목록 탭 — 비로그인 상태에서는 어느 탭도 노출하지 않는다.
+  //  · 포트폴리오(구직자 목록): 기업회원·관리자만
+  //  · 기업정보(기업 목록): 구직자·관리자만
+  // 본인 포트폴리오/기업정보는 사용자 메뉴(마이페이지)에서 그대로 접근 가능하다.
   const canBrowsePortfolios = userData?.role === 'employer' || hasAdminAccess;
-
-  // 연도별 아카이브 과정(예: 2025 수료생)은 메인 과정 선택 대신 상단 탭으로 분리 노출
-  const [archivedPrograms, setArchivedPrograms] = useState<PortfolioProgram[]>([]);
-  useEffect(() => {
-    if (!canBrowsePortfolios) {
-      setArchivedPrograms([]);
-      return;
-    }
-    getAllPrograms().then((programs) => setArchivedPrograms(programs.filter((program) => program.archived)));
-  }, [canBrowsePortfolios]);
+  const canBrowseCompanies = userData?.role === 'jobseeker' || hasAdminAccess;
+  const hasNavLinks = canBrowsePortfolios || canBrowseCompanies;
 
   useEffect(() => {
     const loadApprovalStatus = async () => {
@@ -91,52 +86,58 @@ export default function Navigation() {
     setIsUserMenuOpen(!isUserMenuOpen);
   };
 
-  const navLinkClass =
-    'flex items-center gap-2 px-4 py-2 rounded-xl text-ink-600 hover:text-azure-700 hover:bg-azure-50/70 transition-all duration-200 font-medium group';
+  // 현재 경로 활성 상태 — 단일 탭이라도 '살아있는' 내비게이션으로 보이도록 강조한다.
+  const isActive = (href: string) => pathname === href || pathname?.startsWith(`${href}/`);
+  const navLink = (href: string) =>
+    `flex items-center gap-2 px-4 py-2 rounded-xl transition-all duration-200 font-medium group ${
+      isActive(href)
+        ? 'bg-azure-500/12 text-azure-700 shadow-glass-sm ring-1 ring-inset ring-azure-200/70'
+        : 'text-ink-600 hover:text-azure-700 hover:bg-azure-50/70'
+    }`;
   const menuItemClass =
     'flex items-center gap-3 px-4 py-3 text-ink-600 hover:bg-azure-50/70 hover:text-azure-700 transition-colors';
 
   return (
     <header className="fixed top-0 w-full glass-nav z-50">
       <div className="container-wide">
-        <div className="flex justify-between items-center h-16">
-          {/* 로고 */}
-          <Link href="/" className="flex min-w-0 items-center group">
-            <img
-              src="/images/logo.png"
-              alt="구직자 · 구인기업 면접심사 매칭 플랫폼 Logo"
-              className="h-8 w-auto max-w-[10.75rem] object-contain group-hover:scale-105 transition-all duration-300 sm:h-10 sm:max-w-none"
-            />
-          </Link>
-
-          {/* 데스크톱 메인 네비게이션 */}
-          <nav className="hidden md:flex items-center gap-1">
-            {/* 포트폴리오 둘러보기는 기업회원·관리자만 (비로그인/구직자에게는 미노출) */}
-            {canBrowsePortfolios && (
-              <Link href="/portfolios" className={navLinkClass}>
-                <DocumentTextIcon className="w-5 h-5 group-hover:scale-110 transition-transform duration-200" />
-                <span>포트폴리오</span>
-              </Link>
-            )}
-            {/* 연도별 아카이브 과정 — 클라이언트 요청: 메인 과정 선택 카드가 아닌 상단 탭으로 분리.
-                md~lg 구간에서는 헤더가 넘치지 않도록 '2025 수료생' 형태의 짧은 라벨을 쓴다. */}
-            {canBrowsePortfolios &&
-              archivedPrograms.map((program) => {
-                const year = program.name.match(/^(20\d{2})/)?.[1];
-                const shortLabel = year ? `${year} 수료생` : program.shortName;
-                return (
-                  <Link key={program.id} href={`/portfolios?program=${program.id}`} className={navLinkClass}>
-                    <AcademicCapIcon className="w-5 h-5 shrink-0 group-hover:scale-110 transition-transform duration-200" />
-                    <span className="hidden whitespace-nowrap lg:inline">{program.shortName}</span>
-                    <span className="whitespace-nowrap lg:hidden">{shortLabel}</span>
-                  </Link>
-                );
-              })}
-            <Link href="/companies" className={navLinkClass}>
-              <BuildingOffice2Icon className="w-5 h-5 group-hover:scale-110 transition-transform duration-200" />
-              <span>기업정보</span>
+        <div className="flex justify-between items-center h-16 gap-4">
+          {/* 로고 + 메인 네비게이션 (좌측 그룹) — 로고에 붙여 배치해 단일 탭도 의도적으로 보이게 함 */}
+          <div className="flex min-w-0 items-center gap-3 lg:gap-5">
+            <Link href="/" className="flex min-w-0 items-center group shrink-0">
+              <img
+                src="/images/logo.png"
+                alt="구직자 · 구인기업 면접심사 매칭 플랫폼 Logo"
+                className="h-8 w-auto max-w-[10.75rem] object-contain group-hover:scale-105 transition-all duration-300 sm:h-10 sm:max-w-none"
+              />
             </Link>
-          </nav>
+
+            {hasNavLinks && (
+              <>
+                {/* 로고와 내비 사이 은은한 구분선 */}
+                <span
+                  aria-hidden
+                  className="hidden md:block h-6 w-px bg-gradient-to-b from-transparent via-ink-200/80 to-transparent"
+                />
+                {/* 데스크톱 메인 네비게이션 */}
+                <nav className="hidden md:flex items-center gap-1">
+                  {/* 포트폴리오 둘러보기는 기업회원·관리자만 (비로그인/구직자에게는 미노출) */}
+                  {canBrowsePortfolios && (
+                    <Link href="/portfolios" className={navLink('/portfolios')}>
+                      <DocumentTextIcon className="w-5 h-5 group-hover:scale-110 transition-transform duration-200" />
+                      <span>포트폴리오</span>
+                    </Link>
+                  )}
+                  {/* 기업정보(기업 목록)는 구직자·관리자만 (비로그인/기업회원에게는 미노출) */}
+                  {canBrowseCompanies && (
+                    <Link href="/companies" className={navLink('/companies')}>
+                      <BuildingOffice2Icon className="w-5 h-5 group-hover:scale-110 transition-transform duration-200" />
+                      <span>기업정보</span>
+                    </Link>
+                  )}
+                </nav>
+              </>
+            )}
+          </div>
 
           {/* 사용자 메뉴 */}
           <div className="flex items-center gap-3">
@@ -242,19 +243,21 @@ export default function Navigation() {
               </div>
             )}
 
-            {/* 모바일 메뉴 버튼 */}
-            <button
-              onClick={toggleMobileMenu}
-              className="md:hidden p-2 rounded-xl text-ink-600 hover:text-azure-700 hover:bg-azure-50/70 transition-colors"
-            >
-              {isMobileMenuOpen ? <XMarkIcon className="w-6 h-6" /> : <Bars3Icon className="w-6 h-6" />}
-            </button>
+            {/* 모바일 메뉴 버튼 — 노출할 목록 탭이 있을 때만 표시(비로그인은 탭이 없어 숨김) */}
+            {hasNavLinks && (
+              <button
+                onClick={toggleMobileMenu}
+                className="md:hidden p-2 rounded-xl text-ink-600 hover:text-azure-700 hover:bg-azure-50/70 transition-colors"
+              >
+                {isMobileMenuOpen ? <XMarkIcon className="w-6 h-6" /> : <Bars3Icon className="w-6 h-6" />}
+              </button>
+            )}
           </div>
         </div>
 
         {/* 모바일 메뉴 */}
         <AnimatePresence>
-          {isMobileMenuOpen && (
+          {isMobileMenuOpen && hasNavLinks && (
             <motion.div
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: 'auto' }}
@@ -273,26 +276,16 @@ export default function Navigation() {
                   <span>포트폴리오</span>
                 </Link>
               )}
-              {canBrowsePortfolios &&
-                archivedPrograms.map((program) => (
-                  <Link
-                    key={program.id}
-                    href={`/portfolios?program=${program.id}`}
-                    className="flex items-center gap-3 px-4 py-3 text-ink-600 hover:bg-azure-50/70 hover:text-azure-700 rounded-xl transition-colors"
-                    onClick={() => setIsMobileMenuOpen(false)}
-                  >
-                    <AcademicCapIcon className="w-5 h-5" />
-                    <span>{program.shortName}</span>
-                  </Link>
-                ))}
-              <Link
-                href="/companies"
-                className="flex items-center gap-3 px-4 py-3 text-ink-600 hover:bg-azure-50/70 hover:text-azure-700 rounded-xl transition-colors"
-                onClick={() => setIsMobileMenuOpen(false)}
-              >
-                <BuildingOffice2Icon className="w-5 h-5" />
-                <span>기업정보</span>
-              </Link>
+              {canBrowseCompanies && (
+                <Link
+                  href="/companies"
+                  className="flex items-center gap-3 px-4 py-3 text-ink-600 hover:bg-azure-50/70 hover:text-azure-700 rounded-xl transition-colors"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
+                  <BuildingOffice2Icon className="w-5 h-5" />
+                  <span>기업정보</span>
+                </Link>
+              )}
             </motion.div>
           )}
         </AnimatePresence>
