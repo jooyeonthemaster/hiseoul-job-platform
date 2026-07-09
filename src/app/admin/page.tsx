@@ -11,7 +11,7 @@ import { Badge } from '@/components/ui/Badge';
 import { GlassInput, GlassTextarea, GlassSelect, Field } from '@/components/ui/GlassField';
 import { AuroraBackground } from '@/components/ui/AuroraBackground';
 import { ScrollReveal } from '@/components/ui/ScrollReveal';
-import { getAllPortfolios, updateJobSeekerProfile, getJobSeekerProfile, updateUserProfile, registerPortfolio, togglePortfolioVisibility, setPortfolioContactVisibility, toggleEmployerVisibility, setEmployerJobSeekerVisibility, getAllEmployers, logOut } from '@/lib/auth';
+import { getAllPortfolios, updateJobSeekerProfile, getJobSeekerProfile, updateUserProfile, registerPortfolio, togglePortfolioVisibility, setPortfolioContactVisibility, toggleEmployerVisibility, setEmployerJobSeekerVisibility, setEmployerContactAccess, getAllEmployers, logOut } from '@/lib/auth';
 import { exportJobseekersToExcel, exportEmployersToExcel, exportSelectionsToExcel, exportAllToExcel } from '@/lib/excelExport';
 import { DEFAULT_VISIBLE_PROGRAM_IDS, PORTFOLIO_PROGRAMS, splitSpecialities, portfolioMatchesProgram, getProgramForPortfolio, type PortfolioProgram, type ProgramCourseType } from '@/lib/programs';
 import { getVisiblePortfolioProgramIds, saveVisiblePortfolioProgramIds } from '@/lib/programSettings';
@@ -84,6 +84,8 @@ interface PendingEmployer {
   allowedProgramIds?: string[];
   // 구직자에게 기업정보 공개 여부 (undefined/false = 비공개, true = 공개)
   visibleToJobSeekers?: boolean;
+  // 이 기업에 구직자 연락처(주소·이메일·전화) 열람 권한 부여 여부 (undefined/false = 비공개)
+  canViewApplicantContacts?: boolean;
 }
 
 interface JobInquiry {
@@ -313,6 +315,7 @@ export default function AdminPage() {
   const [bulkProcessing, setBulkProcessing] = useState(false);
   // 구직자 공개(기업정보 노출) 상태 저장 중인 기업 id / 일괄 처리 플래그
   const [savingJobSeekerVisibility, setSavingJobSeekerVisibility] = useState<string | null>(null);
+  const [savingContactAccess, setSavingContactAccess] = useState<string | null>(null);
   const [bulkVisibilityProcessing, setBulkVisibilityProcessing] = useState(false);
   // 커스텀 과정 추가/수정 모달
   const [programModalOpen, setProgramModalOpen] = useState(false);
@@ -757,6 +760,7 @@ export default function AdminPage() {
           isHidden: employer.isHidden,
           allowedProgramIds: employer.allowedProgramIds,
           visibleToJobSeekers: employer.visibleToJobSeekers,
+          canViewApplicantContacts: employer.canViewApplicantContacts,
         } as PendingEmployer;
       }),
     );
@@ -1529,6 +1533,23 @@ export default function AdminPage() {
       alert('구직자 공개 상태 변경에 실패했습니다.');
     } finally {
       setSavingJobSeekerVisibility(null);
+    }
+  };
+
+  // 연락처 열람 권한 토글 — true 인 기업만 구직자 주소·이메일·전화를 볼 수 있다 (기본 전면 비공개)
+  const handleToggleEmployerContactAccess = async (employerId: string, currentCanView: boolean) => {
+    try {
+      setSavingContactAccess(employerId);
+      await setEmployerContactAccess(employerId, !currentCanView);
+      const { pending, approved, rejected } = await buildEmployerLists();
+      setPendingEmployers(pending);
+      setApprovedEmployers(approved);
+      setRejectedEmployers(rejected);
+    } catch (error) {
+      console.error('연락처 열람 권한 변경 실패:', error);
+      alert('연락처 열람 권한 변경에 실패했습니다.');
+    } finally {
+      setSavingContactAccess(null);
     }
   };
 
@@ -2824,6 +2845,31 @@ export default function AdminPage() {
                             <>
                               <EyeIcon className="w-4 h-4 mr-1" />
                               구직자 공개
+                            </>
+                          )}
+                        </GlassButton>
+                      )}
+
+                      {/* 연락처 열람 권한 토글 (승인 완료 기업만) — 이 기업이 구직자 주소·이메일·전화를 볼 수 있는지.
+                          기본은 전면 비공개, 관리자가 허용한 기업만 열람 가능. */}
+                      {employer.approvalStatus === 'approved' && (
+                        <GlassButton
+                          onClick={() => handleToggleEmployerContactAccess(employer.id, employer.canViewApplicantContacts || false)}
+                          variant={employer.canViewApplicantContacts ? 'secondary' : 'primary'}
+                          size="sm"
+                          disabled={savingContactAccess === employer.id}
+                        >
+                          {savingContactAccess === employer.id ? (
+                            '저장 중...'
+                          ) : employer.canViewApplicantContacts ? (
+                            <>
+                              <LockClosedIcon className="w-4 h-4 mr-1" />
+                              연락처 열람 차단
+                            </>
+                          ) : (
+                            <>
+                              <EnvelopeIcon className="w-4 h-4 mr-1" />
+                              연락처 열람 허용
                             </>
                           )}
                         </GlassButton>

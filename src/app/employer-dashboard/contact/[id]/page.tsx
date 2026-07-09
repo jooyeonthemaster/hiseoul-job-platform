@@ -60,6 +60,8 @@ export default function ContactJobSeeker() {
   const [companyInfo, setCompanyInfo] = useState<any>(null);
   const [approvalBlocked, setApprovalBlocked] = useState(false);
   const [programBlocked, setProgramBlocked] = useState(false);
+  // 관리자가 이 기업에 구직자 연락처 열람을 허용했는지 (기본 false = 비공개)
+  const [contactAccessGranted, setContactAccessGranted] = useState(false);
 
   const [form, setForm] = useState<InquiryForm>({
     proposedPosition: '',
@@ -105,6 +107,8 @@ export default function ContactJobSeeker() {
           return;
         }
         setCompanyInfo((employerData as any).company);
+        // 관리자가 이 기업에 연락처 열람 권한을 부여했을 때만 구직자 연락처를 노출한다
+        setContactAccessGranted((employerData as any).canViewApplicantContacts === true);
 
         // 포트폴리오 정보 가져오기
         const portfolioData = await getPortfolio(portfolioId);
@@ -523,8 +527,8 @@ export default function ContactJobSeeker() {
                   </div>
                 </div>
                 <div className="grid gap-2 border-t border-ink-100 pt-4 text-sm text-ink-500">
-                  {/* REQ2 (관리자 중개형): 관리자 승인 전에는 기업에게 구직자 연락처를 비공개한다. */}
-                  {portfolio.contactInfoVisibleToEmployers === true ? (
+                  {/* 구직자 연락처는 개인정보 — 관리자가 이 기업에 연락처 열람 권한을 부여한 경우에만 노출한다. */}
+                  {contactAccessGranted ? (
                     <>
                       {portfolio.email && (
                         <div className="flex min-w-0 items-center gap-2">

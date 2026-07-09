@@ -894,6 +894,8 @@ export const getAllEmployers = async (includeHidden: boolean = false) => {
           : undefined,
         // 구직자에게 기업정보 공개 여부 (관리자 승인 옵트인 — 없음/false = 비공개, true = 공개)
         visibleToJobSeekers: data.visibleToJobSeekers === true,
+        // 이 기업에 구직자 연락처(주소·이메일·전화) 열람을 허용했는지 (관리자 승인 옵트인 — 없음/false = 비공개)
+        canViewApplicantContacts: data.canViewApplicantContacts === true,
         rejectedReason: data.rejectedReason,
         canceledReason: data.canceledReason,
         approvedAt: data.approvedAt,
@@ -926,6 +928,8 @@ export const getEmployerById = async (employerId: string) => {
         approvalStatus: data.approvalStatus || 'pending',
         // 구직자에게 기업정보 공개 여부 (관리자 승인 옵트인 — 없음/false = 비공개, true = 공개)
         visibleToJobSeekers: data.visibleToJobSeekers === true,
+        // 이 기업에 구직자 연락처(주소·이메일·전화) 열람을 허용했는지 (관리자 승인 옵트인 — 없음/false = 비공개)
+        canViewApplicantContacts: data.canViewApplicantContacts === true,
         // 기업별 과정 열람 권한 (구직자 노출 과정 매칭에도 재사용 — 없음=전체, []=전면차단)
         allowedProgramIds: Array.isArray(data.allowedProgramIds)
           ? data.allowedProgramIds.filter((id: unknown): id is string => typeof id === 'string')
@@ -1314,6 +1318,24 @@ export const setEmployerJobSeekerVisibility = async (employerId: string, visible
     return true;
   } catch (error) {
     console.error('기업 구직자 공개 상태 변경 실패:', error);
+    throw error;
+  }
+};
+
+// 이 기업에 구직자 연락처(집주소·이메일·전화번호) 열람 권한을 부여/회수 (관리자 승인 옵트인)
+// - true: 상세 페이지·채용 신청 화면에서 해당 기업이 구직자 연락처를 볼 수 있음
+// - false(기본): 모든 기업에게 구직자 연락처를 완전히 비공개
+export const setEmployerContactAccess = async (employerId: string, canView: boolean, approvedBy?: string) => {
+  try {
+    await updateDoc(doc(db, 'employers', employerId), {
+      canViewApplicantContacts: canView,
+      contactAccessApprovedAt: canView ? serverTimestamp() : null,
+      contactAccessApprovedBy: canView ? approvedBy || '' : '',
+      updatedAt: serverTimestamp()
+    });
+    return true;
+  } catch (error) {
+    console.error('기업 연락처 열람 권한 변경 실패:', error);
     throw error;
   }
 };

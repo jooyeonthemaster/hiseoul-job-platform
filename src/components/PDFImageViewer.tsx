@@ -1,11 +1,16 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import {
   ArrowDownTrayIcon,
+  ArrowsPointingOutIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
   DocumentTextIcon,
   MagnifyingGlassMinusIcon,
   MagnifyingGlassPlusIcon,
+  XMarkIcon,
 } from '@heroicons/react/24/outline';
 import { GlassButton } from '@/components/ui/GlassButton';
 
@@ -29,11 +34,13 @@ function PdfPage({
   pageNumber,
   maxWidth,
   large,
+  onOpen,
 }: {
   pdf: any;
   pageNumber: number;
   maxWidth: number;
   large: boolean;
+  onOpen: (pageNumber: number) => void;
 }) {
   const wrapRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -100,8 +107,11 @@ function PdfPage({
 
   return (
     <div ref={wrapRef} className="mx-auto w-full" style={{ maxWidth }}>
-      <div
-        className="relative w-full overflow-hidden rounded-xl border border-ink-100 bg-white shadow-glass-sm"
+      <button
+        type="button"
+        onClick={() => onOpen(pageNumber)}
+        aria-label={`${pageNumber}페이지 크게 보기`}
+        className="group relative block w-full cursor-zoom-in overflow-hidden rounded-xl border border-ink-100 bg-white shadow-glass-sm transition hover:border-azure-200 hover:shadow-glass focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-azure-400/60"
         style={rendered ? undefined : { aspectRatio: `1 / ${aspect}` }}
       >
         {!rendered && (
@@ -114,9 +124,230 @@ function PdfPage({
           className={`block h-auto w-full ${rendered ? 'opacity-100' : 'opacity-0'}`}
           aria-label={`${pageNumber}페이지`}
         />
-      </div>
+        {/* 클릭 가능 힌트 */}
+        <span className="pointer-events-none absolute right-2.5 top-2.5 flex items-center gap-1 rounded-lg bg-ink-900/70 px-2 py-1 text-[11px] font-semibold text-white opacity-0 shadow-lg backdrop-blur-sm transition duration-200 group-hover:opacity-100">
+          <ArrowsPointingOutIcon className="h-3.5 w-3.5" />
+          크게 보기
+        </span>
+      </button>
       <div className="py-1.5 text-center text-xs font-bold text-ink-400">{pageNumber}쪽</div>
     </div>
+  );
+}
+
+const fsIconButtonClass =
+  'inline-flex h-10 w-10 items-center justify-center rounded-xl border border-white/15 bg-white/10 text-white/90 transition hover:bg-white/20 disabled:cursor-not-allowed disabled:opacity-30';
+const fsNavButtonClass =
+  'inline-flex h-12 w-12 items-center justify-center rounded-full border border-white/15 bg-white/10 text-white shadow-lg backdrop-blur-md transition hover:bg-white/25 disabled:cursor-not-allowed disabled:opacity-20';
+
+// 전체화면 라이트박스 — 페이지 단위로 넘겨보며 화면 크기에 맞춰(fit) 크게 보기
+function PdfFullscreen({
+  pdf,
+  numPages,
+  fileName,
+  pdfUrl,
+  initialPage,
+  onClose,
+}: {
+  pdf: any;
+  numPages: number;
+  fileName: string;
+  pdfUrl: string;
+  initialPage: number;
+  onClose: () => void;
+}) {
+  const areaRef = useRef<HTMLDivElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [page, setPage] = useState(initialPage);
+  const [zoom, setZoom] = useState(1); // fit(=1) 기준 배율
+  const [size, setSize] = useState({ w: 0, h: 0 });
+  const [rendering, setRendering] = useState(true);
+
+  const goPrev = useCallback(() => {
+    setZoom(1);
+    setPage((p) => Math.max(p - 1, 1));
+  }, []);
+  const goNext = useCallback(() => {
+    setZoom(1);
+    setPage((p) => Math.min(p + 1, numPages));
+  }, [numPages]);
+
+  // 바디 스크롤 잠금
+  useEffect(() => {
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, []);
+
+  // 페이지 영역 크기 측정 (리사이즈/회전 대응)
+  useEffect(() => {
+    const el = areaRef.current;
+    if (!el) return;
+    const update = () => setSize({ w: el.clientWidth, h: el.clientHeight });
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
+  // 키보드 조작
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      // 좌/우만 페이지 넘김 — 상/하·스페이스는 확대된 페이지의 네이티브 스크롤용으로 남겨둔다
+      if (e.key === 'Escape') onClose();
+      else if (e.key === 'ArrowRight') goNext();
+      else if (e.key === 'ArrowLeft') goPrev();
+      else if (e.key === '+' || e.key === '=') setZoom((z) => Math.min(z + 0.25, 3));
+      else if (e.key === '-' || e.key === '_') setZoom((z) => Math.max(z - 0.25, 1));
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [goNext, goPrev, onClose]);
+
+  // 페이지 전환 시 스크롤 원위치
+  useEffect(() => {
+    areaRef.current?.scrollTo({ top: 0, left: 0 });
+  }, [page]);
+
+  // 현재 페이지 렌더 (fit × zoom, dpr 반영해 선명하게)
+  useEffect(() => {
+    if (!pdf || size.w === 0 || size.h === 0) return;
+    let cancelled = false;
+    let task: any = null;
+    setRendering(true);
+    (async () => {
+      try {
+        const p = await pdf.getPage(page);
+        if (cancelled) return;
+        const base = p.getViewport({ scale: 1 });
+        const PAD = 24; // 가장자리 여백
+        const fit = Math.min((size.w - PAD * 2) / base.width, (size.h - PAD * 2) / base.height);
+        const cssScale = Math.max(fit, 0.1) * zoom;
+        const dpr = Math.min(window.devicePixelRatio || 1, 2);
+        const viewport = p.getViewport({ scale: cssScale * dpr });
+        const canvas = canvasRef.current;
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return;
+        canvas.width = Math.floor(viewport.width);
+        canvas.height = Math.floor(viewport.height);
+        canvas.style.width = `${Math.floor(base.width * cssScale)}px`;
+        canvas.style.height = `${Math.floor(base.height * cssScale)}px`;
+        task = p.render({ canvasContext: ctx, viewport });
+        await task.promise;
+        if (!cancelled) setRendering(false);
+      } catch {
+        if (!cancelled) setRendering(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+      if (task) {
+        try {
+          task.cancel();
+        } catch {
+          /* noop */
+        }
+      }
+    };
+  }, [pdf, page, zoom, size.w, size.h]);
+
+  if (typeof document === 'undefined') return null;
+
+  return createPortal(
+    <div
+      className="fixed inset-0 z-[120] flex flex-col bg-ink-900/95 backdrop-blur-sm"
+      role="dialog"
+      aria-modal="true"
+      aria-label={`${fileName} 전체화면 보기`}
+    >
+      {/* 상단 바 */}
+      <div className="flex items-center justify-between gap-3 px-4 py-3 sm:px-6">
+        <div className="flex min-w-0 items-center gap-2 text-white/90">
+          <DocumentTextIcon className="h-5 w-5 flex-shrink-0 text-white/60" />
+          <span className="truncate text-sm font-semibold">{fileName}</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="hidden items-center gap-1 rounded-2xl border border-white/15 bg-white/10 px-1 py-1 sm:flex">
+            <button onClick={() => setZoom((z) => Math.max(z - 0.25, 1))} className={fsIconButtonClass} aria-label="축소" disabled={zoom <= 1}>
+              <MagnifyingGlassMinusIcon className="h-5 w-5" />
+            </button>
+            <span className="min-w-[3.5rem] text-center text-xs font-bold tabular-nums text-white/90">{Math.round(zoom * 100)}%</span>
+            <button onClick={() => setZoom((z) => Math.min(z + 0.25, 3))} className={fsIconButtonClass} aria-label="확대" disabled={zoom >= 3}>
+              <MagnifyingGlassPlusIcon className="h-5 w-5" />
+            </button>
+          </div>
+          <a
+            href={pdfUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={fsIconButtonClass}
+            aria-label="다운로드"
+            title="다운로드"
+          >
+            <ArrowDownTrayIcon className="h-5 w-5" />
+          </a>
+          <button onClick={onClose} className={fsIconButtonClass} aria-label="닫기 (Esc)" title="닫기 (Esc)">
+            <XMarkIcon className="h-5 w-5" />
+          </button>
+        </div>
+      </div>
+
+      {/* 페이지 영역 */}
+      <div className="relative min-h-0 flex-1">
+        <div ref={areaRef} className="absolute inset-0 overflow-auto overscroll-contain">
+          {/* 페이지 바깥(여백) 클릭 시 닫기 — 캔버스 클릭은 target 비교로 제외 */}
+          <div
+            className="grid min-h-full min-w-full cursor-zoom-out place-items-center p-4 sm:p-6"
+            onClick={(e) => {
+              if (e.target === e.currentTarget) onClose();
+            }}
+          >
+            <canvas ref={canvasRef} className="cursor-default rounded-lg bg-white shadow-2xl" aria-label={`${page}페이지`} />
+          </div>
+        </div>
+
+        {rendering && (
+          <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+            <div className="h-9 w-9 animate-spin rounded-full border-2 border-white/25 border-t-white/80" />
+          </div>
+        )}
+
+        {/* 데스크톱: 양옆 화살표 */}
+        <button
+          onClick={goPrev}
+          disabled={page <= 1}
+          aria-label="이전 페이지"
+          className={`absolute left-3 top-1/2 hidden -translate-y-1/2 sm:inline-flex ${fsNavButtonClass}`}
+        >
+          <ChevronLeftIcon className="h-6 w-6" />
+        </button>
+        <button
+          onClick={goNext}
+          disabled={page >= numPages}
+          aria-label="다음 페이지"
+          className={`absolute right-3 top-1/2 hidden -translate-y-1/2 sm:inline-flex ${fsNavButtonClass}`}
+        >
+          <ChevronRightIcon className="h-6 w-6" />
+        </button>
+      </div>
+
+      {/* 하단 바: 페이지 이동 (모바일 터치 친화) */}
+      <div className="flex items-center justify-center gap-3 px-4 py-3 sm:py-4">
+        <button onClick={goPrev} disabled={page <= 1} aria-label="이전 페이지" className={`sm:hidden ${fsNavButtonClass}`}>
+          <ChevronLeftIcon className="h-6 w-6" />
+        </button>
+        <span className="rounded-full border border-white/15 bg-white/10 px-4 py-2 text-sm font-bold tabular-nums text-white">
+          {page} <span className="text-white/50">/</span> {numPages}
+        </span>
+        <button onClick={goNext} disabled={page >= numPages} aria-label="다음 페이지" className={`sm:hidden ${fsNavButtonClass}`}>
+          <ChevronRightIcon className="h-6 w-6" />
+        </button>
+      </div>
+    </div>,
+    document.body,
   );
 }
 
@@ -126,6 +357,7 @@ export default function PDFImageViewer({ pdfUrl, fileName = 'PDF', className = '
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [zoom, setZoom] = useState(1);
+  const [fullscreenPage, setFullscreenPage] = useState<number | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -135,6 +367,7 @@ export default function PDFImageViewer({ pdfUrl, fileName = 'PDF', className = '
     setPdf(null);
     setNumPages(0);
     setZoom(1);
+    setFullscreenPage(null);
 
     (async () => {
       try {
@@ -230,6 +463,16 @@ export default function PDFImageViewer({ pdfUrl, fileName = 'PDF', className = '
               <MagnifyingGlassPlusIcon className="h-4 w-4" />
             </button>
           </div>
+          <GlassButton
+            onClick={() => setFullscreenPage(1)}
+            variant="secondary"
+            size="sm"
+            aria-label="전체화면으로 크게 보기"
+            title="전체화면으로 페이지를 넘겨가며 크게 보기"
+          >
+            <ArrowsPointingOutIcon className="h-4 w-4" />
+            전체화면
+          </GlassButton>
           <GlassButton href={pdfUrl} target="_blank" rel="noopener noreferrer" variant="secondary" size="sm">
             <ArrowDownTrayIcon className="h-4 w-4" />
             다운로드
@@ -242,10 +485,28 @@ export default function PDFImageViewer({ pdfUrl, fileName = 'PDF', className = '
         <div className="flex flex-col gap-4">
           {pdf &&
             Array.from({ length: numPages }, (_, i) => (
-              <PdfPage key={i + 1} pdf={pdf} pageNumber={i + 1} maxWidth={pageMaxWidth} large={large} />
+              <PdfPage
+                key={i + 1}
+                pdf={pdf}
+                pageNumber={i + 1}
+                maxWidth={pageMaxWidth}
+                large={large}
+                onOpen={setFullscreenPage}
+              />
             ))}
         </div>
       </div>
+
+      {pdf && fullscreenPage !== null && (
+        <PdfFullscreen
+          pdf={pdf}
+          numPages={numPages}
+          fileName={fileName}
+          pdfUrl={pdfUrl}
+          initialPage={fullscreenPage}
+          onClose={() => setFullscreenPage(null)}
+        />
+      )}
     </div>
   );
 }

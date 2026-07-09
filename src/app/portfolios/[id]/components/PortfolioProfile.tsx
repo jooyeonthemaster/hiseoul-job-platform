@@ -3,7 +3,8 @@ import {
   CheckBadgeIcon,
   MapPinIcon,
   EnvelopeIcon,
-  PhoneIcon
+  PhoneIcon,
+  LockClosedIcon
 } from '@heroicons/react/24/outline';
 import { Portfolio } from '../types/portfolio.types';
 import { Badge } from '@/components/ui/Badge';
@@ -70,15 +71,15 @@ export default function PortfolioProfile({ portfolio, canViewContact = false }: 
               return <p className="text-ink-500 mb-3">{label}</p>;
             })()}
             
-            {/* 연락처 정보 */}
+            {/* 연락처 정보 — 집주소·이메일·전화는 모두 개인정보다.
+                관리자·본인(구직자), 또는 관리자가 연락처 열람을 허용한 기업에게만 노출한다. */}
             <div className="flex flex-wrap gap-4 text-sm text-ink-500">
-              <div className="flex items-center space-x-1">
-                <MapPinIcon className="h-4 w-4" />
-                <span>{portfolio.location}</span>
-              </div>
-              {/* 관리자와 구직자에게만 이메일과 전화번호 표시 (기업 회원에게는 완전 숨김) */}
               {canViewContact ? (
                 <>
+                  <div className="flex items-center space-x-1">
+                    <MapPinIcon className="h-4 w-4" />
+                    <span>{portfolio.location}</span>
+                  </div>
                   <div className="flex items-center space-x-1">
                     <EnvelopeIcon className="h-4 w-4" />
                     <span>{portfolio.email}</span>
@@ -90,8 +91,8 @@ export default function PortfolioProfile({ portfolio, canViewContact = false }: 
                 </>
               ) : userData?.role === 'employer' ? (
                 <div className="flex items-center space-x-1 rounded-full border border-ink-100 bg-white/70 px-3 py-1 text-ink-500">
-                  <EnvelopeIcon className="h-4 w-4" />
-                  <span>관리자 승인 전 연락처 비공개</span>
+                  <LockClosedIcon className="h-4 w-4" />
+                  <span>관리자 승인 전 연락처(주소·이메일·전화) 비공개</span>
                 </div>
               ) : null}
             </div>

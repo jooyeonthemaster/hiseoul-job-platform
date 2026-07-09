@@ -202,10 +202,12 @@ export default function PortfolioDetailPage() {
     }
   }
 
+  // 구직자 연락처(집주소·이메일·전화)는 개인정보. 관리자·본인(구직자)만 기본 노출하고,
+  // 기업 회원에게는 관리자가 '그 기업'에 연락처 열람 권한(canViewApplicantContacts)을 부여한 경우에만 노출한다.
   const canViewContact =
     hasAdminAccess ||
     userData?.role === 'jobseeker' ||
-    (userData?.role === 'employer' && portfolio.contactInfoVisibleToEmployers === true);
+    (userData?.role === 'employer' && (employerStatus as any)?.canViewApplicantContacts === true);
 
   const hasSkills = portfolio.skills && portfolio.skills.length > 0;
   const hasLanguages = portfolio.languages && portfolio.languages.length > 0;
@@ -223,8 +225,8 @@ export default function PortfolioDetailPage() {
           canApply={userData?.role === 'employer'}
         />
 
-        {/* 읽기 좋은 폭의 단일 컬럼 — 모든 섹션을 위→아래 한 줄씩 정렬 */}
-        <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 px-4 py-12 sm:px-6 md:gap-8 md:py-16 lg:px-8">
+        {/* 단일 컬럼이되 좌우 여백을 넉넉히 활용 — 모든 섹션을 위→아래 한 줄씩 정렬 */}
+        <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-4 py-12 sm:px-6 md:gap-8 md:py-16 lg:px-8 xl:px-10">
           {/* 1. 프로필 */}
           <ScrollReveal>
             <PortfolioProfile portfolio={portfolio} canViewContact={canViewContact} />
