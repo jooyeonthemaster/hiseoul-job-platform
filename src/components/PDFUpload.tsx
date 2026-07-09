@@ -3,6 +3,9 @@
 import { useState, useRef, useCallback } from 'react';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { DocumentIcon, CloudArrowUpIcon, XMarkIcon, CheckCircleIcon, ExclamationCircleIcon } from '@heroicons/react/24/outline';
+import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
+import { storage } from '@/lib/firebase';
+import { useAuth } from '@/contexts/AuthContext';
 import { Badge } from '@/components/ui/Badge';
 
 interface PDFUploadProps {
@@ -24,8 +27,9 @@ export default function PDFUpload({
   onUploadSuccess,
   onUploadError,
   className = '',
-  maxSize = 30
+  maxSize = 50
 }: PDFUploadProps) {
+  const { user } = useAuth();
   const [isDragging, setIsDragging] = useState(false);
   const [uploadingFiles, setUploadingFiles] = useState<UploadingFile[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -56,64 +60,46 @@ export default function PDFUpload({
       return;
     }
 
+    if (!user) {
+      const msg = '로그인 후 업로드할 수 있습니다.';
+      setUploadingFiles(prev => prev.map((f, i) => (i === index ? { ...f, status: 'error', error: msg } : f)));
+      onUploadError(msg);
+      return;
+    }
+
     try {
-      // 1) 서명 발급 — 브라우저에서 Cloudinary 로 직접 업로드해 Vercel 서버리스 본문 한도(~4.5MB)를 우회한다.
-      const sigResponse = await fetch('/api/upload-pdf-signature', { method: 'POST' });
-      if (!sigResponse.ok) {
-        const errorData = await sigResponse.json().catch(() => ({}));
-        throw new Error(errorData.error || 'PDF 업로드 준비에 실패했습니다.');
-      }
-      const { cloudName, apiKey, timestamp, signature, publicId, uploadUrl } = await sigResponse.json();
-      if (!cloudName || !apiKey || !signature || !uploadUrl) {
-        throw new Error('PDF 업로드 설정이 올바르지 않습니다.');
-      }
+      // Firebase Storage 로 직접 업로드 (Cloudinary 10MB 플랜 한도 제거 — 대용량 PDF 지원).
+      // 규칙상 portfolio-pdfs/{본인uid}/ 아래에만 쓰기 가능, 읽기는 공개.
+      const safeName = file.name.replace(/[^\w.\-]+/g, '_').slice(-80);
+      const objectPath = `portfolio-pdfs/${user.uid}/${Date.now()}_${Math.random().toString(36).slice(2, 8)}_${safeName}`;
+      const task = uploadBytesResumable(ref(storage, objectPath), file, { contentType: 'application/pdf' });
 
-      // 2) Cloudinary 직접 업로드 (진행률 추적)
-      const formData = new FormData();
-      formData.append('file', file);
-      formData.append('api_key', apiKey);
-      formData.append('timestamp', String(timestamp));
-      formData.append('signature', signature);
-      formData.append('public_id', publicId);
-
-      const result = await new Promise<{ secure_url?: string }>((resolve, reject) => {
-        const xhr = new XMLHttpRequest();
-
-        xhr.upload.addEventListener('progress', (event) => {
-          if (event.lengthComputable) {
-            const progress = Math.round((event.loaded / event.total) * 100);
+      const downloadUrl = await new Promise<string>((resolve, reject) => {
+        task.on(
+          'state_changed',
+          (snapshot) => {
+            const progress = snapshot.totalBytes
+              ? Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100)
+              : 0;
             setUploadingFiles(prev => prev.map((f, i) => (i === index ? { ...f, progress } : f)));
-          }
-        });
-
-        xhr.addEventListener('load', () => {
-          if (xhr.status >= 200 && xhr.status < 300) {
+          },
+          (err) => {
+            const code = (err as { code?: string })?.code;
+            reject(new Error(
+              code === 'storage/unauthorized'
+                ? '업로드 권한이 없습니다. 다시 로그인 후 시도해 주세요.'
+                : 'PDF 업로드에 실패했습니다. 잠시 후 다시 시도해 주세요.'
+            ));
+          },
+          async () => {
             try {
-              resolve(JSON.parse(xhr.responseText));
+              resolve(await getDownloadURL(task.snapshot.ref));
             } catch {
-              reject(new Error('업로드 응답을 해석할 수 없습니다.'));
+              reject(new Error('업로드된 PDF 주소를 받지 못했습니다.'));
             }
-          } else {
-            // Cloudinary 오류 메시지 우선 노출 (예: 플랜 파일 크기 한도 초과)
-            let message = 'PDF 업로드에 실패했습니다.';
-            try {
-              message = JSON.parse(xhr.responseText)?.error?.message || message;
-            } catch {
-              /* noop */
-            }
-            reject(new Error(message));
-          }
-        });
-
-        xhr.addEventListener('error', () => reject(new Error('네트워크 오류로 업로드에 실패했습니다.')));
-
-        xhr.open('POST', uploadUrl);
-        xhr.send(formData);
+          },
+        );
       });
-
-      if (!result.secure_url) {
-        throw new Error('업로드된 PDF 주소를 받지 못했습니다.');
-      }
 
       // 업로드 완료 상태로 변경
       setUploadingFiles(prev => prev.map((f, i) =>
@@ -121,7 +107,7 @@ export default function PDFUpload({
       ));
 
       // 성공 콜백 호출
-      onUploadSuccess(result.secure_url, file.name);
+      onUploadSuccess(downloadUrl, file.name);
 
       // 일정 시간 후 목록에서 제거
       setTimeout(() => {

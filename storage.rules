@@ -22,7 +22,17 @@ service firebase.storage {
       // 인증된 사용자만 자신의 회사 로고를 업로드/읽기 가능
       allow read, write: if request.auth != null && request.auth.uid == userId;
     }
-    
+
+    // 포트폴리오 PDF 업로드 규칙 (Cloudinary 10MB 한도 대체 — 용량 제한 없음)
+    match /portfolio-pdfs/{userId}/{allPaths=**} {
+      // 포트폴리오 PDF 는 포트폴리오 페이지에서 공개 열람되므로 read 는 공개,
+      // 업로드/삭제는 본인만 (다른 사용자 폴더 침범 방지)
+      allow read: if true;
+      allow write: if request.auth != null
+        && request.auth.uid == userId
+        && request.resource.size < 60 * 1024 * 1024; // 60MB 상한(앱 50MB보다 여유)
+    }
+
     // 기본적으로 모든 파일에 대해 읽기 허용 (공개 접근)
     match /{allPaths=**} {
       allow read: if true;
