@@ -48,12 +48,12 @@ export default function SelfIntroduction({ selfIntroduction }: SelfIntroductionP
   if (sections.length === 0) return null;
 
   return (
-    <div className="glass-card p-6 md:p-7 xl:p-8">
-      <div className="flex items-center gap-3 mb-5">
-        <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-br from-azure-400 to-azure-600 text-white shadow-glow">
-          <DocumentIcon className="h-5 w-5" />
+    <div className="glass-card p-6 md:p-8">
+      <div className="mb-6 flex items-center gap-3">
+        <div className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-azure-400 to-azure-600 text-white shadow-glow">
+          <DocumentIcon className="h-6 w-6" />
         </div>
-        <h2 className="font-display text-xl md:text-2xl font-bold tracking-tight text-ink-900">
+        <h2 className="truncate font-display text-xl md:text-2xl font-bold tracking-tight text-ink-900">
           상세 자기소개
         </h2>
       </div>

@@ -24,28 +24,21 @@ export default function IntroVideo({ introVideo, introVideos }: IntroVideoProps)
 
   if (videoList.length === 0) return null;
 
-  const gridClassName =
+  // 단일 영상은 가독성 좋은 폭으로 가운데 정렬, 복수는 2열 그리드.
+  // 모든 타일은 16:9(aspect-video) 고정 — 세로로 늘어나 썸네일이 잘리던 문제 해결.
+  const layoutClassName =
     videoList.length === 1
-      ? 'grid grid-cols-1 gap-4 flex-1 min-h-0'
-      : videoList.length === 2
-        ? 'grid grid-cols-1 md:grid-cols-2 gap-4 flex-1 min-h-0'
-        : videoList.length === 3
-          ? 'grid grid-cols-1 md:grid-cols-2 xl:grid-cols-2 xl:grid-rows-2 gap-4 flex-1 min-h-0'
-          : 'grid grid-cols-1 md:grid-cols-2 2xl:grid-cols-3 gap-4 flex-1 min-h-0 auto-rows-fr';
-
-  const getTileClassName = (index: number) =>
-    videoList.length === 3 && index === 0
-      ? 'md:col-span-2 xl:col-span-1 xl:row-span-2'
-      : '';
+      ? 'mx-auto w-full max-w-3xl'
+      : 'grid grid-cols-1 gap-4 sm:gap-5 md:grid-cols-2';
 
   return (
-    <div className="glass-card h-full min-h-[18rem] lg:min-h-0 p-6 md:p-7 flex flex-col">
-      <div className="flex items-center justify-between gap-4 mb-5">
-        <div className="flex items-center gap-3 min-w-0">
-          <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-azure-400 to-azure-600 text-white shadow-glow">
-            <PlayIcon className="h-5 w-5" />
+    <div className="glass-card p-6 md:p-8">
+      <div className="mb-6 flex items-center justify-between gap-4">
+        <div className="flex min-w-0 items-center gap-3">
+          <div className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-azure-400 to-azure-600 text-white shadow-glow">
+            <PlayIcon className="h-6 w-6" />
           </div>
-          <h2 className="font-display text-xl md:text-2xl font-bold tracking-tight text-ink-900">
+          <h2 className="truncate font-display text-xl md:text-2xl font-bold tracking-tight text-ink-900">
             자기소개 영상
           </h2>
         </div>
@@ -54,7 +47,7 @@ export default function IntroVideo({ introVideo, introVideos }: IntroVideoProps)
         </span>
       </div>
 
-      <div className={gridClassName}>
+      <div className={layoutClassName}>
         {videoList.map((video, index) => {
           const youtubeId = getYouTubeId(video.url);
           const title = video.title || `영상 ${index + 1}`;
@@ -62,22 +55,22 @@ export default function IntroVideo({ introVideo, introVideos }: IntroVideoProps)
           return (
             <div
               key={`${video.url}-${index}`}
-              className={`flex min-h-0 flex-col overflow-hidden rounded-2xl border border-ink-100 bg-white/65 shadow-glass-sm ${getTileClassName(index)}`}
+              className="flex flex-col overflow-hidden rounded-2xl border border-ink-100 bg-white/65 shadow-glass-sm"
             >
               {youtubeId ? (
-                <div className="relative aspect-video lg:aspect-auto lg:flex-1 min-h-0 overflow-hidden bg-ink-900">
+                <div className="relative aspect-video overflow-hidden bg-ink-900">
                   <iframe
                     src={`https://www.youtube.com/embed/${youtubeId}`}
                     title={title}
-                    className="h-full w-full"
+                    className="absolute inset-0 h-full w-full"
                     allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                     allowFullScreen
                   />
                 </div>
               ) : (
-                <div className="relative aspect-video lg:aspect-auto lg:flex-1 min-h-0 flex items-center justify-center overflow-hidden bg-azure-50">
+                <div className="relative flex aspect-video items-center justify-center overflow-hidden bg-azure-50">
                   <div className="px-4 text-center">
-                    <PlayIcon className="h-10 w-10 text-azure-300 mx-auto mb-3" />
+                    <PlayIcon className="mx-auto mb-3 h-10 w-10 text-azure-300" />
                     <p className="text-sm text-ink-500">영상을 재생할 수 없습니다</p>
                     <a
                       href={video.url}

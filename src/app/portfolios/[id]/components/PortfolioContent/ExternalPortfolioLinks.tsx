@@ -32,14 +32,14 @@ export default function ExternalPortfolioLinks({ links }: ExternalPortfolioLinks
   if (normalizedLinks.length === 0) return null;
 
   return (
-    <div className="glass-card p-6 md:p-8 xl:p-10">
+    <div className="glass-card p-6 md:p-8">
       <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div className="flex items-start gap-3">
           <div className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-azure-400 to-azure-600 text-white shadow-glow">
             <CodeBracketSquareIcon className="h-6 w-6" />
           </div>
           <div>
-            <h2 className="font-display text-2xl font-bold tracking-tight text-ink-900 md:text-3xl">
+            <h2 className="truncate font-display text-xl md:text-2xl font-bold tracking-tight text-ink-900">
               웹 작업물
             </h2>
             <p className="mt-1 text-base leading-relaxed text-ink-500">
