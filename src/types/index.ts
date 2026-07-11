@@ -39,7 +39,9 @@ export interface JobSeekerProfile {
   certificates?: CertificateItem[];
   awards?: AwardItem[];
   projects?: ProjectItem[];
-  introVideo?: string; // YouTube URL
+  introVideo?: string; // YouTube URL (레거시 단일 자기소개 영상)
+  introVideos?: Array<{ url: string; title?: string; addedAt?: any }>; // 자기소개 영상(1개)
+  portfolioVideos?: Array<{ url: string; title?: string; addedAt?: any }>; // 포트폴리오 및 기타영상(여러 개)
   selfIntroduction?: SelfIntroduction;
   mediaContent?: MediaContent[];
   externalLinks?: ExternalPortfolioLink[];

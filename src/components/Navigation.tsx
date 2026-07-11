@@ -21,6 +21,7 @@ import {
   ArrowRightOnRectangleIcon,
   UserPlusIcon,
   ArrowLeftOnRectangleIcon,
+  BookOpenIcon,
 } from '@heroicons/react/24/outline';
 import { Badge } from '@/components/ui/Badge';
 
@@ -190,6 +191,10 @@ export default function Navigation() {
                           <Link href="/employer-dashboard/company" className={menuItemClass} onClick={() => setIsUserMenuOpen(false)}>
                             <BuildingOfficeIcon className="w-5 h-5" />
                             <span>기업정보 관리</span>
+                          </Link>
+                          <Link href="/employer-guide" className={menuItemClass} onClick={() => setIsUserMenuOpen(false)}>
+                            <BookOpenIcon className="w-5 h-5" />
+                            <span>이용 안내</span>
                           </Link>
                           <div className="px-4 py-2">
                             {approvalStatus === 'pending' && <Badge tone="honey">🕐 승인 심사중</Badge>}

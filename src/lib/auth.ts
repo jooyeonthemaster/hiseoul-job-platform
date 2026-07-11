@@ -601,6 +601,11 @@ export const registerPortfolio = async (uid: string, portfolioData: {
     title?: string;
     addedAt: Date;
   }>;
+  portfolioVideos?: Array<{
+    url: string;
+    title?: string;
+    addedAt: Date;
+  }>;
   profileImage?: string;
   selfIntroduction?: {
     motivation?: string;
@@ -654,6 +659,7 @@ export const registerPortfolio = async (uid: string, portfolioData: {
       awards: portfolioData.awards || [],
       introVideo: portfolioData.introVideo || '',
       introVideos: portfolioData.introVideos || [],
+      portfolioVideos: portfolioData.portfolioVideos || [],
       profileImage: portfolioData.profileImage || '',
       selfIntroduction: portfolioData.selfIntroduction || {
         motivation: '',

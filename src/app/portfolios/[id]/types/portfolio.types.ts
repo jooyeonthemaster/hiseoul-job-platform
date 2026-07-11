@@ -39,6 +39,8 @@ export interface Portfolio {
   courseType?: 'domestic' | 'foreign';
   introVideo?: string;
   introVideos?: VideoLink[];
+  /** 포트폴리오 및 기타영상 — 자기소개 영상과 분리된 별도 영상 목록(여러 개 가능) */
+  portfolioVideos?: VideoLink[];
   selfIntroduction?: SelfIntroduction;
   mediaContent?: MediaContent[];
   externalLinks?: ExternalPortfolioLink[];

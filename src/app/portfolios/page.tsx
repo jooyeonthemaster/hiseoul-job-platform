@@ -206,7 +206,7 @@ function ProgramChooser({
 
       {/* ── 연도별 아카이브: 지난 진행 사례 ──
           클라이언트 요청 — 2025 수료 과정은 현재 과정과 섞지 않고 '진행 사례' 섹션으로 구분해
-          설명과 함께 노출한다. (상단 네비 탭으로도 동일하게 진입 가능) */}
+          설명과 함께 노출한다. */}
       {archivedPrograms.length > 0 && (
         <div className="space-y-6 pt-4">
           <div className="flex items-center gap-4">
@@ -244,7 +244,7 @@ function ProgramChooser({
                         {[
                           `${year}년 교육·수료 완료 인재 ${count}명`,
                           '포트폴리오 열람과 채용 신청 모두 가능',
-                          `상단 '${program.shortName}' 탭에서도 바로 진입`,
+                          `아래 '${year}년 수료생 포트폴리오 보기'로 바로 진입`,
                         ].map((line) => (
                           <li key={line} className="flex items-start gap-2.5 text-sm text-ink-600">
                             <CheckCircleIcon className="mt-0.5 h-4 w-4 shrink-0 text-azure-500" />
@@ -516,6 +516,7 @@ function PortfoliosPageInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const programParam = searchParams?.get('program') ?? null;
+  const viewParam = searchParams?.get('view') ?? null;
   const reduceMotion = useReducedMotion();
   const hasAdminAccess = userData?.role === 'admin' || userData?.isAdmin === true;
   // 기업 회원에게는 카드에서 바로 채용 신청서 작성으로 이어지는 진입점을 제공한다
@@ -532,8 +533,9 @@ function PortfoliosPageInner() {
   const [showAccessModal, setShowAccessModal] = useState(false);
   const [visibleProgramIds, setVisibleProgramIds] = useState<string[]>(DEFAULT_VISIBLE_PROGRAM_IDS);
   const [allPrograms, setAllPrograms] = useState<PortfolioProgram[]>(PORTFOLIO_PROGRAMS);
-  const [selectedProgramId, setSelectedProgramId] = useState<string | null>(null);
-  const [showTalentGrid, setShowTalentGrid] = useState(false);
+  // 커스텀·아카이브(2025) 과정은 비동기 로드되므로, ?program= 딥링크/뒤로가기에서
+  // 로드 완료 전 과정 선택 화면이 잠깐 번쩍이지 않도록 로드 완료 여부를 추적한다.
+  const [programsLoaded, setProgramsLoaded] = useState(false);
 
   useEffect(() => {
     const checkAccess = async () => {
@@ -577,6 +579,7 @@ function PortfoliosPageInner() {
       const [ids, programs] = await Promise.all([getVisiblePortfolioProgramIds(), getAllPrograms()]);
       setVisibleProgramIds(ids);
       setAllPrograms(programs);
+      setProgramsLoaded(true);
     };
 
     loadSettings();
@@ -620,6 +623,15 @@ function PortfoliosPageInner() {
     return globallyVisible.filter((program) => allowedIds.includes(program.id));
   }, [allPrograms, visibleProgramIds, isEmployer, hasAdminAccess, employerStatus]);
 
+  // 뷰 단계(과정 선택 → 과정 설명 → 교육생 목록)를 URL query 로부터 파생한다.
+  //  · ?program=<id>            → 과정 설명(ProgramIntro)
+  //  · ?program=<id>&view=talents → 교육생 목록(그리드)
+  // 개인 포트폴리오(/portfolios/[id])에서 '뒤로 가기' 시 방금 보던 단계로 정확히 복귀하도록
+  // 로컬 상태 대신 URL 을 단일 소스로 둔다.
+  const selectedProgramId =
+    programParam && visiblePrograms.some((program) => program.id === programParam) ? programParam : null;
+  const showTalentGrid = selectedProgramId != null && viewParam === 'talents';
+
   const selectedProgram = getProgramById(selectedProgramId, allPrograms);
   const selectedProgramPortfolios = selectedProgram
     ? portfolios.filter((portfolio) => portfolioMatchesProgram(portfolio, selectedProgram.id, allPrograms))
@@ -661,44 +673,32 @@ function PortfoliosPageInner() {
     });
 
   const handleSelectProgram = (programId: string) => {
-    setSelectedProgramId(programId);
-    setShowTalentGrid(false);
     setSearchTerm('');
     setSelectedSpeciality('all');
     setSortBy('recent');
-    // 단계 전환은 라우트 이동이 아니므로 스크롤을 직접 최상단으로 복원한다
+    // 뷰 단계를 URL(query)에 반영 — 개인 포트폴리오 열람 후 '뒤로 가기' 시 이 단계로 복귀한다.
+    router.push(`/portfolios?program=${encodeURIComponent(programId)}`, { scroll: false });
     window.scrollTo(0, 0);
   };
 
   // 단계 뒤로가기 (인재 목록 → 과정 설명 → 과정 선택). 상단 툴바와 본문 버튼이 공용으로 사용한다.
+  // 뒤로 단계는 replace 로 처리해 히스토리 중복을 남기지 않는다(앞으로 이동은 push 로 유지 →
+  // 개인 포트폴리오에서 브라우저 뒤로가기 시 교육생 목록이 복원되도록).
   const handleStepBack = () => {
-    if (showTalentGrid) {
-      setShowTalentGrid(false);
+    if (showTalentGrid && selectedProgramId) {
+      // 교육생 목록 → 과정 설명
+      router.replace(`/portfolios?program=${encodeURIComponent(selectedProgramId)}`, { scroll: false });
     } else {
-      setSelectedProgramId(null);
-      // 네비 탭(?program=...)으로 진입한 경우 쿼리를 지워 새로고침 시 재진입되지 않게 한다
-      if (programParam) router.replace('/portfolios', { scroll: false });
+      // 과정 설명 → 과정 선택
+      router.replace('/portfolios', { scroll: false });
     }
     window.scrollTo(0, 0);
   };
 
-  // 상단 네비 탭(?program=아카이브 과정)으로 직접 진입 지원
+  // 뷰 단계(과정/목록)가 바뀌면 최상단으로 스크롤을 복원한다
   useEffect(() => {
-    if (!programParam) return;
-    if (visiblePrograms.some((program) => program.id === programParam)) {
-      setSelectedProgramId(programParam);
-      setShowTalentGrid(false);
-      window.scrollTo(0, 0);
-    }
-  }, [programParam, visiblePrograms]);
-
-  // 열람 권한이 뒤늦게 로드되어 보고 있던 과정이 차단되면 과정 선택 화면으로 되돌린다
-  useEffect(() => {
-    if (selectedProgramId && !visiblePrograms.some((program) => program.id === selectedProgramId)) {
-      setSelectedProgramId(null);
-      setShowTalentGrid(false);
-    }
-  }, [selectedProgramId, visiblePrograms]);
+    window.scrollTo(0, 0);
+  }, [programParam, viewParam]);
 
   if (!accessChecked) {
     return (
@@ -792,7 +792,7 @@ function PortfoliosPageInner() {
         <div className="relative z-10">
           {userData?.role === 'employer' && <AccessStatusBanner employerStatus={employerStatus} />}
 
-          {loading ? (
+          {loading || (programParam && !programsLoaded) ? (
             <div className="flex items-center justify-center py-24">
               <div className="h-12 w-12 animate-spin rounded-full border-2 border-azure-200 border-b-azure-500" />
             </div>
@@ -830,7 +830,10 @@ function PortfoliosPageInner() {
               portfolios={portfolios}
               onBack={handleStepBack}
               onShowTalents={() => {
-                setShowTalentGrid(true);
+                router.push(
+                  `/portfolios?program=${encodeURIComponent(selectedProgram.id)}&view=talents`,
+                  { scroll: false },
+                );
                 window.scrollTo(0, 0);
               }}
             />
@@ -1051,7 +1054,7 @@ function PortfoliosPageInner() {
 
                           <div className="mt-4 flex gap-2">
                             <GlassButton
-                              href={`/portfolios/${portfolio.id}`}
+                              href={`/portfolios/${portfolio.id}?from=${encodeURIComponent(selectedProgram.id)}`}
                               variant={isEmployer ? 'secondary' : 'primary'}
                               className="flex-1 !rounded-xl !px-3 !py-2 !text-sm"
                             >

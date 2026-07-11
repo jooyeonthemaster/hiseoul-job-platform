@@ -1,6 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import {
   getProgramForPortfolio,
@@ -18,6 +18,7 @@ import PortfolioAccessModal from '@/components/PortfolioAccessModal';
 import PortfolioHeader from './components/PortfolioHeader';
 import PortfolioProfile from './components/PortfolioProfile';
 import IntroVideo from './components/PortfolioContent/IntroVideo';
+import PortfolioVideos from './components/PortfolioContent/PortfolioVideos';
 import SelfIntroduction from './components/PortfolioContent/SelfIntroduction';
 import ExternalPortfolioLinks from './components/PortfolioContent/ExternalPortfolioLinks';
 import PDFImageViewer from '@/components/PDFImageViewer';
@@ -81,6 +82,9 @@ function SectionCard({
 export default function PortfolioDetailPage() {
   const params = useParams();
   const portfolioId = params?.id as string;
+  const searchParams = useSearchParams();
+  // 목록에서 넘어올 때 실제로 보던 과정 id 를 ?from= 으로 전달받는다 (뒤로가기 목적지 정확도↑)
+  const fromProgramId = searchParams?.get('from') ?? null;
   const { userData } = useAuth();
 
   // 커스텀 훅 사용
@@ -212,6 +216,15 @@ export default function PortfolioDetailPage() {
   const hasSkills = portfolio.skills && portfolio.skills.length > 0;
   const hasLanguages = portfolio.languages && portfolio.languages.length > 0;
 
+  // '포트폴리오 목록' 뒤로가기 목적지 — 이 교육생이 속한 과정의 '교육생 목록' 단계로 되돌린다.
+  //  (기존에는 무조건 /portfolios 로 이동해 과정 선택 화면으로 튕기던 문제를 수정)
+  //  실제로 보던 과정(?from=)을 최우선으로 사용하고, 없으면 포트폴리오의 과정에서 추론한다.
+  const inferredProgram = allPrograms ? getProgramForPortfolio(portfolio, allPrograms) : null;
+  const listBackProgramId = fromProgramId || inferredProgram?.id || null;
+  const listBackHref = listBackProgramId
+    ? `/portfolios?program=${encodeURIComponent(listBackProgramId)}&view=talents`
+    : '/portfolios';
+
   // 정상적인 포트폴리오 렌더링 — 시선 분산을 줄이기 위해 단일 세로 컬럼으로 정렬.
   // overflow-hidden 은 sticky 헤더를 무력화하므로 x축 clip 만 적용
   return (
@@ -223,6 +236,7 @@ export default function PortfolioDetailPage() {
           portfolioName={portfolio.name}
           portfolioId={portfolioId}
           canApply={userData?.role === 'employer'}
+          backHref={listBackHref}
         />
 
         {/* 단일 컬럼이되 좌우 여백을 넉넉히 활용 — 모든 섹션을 위→아래 한 줄씩 정렬 */}
@@ -239,6 +253,13 @@ export default function PortfolioDetailPage() {
                 introVideo={portfolio.introVideo}
                 introVideos={portfolio.introVideos}
               />
+            </ScrollReveal>
+          )}
+
+          {/* 2-2. 포트폴리오 및 기타영상 — 자기소개 영상 바로 아래에 배치(두 영상 섹션을 상단에 묶어 노출) */}
+          {portfolio.portfolioVideos && portfolio.portfolioVideos.length > 0 && (
+            <ScrollReveal>
+              <PortfolioVideos videos={portfolio.portfolioVideos} />
             </ScrollReveal>
           )}
 

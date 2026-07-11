@@ -144,6 +144,7 @@ interface Portfolio {
   selfIntroduction?: SelfIntroduction;
   introVideo?: string;
   introVideos?: VideoLink[];
+  portfolioVideos?: VideoLink[];
   mediaContent?: any[];
   externalLinks?: ExternalPortfolioLink[];
   portfolioPdfs?: Array<{
@@ -189,6 +190,7 @@ interface ProfileFormData {
   media: {
     introVideo: string;
     introVideos?: VideoLink[];
+    portfolioVideos?: VideoLink[];
     mediaContent: any[];
     externalLinks?: ExternalPortfolioLink[];
     portfolioPdfs?: Array<{
@@ -295,6 +297,8 @@ export default function AdminPage() {
     },
     media: {
       introVideo: '',
+      introVideos: [],
+      portfolioVideos: [],
       mediaContent: [],
       externalLinks: [],
       portfolioPdfs: [],
@@ -1145,6 +1149,7 @@ export default function AdminPage() {
           media: {
             introVideo: profile.introVideo || portfolio.introVideo || '',
             introVideos: profile.introVideos || portfolio.introVideos || [],
+            portfolioVideos: profile.portfolioVideos || portfolio.portfolioVideos || [],
             mediaContent: profile.mediaContent || portfolio.mediaContent || [],
             externalLinks: profile.externalLinks || portfolio.externalLinks || [],
             portfolioPdfs: profile.portfolioPdfs || portfolio.portfolioPdfs || [],
@@ -1182,6 +1187,7 @@ export default function AdminPage() {
           media: {
             introVideo: portfolio.introVideo || '',
             introVideos: portfolio.introVideos || [],
+            portfolioVideos: portfolio.portfolioVideos || [],
             mediaContent: portfolio.mediaContent || [],
             externalLinks: portfolio.externalLinks || [],
             portfolioPdfs: portfolio.portfolioPdfs || [],
@@ -1231,6 +1237,7 @@ export default function AdminPage() {
       media: {
         introVideo: '',
         introVideos: [],
+        portfolioVideos: [],
         mediaContent: [],
         externalLinks: [],
         portfolioPdfs: [],
@@ -1609,6 +1616,7 @@ export default function AdminPage() {
         selfIntroduction: profileFormData.selfIntroduction,
         introVideo: profileFormData.media.introVideo,
         introVideos: profileFormData.media.introVideos,
+        portfolioVideos: profileFormData.media.portfolioVideos,
         mediaContent: profileFormData.media.mediaContent,
         externalLinks: profileFormData.media.externalLinks,
         portfolioPdfs: profileFormData.media.portfolioPdfs,
@@ -1637,6 +1645,7 @@ export default function AdminPage() {
         awards: profileFormData.skills.awards,
         introVideo: profileFormData.media.introVideo,
         introVideos: profileFormData.media.introVideos,
+        portfolioVideos: profileFormData.media.portfolioVideos,
         selfIntroduction: profileFormData.selfIntroduction,
         mediaContent: profileFormData.media.mediaContent,
         externalLinks: profileFormData.media.externalLinks,

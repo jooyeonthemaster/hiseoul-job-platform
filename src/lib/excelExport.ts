@@ -138,6 +138,7 @@ function buildJobseekerRows(data: Awaited<ReturnType<typeof fetchAll>>) {
       '자기소개_포부': intro.aspiration || '',
       '자기소개_전체': buildSelfIntroFull(intro),
       '자기소개영상': joinArr(p.introVideos || portfolio?.introVideos) || p.introVideo || portfolio?.introVideo || '',
+      '포트폴리오영상': joinArr(p.portfolioVideos || portfolio?.portfolioVideos) || '',
       '포트폴리오PDF': joinArr((p.portfolioPdfs || portfolio?.portfolioPdfs || []).map((f: any) => f.fileName)),
       '공개여부': portfolio ? (portfolio.isHidden ? '숨김' : '공개') : '',
       '가입일': fmtDate(user.createdAt || portfolio?.createdAt),

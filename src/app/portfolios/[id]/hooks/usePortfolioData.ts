@@ -118,6 +118,7 @@ export const usePortfolioData = (portfolioId: string, hasAccess: boolean, access
               courseType: profile?.courseType || portfolioRecord.courseType || undefined,
               introVideo: profile?.introVideo || portfolioRecord.introVideo,
               introVideos: profile?.introVideos || portfolioRecord.introVideos || [],
+              portfolioVideos: profile?.portfolioVideos || portfolioRecord.portfolioVideos || [],
               selfIntroduction: selfIntroductionSource &&
                 Object.keys(selfIntroductionSource).length > 0 &&
                 (selfIntroductionSource.motivation ||

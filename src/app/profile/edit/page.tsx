@@ -65,6 +65,11 @@ interface FormData {
       title?: string;
       addedAt: Date;
     }>;
+    portfolioVideos?: Array<{
+      url: string;
+      title?: string;
+      addedAt: Date;
+    }>;
     mediaContent: any[];
     externalLinks?: ExternalPortfolioLink[];
     portfolioPdfs?: Array<{
@@ -125,6 +130,7 @@ export default function ProfileEditPage() {
     media: {
       introVideo: '',
       introVideos: [],
+      portfolioVideos: [],
       mediaContent: [],
       externalLinks: [],
       portfolioPdfs: []
@@ -211,6 +217,7 @@ export default function ProfileEditPage() {
           media: {
             introVideo: profile.introVideo || '',
             introVideos: profile.introVideos || [],
+            portfolioVideos: profile.portfolioVideos || [],
             mediaContent: profile.mediaContent || [],
             externalLinks: profile.externalLinks || [],
             portfolioPdfs: profile.portfolioPdfs || [],
@@ -315,6 +322,7 @@ export default function ProfileEditPage() {
         selfIntroduction: formData.selfIntroduction,
         introVideo: formData.media.introVideo,
         introVideos: formData.media.introVideos,
+        portfolioVideos: formData.media.portfolioVideos,
         mediaContent: formData.media.mediaContent,
         externalLinks: formData.media.externalLinks,
         portfolioPdfs: formData.media.portfolioPdfs,
@@ -343,6 +351,7 @@ export default function ProfileEditPage() {
         awards: processedAwards,
         introVideo: formData.media.introVideo,
         introVideos: formData.media.introVideos,
+        portfolioVideos: formData.media.portfolioVideos,
         selfIntroduction: formData.selfIntroduction,
         mediaContent: formData.media.mediaContent,
         externalLinks: formData.media.externalLinks,

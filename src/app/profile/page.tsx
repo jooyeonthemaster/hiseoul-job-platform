@@ -308,6 +308,7 @@ export default function ProfilePage() {
         awards: profile?.profile?.awards || [],
         introVideo: profile?.profile?.introVideo || '',
         introVideos: profile?.profile?.introVideos || [],
+        portfolioVideos: profile?.profile?.portfolioVideos || [],
         selfIntroduction: profile?.profile?.selfIntroduction || undefined,
         mediaContent: profile?.profile?.mediaContent || [],
         externalLinks: profile?.profile?.externalLinks || [],

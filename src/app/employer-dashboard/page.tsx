@@ -24,6 +24,7 @@ import {
   HomeIcon,
   XMarkIcon,
   DocumentTextIcon,
+  BookOpenIcon,
 } from '@heroicons/react/24/outline';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { GlassButton } from '@/components/ui/GlassButton';
@@ -322,6 +323,14 @@ export default function EmployerDashboard() {
                 >
                   <BriefcaseIcon className="text-ink-400 group-hover:text-azure-500 mr-4 h-5 w-5 transition-colors" />
                   기업 설정
+                </Link>
+
+                <Link
+                  href="/employer-guide"
+                  className={`${navItemBase} text-ink-600 hover:text-azure-700 hover:bg-azure-50/70`}
+                >
+                  <BookOpenIcon className="text-ink-400 group-hover:text-azure-500 mr-4 h-5 w-5 transition-colors" />
+                  이용 안내
                 </Link>
 
                 <div className="pt-4 border-t border-ink-100 mt-6">
