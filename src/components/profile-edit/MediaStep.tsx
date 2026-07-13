@@ -256,7 +256,8 @@ export default function MediaStep({ data, onChange }: MediaStepProps) {
   const [newLinkUrl, setNewLinkUrl] = useState('');
   const [newLinkType, setNewLinkType] = useState<ExternalPortfolioLinkType>('webapp');
   const [newLinkDescription, setNewLinkDescription] = useState('');
-  const [newLinkEmbed, setNewLinkEmbed] = useState(true);
+  // 임베드 지원이 안 되는 사이트가 더 많아 기본값은 '임베드 끔'. 사용자가 필요 시 켤 수 있다.
+  const [newLinkEmbed, setNewLinkEmbed] = useState(false);
 
   const formatDate = (dateValue: any): string =>
     formatKoreanDate(dateValue, { fallback: '날짜 정보 없음' });
@@ -274,7 +275,18 @@ export default function MediaStep({ data, onChange }: MediaStepProps) {
 
   const handleLinkTypeChange = (type: ExternalPortfolioLinkType) => {
     setNewLinkType(type);
-    setNewLinkEmbed(type !== 'github');
+    // GitHub 는 임베드 미지원 → 강제 끔. 그 외 유형은 사용자가 설정한 값(기본 끔)을 유지.
+    if (type === 'github') setNewLinkEmbed(false);
+  };
+
+  // 이미 추가된 링크의 임베드 표시를 켜고 끄는 토글 (embed 필드를 명시적 boolean 으로 저장)
+  const handleToggleExternalLinkEmbed = (index: number) => {
+    onChange({
+      ...data,
+      externalLinks: externalLinks.map((link, itemIndex) =>
+        itemIndex === index ? { ...link, embed: link.embed === false } : link,
+      ),
+    });
   };
 
   const handleAddExternalLink = () => {
@@ -299,7 +311,7 @@ export default function MediaStep({ data, onChange }: MediaStepProps) {
     setNewLinkUrl('');
     setNewLinkType('webapp');
     setNewLinkDescription('');
-    setNewLinkEmbed(true);
+    setNewLinkEmbed(false);
   };
 
   const handleRemoveExternalLink = (index: number) => {
@@ -419,16 +431,21 @@ export default function MediaStep({ data, onChange }: MediaStepProps) {
           </div>
 
           <div className="mt-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <label className="inline-flex items-center gap-3 text-sm font-semibold text-ink-700">
-              <input
-                type="checkbox"
-                checked={newLinkEmbed}
-                onChange={(event) => setNewLinkEmbed(event.target.checked)}
-                disabled={newLinkType === 'github'}
-                className="h-5 w-5 rounded border-azure-200 text-azure-600 focus:ring-azure-400 disabled:opacity-40"
-              />
-              포트폴리오 상세에 임베드 표시
-            </label>
+            <div className="flex flex-col gap-1">
+              <label className="inline-flex items-center gap-3 text-sm font-semibold text-ink-700">
+                <input
+                  type="checkbox"
+                  checked={newLinkEmbed}
+                  onChange={(event) => setNewLinkEmbed(event.target.checked)}
+                  disabled={newLinkType === 'github'}
+                  className="h-5 w-5 rounded border-azure-200 text-azure-600 focus:ring-azure-400 disabled:opacity-40"
+                />
+                포트폴리오 상세에 임베드 표시
+              </label>
+              <span className="text-xs leading-relaxed text-ink-400">
+                임베드를 허용하지 않는 사이트가 많아 기본은 <b className="font-semibold text-ink-500">꺼짐</b>입니다. 지원하는 사이트만 켜주세요. (추가 후에도 각 링크에서 켜고 끌 수 있어요)
+              </span>
+            </div>
             <GlassButton type="button" onClick={handleAddExternalLink} disabled={!newLinkUrl.trim()}>
               <PlusIcon className="h-4 w-4" />
               링크 추가
@@ -465,15 +482,32 @@ export default function MediaStep({ data, onChange }: MediaStepProps) {
                     <TrashIcon className="h-5 w-5" />
                   </button>
                 </div>
-                <a
-                  href={link.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-azure-600 hover:text-azure-700"
-                >
-                  <ArrowTopRightOnSquareIcon className="h-4 w-4" />
-                  새 창에서 확인
-                </a>
+                <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2">
+                  <a
+                    href={link.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 text-sm font-semibold text-azure-600 hover:text-azure-700"
+                  >
+                    <ArrowTopRightOnSquareIcon className="h-4 w-4" />
+                    새 창에서 확인
+                  </a>
+                  {/* GitHub 는 임베드 미지원이라 토글 숨김. 그 외 링크는 임베드 켜고 끄기 가능. */}
+                  {link.type !== 'github' && (
+                    <button
+                      type="button"
+                      onClick={() => handleToggleExternalLinkEmbed(index)}
+                      className={`inline-flex items-center gap-1.5 rounded-xl border px-3 py-1.5 text-xs font-semibold transition-colors duration-200 ${
+                        link.embed !== false
+                          ? 'border-mint-400/50 bg-mint-100 text-mint-600 hover:bg-mint-100/70'
+                          : 'border-azure-200 bg-white/60 text-ink-500 hover:bg-white'
+                      }`}
+                      aria-pressed={link.embed !== false}
+                    >
+                      {link.embed !== false ? '임베드 켜짐 · 끄기' : '임베드 꺼짐 · 켜기'}
+                    </button>
+                  )}
+                </div>
               </div>
             ))}
           </div>

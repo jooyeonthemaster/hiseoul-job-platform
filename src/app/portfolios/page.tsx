@@ -524,7 +524,8 @@ function PortfoliosPageInner() {
 
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedSpeciality, setSelectedSpeciality] = useState('all');
-  const [sortBy, setSortBy] = useState('recent');
+  // 기본 정렬은 이름순 — 최신순이면 교육생이 프로필을 수정할 때마다 순서가 바뀌어 기업이 혼란스러움
+  const [sortBy, setSortBy] = useState('name');
   const [portfolios, setPortfolios] = useState<Portfolio[]>([]);
   const [loading, setLoading] = useState(true);
   const [hasAccess, setHasAccess] = useState(false);
@@ -675,7 +676,7 @@ function PortfoliosPageInner() {
   const handleSelectProgram = (programId: string) => {
     setSearchTerm('');
     setSelectedSpeciality('all');
-    setSortBy('recent');
+    setSortBy('name');
     // 뷰 단계를 URL(query)에 반영 — 개인 포트폴리오 열람 후 '뒤로 가기' 시 이 단계로 복귀한다.
     router.push(`/portfolios?program=${encodeURIComponent(programId)}`, { scroll: false });
     window.scrollTo(0, 0);
@@ -951,8 +952,8 @@ function PortfoliosPageInner() {
                         onChange={(event) => setSortBy(event.target.value)}
                         className="sm:w-36 sm:shrink-0"
                       >
-                        <option value="recent">최신순</option>
                         <option value="name">이름순</option>
+                        <option value="recent">최신순</option>
                       </GlassSelect>
                     </div>
                   </div>
