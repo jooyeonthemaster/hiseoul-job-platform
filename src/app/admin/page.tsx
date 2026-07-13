@@ -11,7 +11,7 @@ import { Badge } from '@/components/ui/Badge';
 import { GlassInput, GlassTextarea, GlassSelect, Field } from '@/components/ui/GlassField';
 import { AuroraBackground } from '@/components/ui/AuroraBackground';
 import { ScrollReveal } from '@/components/ui/ScrollReveal';
-import { getAllPortfolios, updateJobSeekerProfile, getJobSeekerProfile, updateUserProfile, registerPortfolio, togglePortfolioVisibility, setPortfolioContactVisibility, toggleEmployerVisibility, setEmployerJobSeekerVisibility, setEmployerContactAccess, getAllEmployers, logOut } from '@/lib/auth';
+import { getAllPortfolios, updateJobSeekerProfile, getJobSeekerProfile, updateUserProfile, registerPortfolio, togglePortfolioVisibility, setPortfolioContactVisibility, toggleEmployerVisibility, setEmployerJobSeekerVisibility, setEmployerContactAccess, getAllEmployers, logOut, adminDeleteUser, adminUpdateEmployerCompany } from '@/lib/auth';
 import { exportJobseekersToExcel, exportEmployersToExcel, exportSelectionsToExcel, exportAllToExcel } from '@/lib/excelExport';
 import { DEFAULT_VISIBLE_PROGRAM_IDS, PORTFOLIO_PROGRAMS, splitSpecialities, portfolioMatchesProgram, getProgramForPortfolio, type PortfolioProgram, type ProgramCourseType } from '@/lib/programs';
 import { getVisiblePortfolioProgramIds, saveVisiblePortfolioProgramIds } from '@/lib/programSettings';
@@ -268,6 +268,17 @@ export default function AdminPage() {
   const [portfolios, setPortfolios] = useState<Portfolio[]>([]);
   const [selectedPortfolio, setSelectedPortfolio] = useState<Portfolio | null>(null);
   const [showPortfolioModal, setShowPortfolioModal] = useState(false);
+
+  // 계정 삭제(테스트 정리) / 기업 정보 수정 상태
+  const [deletingUser, setDeletingUser] = useState<{ uid: string; role: 'jobseeker' | 'employer'; name: string } | null>(null);
+  const [deletingUserBusy, setDeletingUserBusy] = useState(false);
+  const [editingEmployer, setEditingEmployer] = useState<PendingEmployer | null>(null);
+  const [employerForm, setEmployerForm] = useState({
+    name: '', ceoName: '', industry: '', businessType: '', size: '',
+    location: '', website: '', description: '',
+    contactName: '', contactPosition: '', contactPhone: '',
+  });
+  const [savingEmployer, setSavingEmployer] = useState(false);
   const [currentProfileStep, setCurrentProfileStep] = useState(1);
   const [profileFormData, setProfileFormData] = useState<ProfileFormData>({
     basicInfo: {
@@ -1244,6 +1255,72 @@ export default function AdminPage() {
         additionalDocuments: []
       }
     });
+  };
+
+  // 기업 목록 3종(대기/승인/거절) 새로고침 — buildEmployerLists 는 값을 반환하므로 여기서 상태에 반영
+  const refreshEmployerLists = async () => {
+    const { pending, approved, rejected } = await buildEmployerLists();
+    setPendingEmployers(pending);
+    setApprovedEmployers(approved);
+    setRejectedEmployers(rejected);
+  };
+
+  // ── 관리자: 테스트 계정 삭제 ──
+  const handleConfirmDeleteUser = async () => {
+    if (!deletingUser) return;
+    try {
+      setDeletingUserBusy(true);
+      await adminDeleteUser(deletingUser.uid, deletingUser.role);
+      // 목록 새로고침
+      if (deletingUser.role === 'employer') {
+        await refreshEmployerLists();
+      } else {
+        const portfolioData = await getAllPortfolios(true);
+        setPortfolios(portfolioData as Portfolio[]);
+      }
+      setDeletingUser(null);
+      alert('삭제되었습니다.');
+    } catch (error) {
+      console.error('계정 삭제 실패:', error);
+      alert('삭제 중 오류가 발생했습니다.');
+    } finally {
+      setDeletingUserBusy(false);
+    }
+  };
+
+  // ── 관리자: 기업 정보 수정 모달 ──
+  const openEmployerEditModal = (employer: PendingEmployer) => {
+    const c = employer.company || ({} as PendingEmployer['company']);
+    setEmployerForm({
+      name: c.name || '',
+      ceoName: c.ceoName || '',
+      industry: c.industry || '',
+      businessType: c.businessType || '',
+      size: c.size || '',
+      location: c.location || '',
+      website: c.website || '',
+      description: c.description || '',
+      contactName: c.contactName || employer.userName || '',
+      contactPosition: c.contactPosition || '',
+      contactPhone: c.contactPhone || '',
+    });
+    setEditingEmployer(employer);
+  };
+
+  const handleSaveEmployer = async () => {
+    if (!editingEmployer) return;
+    try {
+      setSavingEmployer(true);
+      await adminUpdateEmployerCompany(editingEmployer.id, employerForm);
+      await refreshEmployerLists();
+      setEditingEmployer(null);
+      alert('기업 정보가 수정되었습니다.');
+    } catch (error) {
+      console.error('기업 정보 수정 실패:', error);
+      alert('기업 정보 수정 중 오류가 발생했습니다.');
+    } finally {
+      setSavingEmployer(false);
+    }
   };
 
   // 포트폴리오 숨김/표시 토글
@@ -2924,6 +3001,32 @@ export default function AdminPage() {
                           재승인
                         </GlassButton>
                       )}
+
+                      {/* 관리자: 기업 정보 수정 */}
+                      <GlassButton
+                        onClick={() => openEmployerEditModal(employer)}
+                        variant="secondary"
+                        size="sm"
+                      >
+                        <PencilIcon className="w-4 h-4 mr-1" />
+                        정보 수정
+                      </GlassButton>
+
+                      {/* 관리자: 기업 삭제 (테스트 계정 정리) */}
+                      <GlassButton
+                        onClick={() =>
+                          setDeletingUser({
+                            uid: employer.id,
+                            role: 'employer',
+                            name: employer.company.name || employer.userName || '이 기업',
+                          })
+                        }
+                        size="sm"
+                        className="!bg-gradient-to-r !from-coral-500 !to-coral-500 hover:!from-coral-500 hover:!to-coral-500 !text-white"
+                      >
+                        <TrashIcon className="w-4 h-4 mr-1" />
+                        삭제
+                      </GlassButton>
                     </div>
                   </div>
                 </div>
@@ -3429,6 +3532,17 @@ export default function AdminPage() {
                           <PencilIcon className="h-4 w-4" />
                           수정
                         </button>
+                        {/* 관리자: 구직자(테스트 계정) 삭제 */}
+                        <button
+                          onClick={() =>
+                            setDeletingUser({ uid: portfolio.userId, role: 'jobseeker', name: portfolio.name })
+                          }
+                          className="inline-flex items-center justify-center gap-2 rounded-2xl border border-coral-200 bg-coral-50/70 px-3.5 py-2 text-sm font-semibold text-coral-600 shadow-glass-sm transition hover:bg-coral-100"
+                          title="테스트 계정 삭제"
+                        >
+                          <TrashIcon className="h-4 w-4" />
+                          삭제
+                        </button>
                       </div>
                     </div>
                   </motion.div>
@@ -3575,6 +3689,156 @@ export default function AdminPage() {
             showJobSeekerName={true}
           />
         )}
+
+        {/* 관리자: 계정 삭제 확인 모달 (구직자·기업 공용) */}
+        <AnimatePresence>
+          {deletingUser && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="fixed inset-0 bg-ink-900/40 backdrop-blur-sm flex items-center justify-center p-4 z-[120]"
+            >
+              <motion.div
+                initial={{ opacity: 0, scale: 0.96, y: 16 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.96, y: 16 }}
+                transition={{ duration: 0.24, ease: [0.22, 1, 0.36, 1] }}
+                className="glass-strong rounded-4xl shadow-glass-lg w-full max-w-md p-7"
+              >
+                <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-3xl bg-coral-100 text-coral-500">
+                  <TrashIcon className="h-8 w-8" />
+                </div>
+                <h3 className="text-center font-display text-xl font-bold tracking-tight text-ink-900">
+                  {deletingUser.role === 'employer' ? '기업 계정을 삭제할까요?' : '구직자 계정을 삭제할까요?'}
+                </h3>
+                <p className="mt-3 text-center text-sm leading-relaxed text-ink-500">
+                  <strong className="text-ink-700">{deletingUser.name}</strong> 의 계정과 모든 데이터(
+                  {deletingUser.role === 'employer' ? '기업정보' : '프로필·포트폴리오'} 및 관련 채용 신청서)를 삭제합니다.
+                  <br />이 작업은 되돌릴 수 없습니다.
+                </p>
+                <p className="mt-2 text-center text-xs leading-relaxed text-ink-400">
+                  ※ 로그인 자격(Firebase 인증)은 보안상 서버에서만 제거되어 남을 수 있으나, 모든 정보가 삭제되어 목록·기능에서 사라집니다.
+                </p>
+                <div className="mt-6 flex gap-3">
+                  <GlassButton
+                    onClick={() => setDeletingUser(null)}
+                    variant="secondary"
+                    className="flex-1"
+                    disabled={deletingUserBusy}
+                  >
+                    취소
+                  </GlassButton>
+                  <GlassButton
+                    onClick={handleConfirmDeleteUser}
+                    disabled={deletingUserBusy}
+                    className="flex-1 !bg-gradient-to-r !from-coral-500 !to-coral-500 hover:!from-coral-500 hover:!to-coral-500 !text-white"
+                  >
+                    {deletingUserBusy ? '삭제 중...' : '삭제'}
+                  </GlassButton>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* 관리자: 기업 정보 수정 모달 */}
+        <AnimatePresence>
+          {editingEmployer && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="fixed inset-0 bg-ink-900/30 backdrop-blur-sm flex items-center justify-center p-4 z-[110]"
+            >
+              <motion.div
+                initial={{ opacity: 0, scale: 0.96, y: 16 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.96, y: 16 }}
+                transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
+                className="glass-strong rounded-4xl shadow-glass-lg w-full max-w-3xl max-h-[90vh] flex flex-col overflow-hidden"
+              >
+                <div className="bg-gradient-to-r from-azure-500 via-sky-cool-400 to-azure-600 px-6 py-5 text-white flex items-center justify-between">
+                  <div>
+                    <h2 className="font-display text-xl font-bold tracking-tight">기업 정보 수정</h2>
+                    <p className="text-white/80 text-sm mt-0.5">
+                      {editingEmployer.company.name || editingEmployer.userName || '기업'}
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => setEditingEmployer(null)}
+                    className="flex items-center justify-center w-10 h-10 rounded-full bg-white/15 text-white hover:bg-white/30 transition-colors"
+                  >
+                    <XCircleIcon className="w-6 h-6" />
+                  </button>
+                </div>
+
+                <div className="p-6 overflow-y-auto">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <Field label="회사명">
+                      <GlassInput value={employerForm.name} onChange={(e) => setEmployerForm((f) => ({ ...f, name: e.target.value }))} placeholder="회사명" />
+                    </Field>
+                    <Field label="대표자">
+                      <GlassInput value={employerForm.ceoName} onChange={(e) => setEmployerForm((f) => ({ ...f, ceoName: e.target.value }))} placeholder="대표자명" />
+                    </Field>
+                    <Field label="업종">
+                      <GlassInput value={employerForm.industry} onChange={(e) => setEmployerForm((f) => ({ ...f, industry: e.target.value }))} placeholder="예: IT/소프트웨어" />
+                    </Field>
+                    <Field label="사업 형태">
+                      <GlassInput value={employerForm.businessType} onChange={(e) => setEmployerForm((f) => ({ ...f, businessType: e.target.value }))} placeholder="예: 법인" />
+                    </Field>
+                    <Field label="기업 규모">
+                      <GlassInput value={employerForm.size} onChange={(e) => setEmployerForm((f) => ({ ...f, size: e.target.value }))} placeholder="예: 중소기업" />
+                    </Field>
+                    <Field label="위치">
+                      <GlassInput value={employerForm.location} onChange={(e) => setEmployerForm((f) => ({ ...f, location: e.target.value }))} placeholder="예: 서울 강남구" />
+                    </Field>
+                    <Field label="웹사이트">
+                      <GlassInput value={employerForm.website} onChange={(e) => setEmployerForm((f) => ({ ...f, website: e.target.value }))} placeholder="https://" />
+                    </Field>
+                    <Field label="담당자명">
+                      <GlassInput value={employerForm.contactName} onChange={(e) => setEmployerForm((f) => ({ ...f, contactName: e.target.value }))} placeholder="담당자 이름" />
+                    </Field>
+                    <Field label="담당자 직위">
+                      <GlassInput value={employerForm.contactPosition} onChange={(e) => setEmployerForm((f) => ({ ...f, contactPosition: e.target.value }))} placeholder="예: 인사팀장" />
+                    </Field>
+                    <Field label="담당자 연락처">
+                      <GlassInput value={employerForm.contactPhone} onChange={(e) => setEmployerForm((f) => ({ ...f, contactPhone: e.target.value }))} placeholder="010-0000-0000" />
+                    </Field>
+                    <div className="md:col-span-2">
+                      <Field label="회사 소개">
+                        <GlassTextarea
+                          value={employerForm.description}
+                          onChange={(e) => setEmployerForm((f) => ({ ...f, description: e.target.value }))}
+                          rows={4}
+                          placeholder="회사 소개를 입력하세요."
+                        />
+                      </Field>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="px-6 py-4 border-t border-ink-100 bg-white/40 flex justify-end gap-3">
+                  <GlassButton onClick={() => setEditingEmployer(null)} variant="secondary" size="sm" disabled={savingEmployer}>
+                    취소
+                  </GlassButton>
+                  <GlassButton onClick={handleSaveEmployer} disabled={savingEmployer} size="sm">
+                    {savingEmployer ? (
+                      <div className="flex items-center">
+                        <div className="animate-spin rounded-full h-4 w-4 border-2 border-white/40 border-t-white mr-2" />
+                        저장 중...
+                      </div>
+                    ) : (
+                      '수정 완료'
+                    )}
+                  </GlassButton>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* 커스텀 과정 추가/수정 모달 */}
         <AnimatePresence>

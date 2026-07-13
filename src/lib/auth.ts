@@ -1151,6 +1151,51 @@ export const getEmployerWithApprovalStatus = async (employerId: string) => {
   }
 };
 
+// ── 관리자: 테스트 계정 삭제 ─────────────────────────────────────────────
+//  대상 사용자의 Firestore 데이터(users/jobseekers/employers/portfolios + 연관 제안서)를
+//  삭제한다. 회원 탈퇴(deleteUserAccount)와 달리 관리자 세션은 로그아웃하지 않는다.
+//  주의: 클라이언트 SDK 로는 '다른 사용자'의 Firebase Auth 계정 자체는 삭제할 수 없어
+//  로그인 자격은 남지만, 모든 문서가 사라지므로 목록·기능에서 완전히 제거된다(테스트 정리 용도).
+export const adminDeleteUser = async (
+  uid: string,
+  role?: 'jobseeker' | 'employer' | 'admin',
+) => {
+  // 핵심 문서 삭제 (역할을 모르면 양쪽 모두 시도)
+  const jobs: Promise<any>[] = [];
+  if (role !== 'jobseeker') jobs.push(deleteDoc(doc(db, 'employers', uid)).catch(() => {}));
+  if (role !== 'employer') {
+    jobs.push(deleteDoc(doc(db, 'jobseekers', uid)).catch(() => {}));
+    jobs.push(deleteDoc(doc(db, 'portfolios', uid)).catch(() => {}));
+  }
+  await Promise.all(jobs);
+
+  // 연관 채용 제안서(jobInquiries) best-effort 정리 — 댕글링 참조 방지
+  try {
+    const [asEmployer, asSeeker] = await Promise.all([
+      getDocs(query(collection(db, 'jobInquiries'), where('employerId', '==', uid))),
+      getDocs(query(collection(db, 'jobInquiries'), where('jobSeekerId', '==', uid))),
+    ]);
+    await Promise.all(
+      [...asEmployer.docs, ...asSeeker.docs].map((d) => deleteDoc(d.ref).catch(() => {})),
+    );
+  } catch (error) {
+    console.error('연관 채용 제안서 정리 실패(무시):', error);
+  }
+
+  // users 문서 삭제
+  await deleteDoc(doc(db, 'users', uid));
+};
+
+// ── 관리자: 기업 회사 정보 수정 ──────────────────────────────────────────
+//  company 맵의 지정한 필드만 병합 업데이트한다(승인상태·열람권한·구직자공개 등 다른 필드는 보존).
+export const adminUpdateEmployerCompany = async (uid: string, company: Record<string, any>) => {
+  const patch: Record<string, any> = { updatedAt: serverTimestamp() };
+  Object.entries(company).forEach(([key, value]) => {
+    if (value !== undefined) patch[`company.${key}`] = value;
+  });
+  await updateDoc(doc(db, 'employers', uid), patch);
+};
+
 // 회원 탈퇴 (테스트용 - 데이터 삭제 + 로그아웃)
 export const deleteUserAccount = async (uid: string) => {
   try {

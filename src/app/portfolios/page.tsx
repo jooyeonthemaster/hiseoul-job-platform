@@ -879,11 +879,11 @@ function PortfoliosPageInner() {
                     </div>
 
                     <div className="bg-ink-900 p-4 md:p-5">
-                      {selectedProgram.introVideoId || selectedProgram.youtubeId ? (
+                      {(selectedProgram.introVideoId ?? selectedProgram.youtubeId) ? (
                         <>
                           <div className="relative aspect-video overflow-hidden rounded-3xl border border-white/10 bg-black shadow-glass-lg">
                             <iframe
-                              src={`https://www.youtube.com/embed/${selectedProgram.introVideoId || selectedProgram.youtubeId}?rel=0&modestbranding=1`}
+                              src={`https://www.youtube.com/embed/${selectedProgram.introVideoId ?? selectedProgram.youtubeId}?rel=0&modestbranding=1`}
                               title={`${selectedProgram.name} 교육생 전체 자기소개 영상`}
                               className="absolute inset-0 h-full w-full"
                               allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
