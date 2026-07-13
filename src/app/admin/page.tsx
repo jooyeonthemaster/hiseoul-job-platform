@@ -742,12 +742,25 @@ export default function AdminPage() {
 
     const withUserInfo: PendingEmployer[] = await Promise.all(
       employersData.map(async (employer: any) => {
-        let userInfo = { email: '', name: '' };
+        let userInfo: { email: string; name: string; createdAt: Date | null } = {
+          email: '',
+          name: '',
+          createdAt: null,
+        };
         try {
           const userDoc = await getDoc(doc(db, 'users', employer.userId));
           if (userDoc.exists()) {
             const userData = userDoc.data();
-            userInfo = { email: userData.email || '', name: userData.name || '' };
+            // 일부 기업 문서(구글 가입 경로)는 createdAt 이 없어 정렬/가입일이 깨진다.
+            // users 문서는 모든 가입자에 createdAt 이 있으므로 이를 폴백 가입일로 사용한다.
+            const rawCreated: any = userData.createdAt;
+            const createdAt =
+              rawCreated instanceof Date
+                ? rawCreated
+                : typeof rawCreated?.toDate === 'function'
+                ? rawCreated.toDate()
+                : null;
+            userInfo = { email: userData.email || '', name: userData.name || '', createdAt };
           }
         } catch {
           // 사용자 문서가 없거나 조회 실패해도 기업 카드 자체는 표시한다
@@ -764,7 +777,8 @@ export default function AdminPage() {
             companyAttraction: employer.company?.companyAttraction || {},
           },
           approvalStatus: employer.approvalStatus || 'pending',
-          createdAt: employer.createdAt,
+          // 기업 문서에 createdAt 이 없으면 users 문서의 가입일로 대체 (정렬·가입일 표시 정상화)
+          createdAt: employer.createdAt || userInfo.createdAt,
           userEmail: userInfo.email,
           userName: userInfo.name,
           rejectedReason: employer.rejectedReason,

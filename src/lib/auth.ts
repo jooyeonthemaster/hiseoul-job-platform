@@ -551,7 +551,9 @@ export const signInWithGoogle = async (role: 'jobseeker' | 'employer') => {
           size: '',
           location: '',
           description: ''
-        }
+        },
+        approvalStatus: 'pending', // 이메일 가입 경로와 동일하게 승인 대기로 시작
+        createdAt: serverTimestamp() // 누락 시 관리자 목록 가입일/정렬이 깨지므로 반드시 설정
       });
     }
 
