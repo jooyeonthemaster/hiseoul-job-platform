@@ -67,9 +67,9 @@ export const PORTFOLIO_PROGRAMS: PortfolioProgram[] = [
     audience: '내국인 청년',
     hours: '300시간',
     youtubeId: '9wG8lT-XZWY',
-    // 교육생 전체 자기소개 영상 준비 중 — 빈 문자열('')이면 인재 목록 상단에 '준비 중'으로 표시된다.
-    // (외국인 과정과 동일 영상이 잘못 노출되던 문제로 클라이언트 요청에 따라 비움)
-    introVideoId: '',
+    // 내국인 교육생 전체 자기소개 영상 (클라이언트 지정) — 인재 목록 상단에 노출.
+    // https://youtu.be/g-ZDkRE5tlE
+    introVideoId: 'g-ZDkRE5tlE',
     heroTitle: '300시간 실전 교육을 마친 AI 전문 우수 인재',
     summary:
       '생성형 AI를 업무 도구로 자유자재로 활용하며 콘텐츠 제작, 데이터 분석, 업무 자동화, AI 에이전트 구축까지 실무 프로젝트로 훈련한 과정입니다.',
@@ -139,8 +139,9 @@ export const PORTFOLIO_PROGRAMS: PortfolioProgram[] = [
     audience: '외국인 유학생',
     hours: '155시간',
     youtubeId: 'pt85XMcEhng',
-    // 2026 교육생 전체 자기소개 합본 영상 (키너지랩 제작) — 인재 목록 상단에 노출
-    introVideoId: 'VGfgjOMTFNM',
+    // 외국인 교육생 전체 자기소개 영상 (클라이언트 지정, 2026) — 인재 목록 상단에 노출.
+    // https://youtu.be/ID--qIGkH_M
+    introVideoId: 'ID--qIGkH_M',
     heroTitle: '155시간 실전 교육을 마친 글로벌 AI 마케팅 우수 인재',
     summary:
       '다국어 역량과 글로벌 시각을 갖춘 외국인 유학생이 생성형 AI 마케팅, 해외 시장 조사, SNS·SEO 실무를 집중 훈련한 과정입니다.',
